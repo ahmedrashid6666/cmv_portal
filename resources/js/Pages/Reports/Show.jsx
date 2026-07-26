@@ -41,16 +41,23 @@ export default function ReportShow({ report, filters, customers }) {
                             </Labeled>
                         </>
                     )}
-                    {type === 'customer' && (
+                    {type === 'yearly' && (
+                        <Labeled label="Year">
+                            <input type="number" className={input} value={f.year || ''} onChange={(e) => setF({ ...f, year: e.target.value })} placeholder="2026" />
+                        </Labeled>
+                    )}
+                    {['customer', 'weekly', 'custom', 'vehicle', 'reference', 'payment-method', 'commission', 'expense', 'income', 'profit'].includes(type) && (
                         <>
                             <Labeled label="From"><input type="date" className={input} value={f.from || ''} onChange={(e) => setF({ ...f, from: e.target.value })} /></Labeled>
                             <Labeled label="To"><input type="date" className={input} value={f.to || ''} onChange={(e) => setF({ ...f, to: e.target.value })} /></Labeled>
-                            <Labeled label="Customer">
-                                <select className={input} value={f.customer_id || ''} onChange={(e) => setF({ ...f, customer_id: e.target.value })}>
-                                    <option value="">All</option>
-                                    {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                            </Labeled>
+                            {type === 'customer' && (
+                                <Labeled label="Customer">
+                                    <select className={input} value={f.customer_id || ''} onChange={(e) => setF({ ...f, customer_id: e.target.value })}>
+                                        <option value="">All</option>
+                                        {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </Labeled>
+                            )}
                         </>
                     )}
                     <button className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800">Apply</button>

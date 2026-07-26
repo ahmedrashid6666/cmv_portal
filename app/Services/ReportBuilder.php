@@ -12,7 +12,11 @@ use Illuminate\Support\Carbon;
  */
 class ReportBuilder
 {
-    public const TYPES = ['daily', 'monthly', 'customer', 'outstanding-credit'];
+    public const TYPES = [
+        'daily', 'monthly', 'customer', 'outstanding-credit',
+        'weekly', 'yearly', 'custom', 'vehicle', 'reference',
+        'commission', 'payment-method', 'expense', 'income', 'profit',
+    ];
 
     /**
      * @param  array<string, mixed>  $filters
@@ -25,6 +29,15 @@ class ReportBuilder
             'monthly' => $this->monthly($filters),
             'customer' => $this->customer($filters),
             'outstanding-credit' => $this->outstandingCredit($filters),
+            'weekly', 'custom' => $this->periodList($type, $filters),
+            'yearly' => $this->yearly($filters),
+            'vehicle' => $this->grouped('vehicle', 'Vehicle-wise Report', 'Vehicle', fn ($t) => $t->vehicle?->number ?? '—', $filters, ['vehicle']),
+            'reference' => $this->grouped('reference', 'Reference-wise Report', 'Reference', fn ($t) => $t->reference?->name ?? '—', $filters, ['reference']),
+            'payment-method' => $this->grouped('payment-method', 'Payment Method Report', 'Method', fn ($t) => $t->paymentMethod?->name ?? '—', $filters, ['paymentMethod']),
+            'commission' => $this->commission($filters),
+            'expense' => $this->expense($filters),
+            'income' => $this->incomeOrProfit('income', $filters),
+            'profit' => $this->incomeOrProfit('profit', $filters),
             default => abort(404),
         };
     }
@@ -144,6 +157,145 @@ class ReportBuilder
             'totals' => ['Outstanding' => round($total, 2)],
             'chart' => $chart,
         ];
+    }
+
+    private function periodList(string $type, array $filters): array
+    {
+        $txns = $this->baseQuery($filters)->orderBy('transaction_date')->orderBy('id')->get();
+        $label = $type === 'weekly' ? 'Weekly Report' : 'Custom Period Report';
+        $range = ($filters['from'] ?? '…').' → '.($filters['to'] ?? '…');
+
+        return [
+            'type' => $type,
+            'title' => $label.' ('.$range.')',
+            'columns' => ['Date', 'Invoice', 'Customer', 'Method', 'Total', 'Grand Total', 'Net Profit'],
+            'rows' => $txns->map(fn ($t) => [
+                $t->transaction_date->format('Y-m-d'), $t->invoice_no ?? '—', $t->customer?->name,
+                $t->paymentMethod?->name, (string) $t->total_amount, (string) $t->grand_total, (string) $t->net_profit,
+            ])->all(),
+            'totals' => $this->totals($txns),
+            'chart' => [],
+        ];
+    }
+
+    private function yearly(array $filters): array
+    {
+        $year = (int) ($filters['year'] ?? Carbon::today()->year);
+        $txns = Transaction::query()->whereYear('transaction_date', $year)->get();
+        $byMonth = collect(range(1, 12))->map(function ($m) use ($txns) {
+            $group = $txns->filter(fn ($t) => (int) $t->transaction_date->format('n') === $m);
+
+            return [
+                'label' => Carbon::create(null, $m)->format('M'),
+                'count' => $group->count(),
+                'income' => (float) $group->sum('grand_total'),
+                'profit' => (float) $group->sum('net_profit'),
+            ];
+        });
+
+        return [
+            'type' => 'yearly',
+            'title' => 'Yearly Report — '.$year,
+            'columns' => ['Month', 'Transactions', 'Income', 'Net Profit'],
+            'rows' => $byMonth->map(fn ($m) => [$m['label'], (string) $m['count'], number_format($m['income'], 2), number_format($m['profit'], 2)])->all(),
+            'totals' => $this->totals($txns),
+            'chart' => $byMonth->map(fn ($m) => ['label' => $m['label'], 'income' => $m['income'], 'profit' => $m['profit']])->all(),
+        ];
+    }
+
+    private function grouped(string $type, string $title, string $keyLabel, callable $keyFn, array $filters, array $with): array
+    {
+        $txns = $this->baseQuery($filters)->with($with)->get();
+        $groups = $txns->groupBy($keyFn)->map(fn ($group, $name) => [
+            'name' => (string) $name,
+            'count' => $group->count(),
+            'income' => (float) $group->sum('grand_total'),
+            'profit' => (float) $group->sum('net_profit'),
+        ])->sortByDesc('income')->values();
+
+        return [
+            'type' => $type,
+            'title' => $title,
+            'columns' => [$keyLabel, 'Transactions', 'Income', 'Net Profit'],
+            'rows' => $groups->map(fn ($g) => [$g['name'], (string) $g['count'], number_format($g['income'], 2), number_format($g['profit'], 2)])->all(),
+            'totals' => $this->totals($txns),
+            'chart' => $groups->take(8)->map(fn ($g) => ['label' => $g['name'], 'income' => $g['income']])->all(),
+        ];
+    }
+
+    private function commission(array $filters): array
+    {
+        $rows = \App\Models\TransactionCommission::query()
+            ->with(['transaction:id,transaction_date,invoice_no,customer_id', 'transaction.customer:id,name', 'reference:id,name'])
+            ->whereHas('transaction', fn ($q) => $this->applyDateRange($q, $filters))
+            ->get();
+
+        $toCustomer = (float) $rows->where('type', 'charged_to_customer')->sum('amount');
+        $toReference = (float) $rows->where('type', 'paid_to_reference')->sum('amount');
+
+        return [
+            'type' => 'commission',
+            'title' => 'Commission Report',
+            'columns' => ['Date', 'Invoice', 'Customer', 'Label', 'Type', 'Reference', 'Amount'],
+            'rows' => $rows->map(fn ($c) => [
+                $c->transaction?->transaction_date?->format('Y-m-d'), $c->transaction?->invoice_no ?? '—',
+                $c->transaction?->customer?->name, $c->label ?? '—',
+                $c->type === 'charged_to_customer' ? 'To Customer' : 'To Reference',
+                $c->reference?->name ?? '—', number_format((float) $c->amount, 2),
+            ])->all(),
+            'totals' => ['Charged to Customer' => round($toCustomer, 2), 'Paid to Reference' => round($toReference, 2)],
+            'chart' => [],
+        ];
+    }
+
+    private function expense(array $filters): array
+    {
+        $expenses = \App\Models\TransactionExpense::query()
+            ->with('category:id,name')
+            ->whereHas('transaction', fn ($q) => $this->applyDateRange($q, $filters))
+            ->get();
+
+        $byCat = $expenses->groupBy(fn ($e) => $e->category?->name ?? 'Uncategorised')
+            ->map(fn ($group, $name) => ['name' => (string) $name, 'count' => $group->count(), 'total' => (float) $group->sum('amount')])
+            ->sortByDesc('total')->values();
+
+        return [
+            'type' => 'expense',
+            'title' => 'Expense Report',
+            'columns' => ['Category', 'Count', 'Total'],
+            'rows' => $byCat->map(fn ($c) => [$c['name'], (string) $c['count'], number_format($c['total'], 2)])->all(),
+            'totals' => ['Total Expenses' => round((float) $expenses->sum('amount'), 2)],
+            'chart' => $byCat->take(8)->map(fn ($c) => ['label' => $c['name'], 'income' => $c['total']])->all(),
+        ];
+    }
+
+    private function incomeOrProfit(string $type, array $filters): array
+    {
+        $txns = $this->baseQuery($filters)->get();
+        $metric = $type === 'income' ? 'grand_total' : 'net_profit';
+        $byDay = $txns->groupBy(fn ($t) => $t->transaction_date->format('Y-m-d'))
+            ->map(fn ($group, $day) => ['day' => $day, 'value' => (float) $group->sum($metric)])
+            ->sortKeys()->values();
+
+        return [
+            'type' => $type,
+            'title' => ($type === 'income' ? 'Income' : 'Profit').' Report',
+            'columns' => ['Date', 'Transactions', ucfirst($type)],
+            'rows' => $byDay->map(fn ($d) => [
+                $d['day'],
+                (string) $txns->filter(fn ($t) => $t->transaction_date->format('Y-m-d') === $d['day'])->count(),
+                number_format($d['value'], 2),
+            ])->all(),
+            'totals' => [ucfirst($type) => round((float) $txns->sum($metric), 2)],
+            'chart' => $byDay->map(fn ($d) => ['label' => Carbon::parse($d['day'])->format('d M'), 'income' => $d['value']])->all(),
+        ];
+    }
+
+    private function applyDateRange($query, array $filters)
+    {
+        return $query
+            ->when($filters['from'] ?? null, fn ($q, $v) => $q->whereDate('transaction_date', '>=', $v))
+            ->when($filters['to'] ?? null, fn ($q, $v) => $q->whereDate('transaction_date', '<=', $v));
     }
 
     /**

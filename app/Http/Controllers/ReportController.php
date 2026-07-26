@@ -18,8 +18,18 @@ class ReportController extends Controller
         return Inertia::render('Reports/Index', [
             'reports' => [
                 ['key' => 'daily', 'title' => 'Daily Report', 'desc' => "A single day's transactions and totals."],
+                ['key' => 'weekly', 'title' => 'Weekly Report', 'desc' => 'Transactions across a chosen week.'],
                 ['key' => 'monthly', 'title' => 'Monthly Report', 'desc' => 'Day-by-day income and profit for a month.'],
-                ['key' => 'customer', 'title' => 'Customer-wise Report', 'desc' => 'Income and profit grouped by customer.'],
+                ['key' => 'yearly', 'title' => 'Yearly Report', 'desc' => 'Month-by-month income and profit for a year.'],
+                ['key' => 'custom', 'title' => 'Custom Period', 'desc' => 'Transactions between any two dates.'],
+                ['key' => 'customer', 'title' => 'Customer-wise', 'desc' => 'Income and profit grouped by customer.'],
+                ['key' => 'vehicle', 'title' => 'Vehicle-wise', 'desc' => 'Income and profit grouped by vehicle.'],
+                ['key' => 'reference', 'title' => 'Reference-wise', 'desc' => 'Income and profit grouped by reference.'],
+                ['key' => 'payment-method', 'title' => 'Payment Method', 'desc' => 'Totals grouped by payment method.'],
+                ['key' => 'commission', 'title' => 'Commission Report', 'desc' => 'All commissions by type and reference.'],
+                ['key' => 'expense', 'title' => 'Expense Report', 'desc' => 'Expenses grouped by category.'],
+                ['key' => 'income', 'title' => 'Income Report', 'desc' => 'Income totals per day.'],
+                ['key' => 'profit', 'title' => 'Profit Report', 'desc' => 'Net profit per day.'],
                 ['key' => 'outstanding-credit', 'title' => 'Outstanding Credit', 'desc' => 'Unpaid receivables by invoice.'],
             ],
         ]);
