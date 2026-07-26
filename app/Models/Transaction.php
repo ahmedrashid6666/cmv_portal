@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Observers\TransactionObserver;
+use App\Services\TransactionCalculator;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+#[ObservedBy(TransactionObserver::class)]
 class Transaction extends Model
 {
     use HasFactory, SoftDeletes;
@@ -72,5 +76,46 @@ class Transaction extends Model
     public function creditPayments()
     {
         return $this->hasMany(CreditPayment::class);
+    }
+
+    /**
+     * Recompute grand_total and net_profit from the persisted children
+     * (expenses + commissions) and save. Call after syncing children.
+     */
+    public function recomputeTotals(): self
+    {
+        $calc = app(TransactionCalculator::class);
+
+        $commissions = $this->commissions()
+            ->get(['type', 'amount'])
+            ->map(fn ($c) => ['type' => $c->type, 'amount' => $c->amount])
+            ->all();
+
+        $expenses = $this->expenses()
+            ->get(['amount'])
+            ->map(fn ($e) => ['amount' => $e->amount])
+            ->all();
+
+        $this->grand_total = $calc->grandTotal($this->total_amount, $commissions);
+        $this->net_profit = $calc->netProfit(
+            $this->profit,
+            $calc->totalExpenses($expenses),
+            $calc->commissionPayable($commissions),
+        );
+        $this->saveQuietly();
+
+        return $this;
+    }
+
+    /** Outstanding credit for this transaction (credit_amount - payments). */
+    public function creditOutstanding(): string
+    {
+        $calc = app(TransactionCalculator::class);
+        $payments = $this->creditPayments()
+            ->get(['amount'])
+            ->map(fn ($p) => ['amount' => $p->amount])
+            ->all();
+
+        return $calc->creditOutstanding($this->credit_amount, $payments);
     }
 }
