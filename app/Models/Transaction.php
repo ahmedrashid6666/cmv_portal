@@ -21,7 +21,7 @@ class Transaction extends Model
         'customer_id', 'reference_id', 'vehicle_id',
         'customs_fees', 'gov_fees', 'profit', 'vat_rate', 'vat_amount', 'total_amount',
         'payment_method_id', 'credit_amount', 'remarks', 'attachment_path',
-        'grand_total', 'net_profit', 'created_by',
+        'grand_total', 'net_profit', 'created_by', 'custom_data',
     ];
 
     protected function casts(): array
@@ -37,6 +37,7 @@ class Transaction extends Model
             'credit_amount' => 'decimal:2',
             'grand_total' => 'decimal:2',
             'net_profit' => 'decimal:2',
+            'custom_data' => 'array',
         ];
     }
 

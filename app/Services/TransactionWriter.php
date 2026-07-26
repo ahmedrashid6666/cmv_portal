@@ -61,6 +61,7 @@ class TransactionWriter
             'credit_amount' => $data['credit_amount'] ?? 0,
             'remarks' => $data['remarks'] ?? null,
             'attachment_path' => $data['attachment_path'] ?? null,
+            'custom_data' => $data['custom_data'] ?? null,
             'created_by' => $data['created_by'] ?? auth()->id(),
         ];
     }

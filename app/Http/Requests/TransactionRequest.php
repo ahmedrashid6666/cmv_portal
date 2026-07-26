@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\CustomField;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,7 +18,7 @@ class TransactionRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'transaction_date' => ['required', 'date'],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'boe_no' => ['nullable', 'string', 'max:255'],
@@ -45,6 +46,25 @@ class TransactionRequest extends FormRequest
             'commissions.*.amount' => ['nullable', 'numeric', 'min:0'],
             'commissions.*.type' => ['nullable', Rule::in(['charged_to_customer', 'paid_to_reference'])],
             'commissions.*.reference_id' => ['nullable', 'exists:references,id'],
+            'custom_data' => ['nullable', 'array'],
         ];
+
+        // Dynamic validation for admin-defined custom fields
+        foreach (CustomField::active()->get() as $field) {
+            $rules['custom_data.'.$field->key] = $field->rules();
+        }
+
+        return $rules;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Drop custom_data keys that are not defined fields.
+        if ($this->has('custom_data') && is_array($this->input('custom_data'))) {
+            $allowed = CustomField::active()->pluck('key')->all();
+            $this->merge([
+                'custom_data' => array_intersect_key($this->input('custom_data'), array_flip($allowed)),
+            ]);
+        }
     }
 }

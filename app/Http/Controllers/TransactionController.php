@@ -105,6 +105,7 @@ class TransactionController extends Controller
             'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name']),
             'expenseCategories' => ExpenseCategory::orderBy('name')->get(['id', 'name']),
             'vatRate' => (float) \App\Models\Setting::get('vat_rate', 0),
+            'customFields' => \App\Models\CustomField::active()->get(['key', 'label', 'type', 'options', 'required']),
         ];
     }
 }

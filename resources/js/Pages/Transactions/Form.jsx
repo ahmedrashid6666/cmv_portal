@@ -28,6 +28,7 @@ export default function TransactionForm({
     paymentMethods,
     expenseCategories,
     vatRate,
+    customFields = [],
 }) {
     const editing = !!transaction;
     const { data, setData, post, put, processing, errors } = useForm({
@@ -50,7 +51,10 @@ export default function TransactionForm({
         commissions: transaction?.commissions?.length
             ? transaction.commissions.map((c) => ({ label: c.label ?? '', amount: c.amount ?? '', type: c.type ?? 'charged_to_customer', reference_id: c.reference_id ?? '' }))
             : [{ label: '', amount: '', type: 'charged_to_customer', reference_id: '' }],
+        custom_data: transaction?.custom_data ?? {},
     });
+
+    const setCustom = (key, value) => setData('custom_data', { ...data.custom_data, [key]: value });
 
     const totals = useMemo(() => computeTotals(data), [data]);
 
@@ -156,6 +160,31 @@ export default function TransactionForm({
                             ))}
                         </div>
                     </Card>
+
+                    {customFields.length > 0 && (
+                        <Card title="Additional Details">
+                            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                                {customFields.map((cf) => (
+                                    <Field key={cf.key} label={cf.label} required={cf.required} error={errors['custom_data.' + cf.key]}>
+                                        {cf.type === 'select' ? (
+                                            <select className={input} value={data.custom_data[cf.key] ?? ''} onChange={(e) => setCustom(cf.key, e.target.value)}>
+                                                <option value="">Select…</option>
+                                                {(cf.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type={cf.type === 'number' ? 'number' : cf.type === 'date' ? 'date' : 'text'}
+                                                step={cf.type === 'number' ? 'any' : undefined}
+                                                className={input}
+                                                value={data.custom_data[cf.key] ?? ''}
+                                                onChange={(e) => setCustom(cf.key, e.target.value)}
+                                            />
+                                        )}
+                                    </Field>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Sticky summary / payment */}

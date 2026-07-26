@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\CreditPaymentController;
+use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\MasterController;
@@ -59,6 +60,12 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('activity', [ActivityLogController::class, 'index'])->name('activity.index');
+
+        // No-code custom fields for the transaction form
+        Route::get('custom-fields', [CustomFieldController::class, 'index'])->name('custom-fields.index');
+        Route::post('custom-fields', [CustomFieldController::class, 'store'])->name('custom-fields.store');
+        Route::put('custom-fields/{customField}', [CustomFieldController::class, 'update'])->name('custom-fields.update');
+        Route::delete('custom-fields/{customField}', [CustomFieldController::class, 'destroy'])->name('custom-fields.destroy');
 
         // Recycle bin (soft-deleted transactions)
         Route::get('bin', [RecycleBinController::class, 'index'])->name('bin.index');

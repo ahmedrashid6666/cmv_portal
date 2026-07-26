@@ -112,6 +112,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     <NavItem href={route('activity.index')} active={current('activity.*')} icon="⌗">
                         Activity Log
                     </NavItem>
+                    <NavItem href={route('custom-fields.index')} active={current('custom-fields.*')} icon="⊕">
+                        Custom Fields
+                    </NavItem>
                     <NavItem href={route('bin.index')} active={current('bin.*')} icon="♻">
                         Recycle Bin
                     </NavItem>
