@@ -1,6 +1,28 @@
 import Dropdown from '@/Components/Dropdown';
 import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+function FlashToast() {
+    const flash = usePage().props.flash || {};
+    const [show, setShow] = useState(false);
+    const message = flash.success || flash.error;
+    const isError = !!flash.error;
+
+    useEffect(() => {
+        if (message) {
+            setShow(true);
+            const t = setTimeout(() => setShow(false), 4000);
+            return () => clearTimeout(t);
+        }
+    }, [message, flash]);
+
+    if (!show || !message) return null;
+    return (
+        <div className={'fixed bottom-6 right-6 z-50 max-w-sm rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg ' + (isError ? 'bg-accent-red' : 'bg-emerald-600')}>
+            {message}
+        </div>
+    );
+}
 
 function NavItem({ href, active, children, icon }) {
     return (
@@ -31,6 +53,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const [open, setOpen] = useState(false);
     const current = (name) => route().current(name);
+    const isSuperAdmin = user.role === 'super_admin';
 
     const nav = (
         <nav className="flex flex-1 flex-col gap-0.5">
@@ -71,6 +94,18 @@ export default function AuthenticatedLayout({ header, children }) {
             <NavItem href={route('reports.index')} active={current('reports.*')} icon="▦">
                 Reports
             </NavItem>
+
+            {isSuperAdmin && (
+                <>
+                    <SectionLabel>Administration</SectionLabel>
+                    <NavItem href={route('users.index')} active={current('users.*')} icon="◉">
+                        Users
+                    </NavItem>
+                    <NavItem href={route('settings.index')} active={current('settings.*')} icon="⚙">
+                        Settings
+                    </NavItem>
+                </>
+            )}
         </nav>
     );
 
@@ -143,6 +178,8 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 <main className="p-4 sm:p-6">{children}</main>
             </div>
+
+            <FlashToast />
         </div>
     );
 }

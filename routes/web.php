@@ -6,7 +6,9 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -37,6 +39,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('masters/{master}', [MasterController::class, 'store'])->name('masters.store');
         Route::put('masters/{master}/{id}', [MasterController::class, 'update'])->name('masters.update');
         Route::delete('masters/{master}/{id}', [MasterController::class, 'destroy'])->name('masters.destroy');
+    });
+
+    // Administration (Super Admin only)
+    Route::middleware('role:super_admin')->group(function () {
+        Route::get('users', [UserController::class, 'index'])->name('users.index');
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::put('settings/company', [SettingsController::class, 'updateCompany'])->name('settings.company');
+        Route::post('settings/database/test', [SettingsController::class, 'testDatabase'])->name('settings.database.test');
+        Route::put('settings/database', [SettingsController::class, 'updateDatabase'])->name('settings.database');
     });
 
     // Tools
