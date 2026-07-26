@@ -1,58 +1,77 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CMV Shipping — Accounts Management System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A modern, multi-user accounting web app that replaces CMV Shipping's Excel workbook.
+Built API-first so a Flutter mobile app can attach later with no rework.
 
-## About Laravel
+**Stack:** Laravel 13 · MySQL · Inertia + React 19 · Tailwind · Recharts · Sanctum · PhpSpreadsheet · DomPDF · Pest.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Phase 1 features (built)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Auth & roles** — Super Admin, Admin, Accountant, Read-only (enforced on web + API)
+- **Dashboard** — today/monthly income & expenses, cash/bank/credit balances, profit, charts
+- **Transaction entry** — all workbook fields, multi-row expenses & commissions, **auto-calculated** totals
+- **Transactions list** — search + date/customer/method/amount filters
+- **Masters** — customers, references, vehicles, expense categories, payment methods, banks, account heads
+- **Credit / receivables** — outstanding tracking + record payments
+- **Excel import** — `.xlsx/.xlsm/.csv`, preview + validation, idempotent, auto-creates masters
+- **Reports** — daily, monthly, customer-wise, outstanding-credit — with **PDF / Excel / Print**
+- **JSON API** — Sanctum tokens, transactions CRUD, master dropdowns (Flutter-ready)
 
-## Learning Laravel
+## The calculation engine
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+All money math lives in `app/Services/TransactionCalculator.php` (bcmath, money-safe) and is
+mirrored in `resources/js/lib/calc.js` for live on-screen totals. Formulas:
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+Total Amount = Customs + Gov Fees + Profit + VAT
+Grand Total  = Total Amount + commissions charged to customer
+Net Profit   = Profit - Expenses - commissions paid to references
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## Local setup
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+composer install
+npm install
+cp .env.example .env          # then set DB_* for MySQL
+php artisan key:generate
+php artisan migrate --seed     # creates schema + default masters + super admin
+npm run build                  # or: npm run dev (hot reload)
+php artisan serve
+```
 
-## Code of Conduct
+### Default login
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@cmvshipping.com` | `cmv12345` | Super Admin |
 
-## Security Vulnerabilities
+> Change this immediately in production (set `SEED_ADMIN_PASSWORD` before seeding, or update via the app).
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Importing your workbook
 
-## License
+Log in → **Import Excel** → upload `ACCOUNT WORKBOOK.xlsm` → review the preview → **Confirm & Import**.
+The importer detects per-day sheets, maps columns automatically, skips duplicates, and creates any
+missing customers/references/vehicles.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+
+## Tests
+
+```bash
+./vendor/bin/pest      # PHP: calculation engine, importer, reports, API, roles
+npm run test           # JS: live-totals parity with the PHP engine
+```
+
+## Deployment
+
+See [docs/DEPLOY_HOSTINGER.md](docs/DEPLOY_HOSTINGER.md).
+
+## Design & plan
+
+- Spec: [docs/superpowers/specs/2026-07-26-cmv-accounts-phase1-design.md](docs/superpowers/specs/2026-07-26-cmv-accounts-phase1-design.md)
+- Plan: [docs/superpowers/plans/2026-07-26-cmv-accounts-phase1.md](docs/superpowers/plans/2026-07-26-cmv-accounts-phase1.md)
