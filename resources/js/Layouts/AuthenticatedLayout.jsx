@@ -67,6 +67,17 @@ export default function AuthenticatedLayout({ header, children }) {
                 Credits
             </NavItem>
 
+            <SectionLabel>Books</SectionLabel>
+            <NavItem href={route('books.cash')} active={current('books.cash')} icon="₵">
+                Cash Book
+            </NavItem>
+            <NavItem href={route('books.bank')} active={current('books.bank')} icon="⛁">
+                Bank Book
+            </NavItem>
+            <NavItem href={route('books.ledger')} active={current('books.ledger')} icon="≣">
+                Customer Ledger
+            </NavItem>
+
             <SectionLabel>Master Data</SectionLabel>
             <NavItem href={route('masters.index', 'customers')} active={current('masters.*') && route().params.master === 'customers'} icon="◈">
                 Customers

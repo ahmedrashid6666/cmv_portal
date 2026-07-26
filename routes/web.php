@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookController;
 use App\Http\Controllers\CreditPaymentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
@@ -27,6 +28,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     });
+
+    // Books (running-balance ledgers)
+    Route::get('books/cash', [BookController::class, 'cashBook'])->name('books.cash');
+    Route::get('books/bank', [BookController::class, 'bankBook'])->name('books.bank');
+    Route::get('books/ledger', [BookController::class, 'ledger'])->name('books.ledger');
 
     // Credits / receivables
     Route::get('credits', [CreditPaymentController::class, 'index'])->name('credits.index');
