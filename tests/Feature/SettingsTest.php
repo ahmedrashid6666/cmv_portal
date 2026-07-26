@@ -11,6 +11,8 @@ it('lets a super admin save company settings', function () {
             'currency' => 'AED',
             'vat_rate' => 5,
             'cash_opening_balance' => 1000,
+            'low_cash_threshold' => 500,
+            'large_expense_threshold' => 1000,
         ])->assertRedirect();
 
     expect(Setting::get('company_name'))->toBe('CMV Shipping LLC')

@@ -37,6 +37,14 @@ export default function SettingsIndex({ company, database, flash }) {
                         <Field label="Cash Opening Balance" error={c.errors.cash_opening_balance}>
                             <input type="number" step="0.01" className={input} value={c.data.cash_opening_balance} onChange={(e) => c.setData('cash_opening_balance', e.target.value)} />
                         </Field>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Field label="Low Cash Alert Below" error={c.errors.low_cash_threshold}>
+                                <input type="number" step="0.01" className={input} value={c.data.low_cash_threshold} onChange={(e) => c.setData('low_cash_threshold', e.target.value)} />
+                            </Field>
+                            <Field label="Large Expense Alert At/Above" error={c.errors.large_expense_threshold}>
+                                <input type="number" step="0.01" className={input} value={c.data.large_expense_threshold} onChange={(e) => c.setData('large_expense_threshold', e.target.value)} />
+                            </Field>
+                        </div>
                         <button disabled={c.processing} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">
                             Save Company Settings
                         </button>

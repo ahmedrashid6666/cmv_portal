@@ -21,6 +21,8 @@ class SettingsController extends Controller
                 'currency' => Setting::get('currency', 'AED'),
                 'vat_rate' => (float) Setting::get('vat_rate', 0),
                 'cash_opening_balance' => (float) Setting::get('cash_opening_balance', 0),
+                'low_cash_threshold' => (float) Setting::get('low_cash_threshold', 500),
+                'large_expense_threshold' => (float) Setting::get('large_expense_threshold', 1000),
             ],
             'database' => [
                 'connection' => config('database.default'),
@@ -41,6 +43,8 @@ class SettingsController extends Controller
             'currency' => ['required', 'string', 'max:8'],
             'vat_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'cash_opening_balance' => ['required', 'numeric'],
+            'low_cash_threshold' => ['required', 'numeric', 'min:0'],
+            'large_expense_threshold' => ['required', 'numeric', 'min:0'],
         ]);
 
         foreach ($data as $key => $value) {
