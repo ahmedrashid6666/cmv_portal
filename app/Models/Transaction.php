@@ -125,6 +125,23 @@ class Transaction extends Model
         return $this;
     }
 
+    /**
+     * Invoice payment status: paid | partial | unpaid.
+     * A non-credit sale is paid at point of sale.
+     */
+    public function invoiceStatus(): string
+    {
+        if ((float) $this->credit_amount <= 0) {
+            return 'paid';
+        }
+        $outstanding = (float) $this->creditOutstanding();
+        if ($outstanding <= 0) {
+            return 'paid';
+        }
+
+        return $outstanding < (float) $this->credit_amount ? 'partial' : 'unpaid';
+    }
+
     /** Outstanding credit for this transaction (credit_amount - payments). */
     public function creditOutstanding(): string
     {

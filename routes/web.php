@@ -7,6 +7,7 @@ use App\Http\Controllers\CreditPaymentController;
 use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecycleBinController;
@@ -38,6 +39,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('books/cash', [BookController::class, 'cashBook'])->name('books.cash'); // export/deep-link
     Route::get('books/bank', [BookController::class, 'bankBook'])->name('books.bank'); // export/deep-link
     Route::get('books/ledger', [BookController::class, 'ledger'])->name('books.ledger');
+
+    // Invoices (generated from transactions)
+    Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('invoices/{transaction}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::get('invoices/{transaction}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
 
     // Credits / receivables
     Route::get('credits', [CreditPaymentController::class, 'index'])->name('credits.index');

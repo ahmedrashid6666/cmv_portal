@@ -63,6 +63,9 @@ export default function AuthenticatedLayout({ header, children }) {
             <NavItem href={route('transactions.index')} active={current('transactions.*')} icon="₪">
                 Transactions
             </NavItem>
+            <NavItem href={route('invoices.index')} active={current('invoices.*')} icon="🧾">
+                Invoices
+            </NavItem>
             <NavItem href={route('credits.index')} active={current('credits.*')} icon="◔">
                 Credits
             </NavItem>

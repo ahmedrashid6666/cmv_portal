@@ -23,6 +23,11 @@ class SettingsController extends Controller
                 'cash_opening_balance' => (float) Setting::get('cash_opening_balance', 0),
                 'low_cash_threshold' => (float) Setting::get('low_cash_threshold', 500),
                 'large_expense_threshold' => (float) Setting::get('large_expense_threshold', 1000),
+                'company_address' => Setting::get('company_address', ''),
+                'company_trn' => Setting::get('company_trn', ''),
+                'company_phone' => Setting::get('company_phone', ''),
+                'company_email' => Setting::get('company_email', ''),
+                'invoice_footer' => Setting::get('invoice_footer', 'Thank you for your business.'),
             ],
             'database' => [
                 'connection' => config('database.default'),
@@ -45,6 +50,11 @@ class SettingsController extends Controller
             'cash_opening_balance' => ['required', 'numeric'],
             'low_cash_threshold' => ['required', 'numeric', 'min:0'],
             'large_expense_threshold' => ['required', 'numeric', 'min:0'],
+            'company_address' => ['nullable', 'string', 'max:500'],
+            'company_trn' => ['nullable', 'string', 'max:50'],
+            'company_phone' => ['nullable', 'string', 'max:50'],
+            'company_email' => ['nullable', 'string', 'max:100'],
+            'invoice_footer' => ['nullable', 'string', 'max:500'],
         ]);
 
         foreach ($data as $key => $value) {

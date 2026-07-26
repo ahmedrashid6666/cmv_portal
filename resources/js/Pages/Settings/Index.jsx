@@ -45,6 +45,30 @@ export default function SettingsIndex({ company, database, flash }) {
                                 <input type="number" step="0.01" className={input} value={c.data.large_expense_threshold} onChange={(e) => c.setData('large_expense_threshold', e.target.value)} />
                             </Field>
                         </div>
+                        <div className="mt-2 border-t pt-3">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Invoice details</p>
+                            <Field label="Address" error={c.errors.company_address}>
+                                <textarea rows="2" className={input} value={c.data.company_address || ''} onChange={(e) => c.setData('company_address', e.target.value)} />
+                            </Field>
+                            <div className="mt-3 grid grid-cols-2 gap-3">
+                                <Field label="TRN" error={c.errors.company_trn}>
+                                    <input className={input} value={c.data.company_trn || ''} onChange={(e) => c.setData('company_trn', e.target.value)} />
+                                </Field>
+                                <Field label="Phone" error={c.errors.company_phone}>
+                                    <input className={input} value={c.data.company_phone || ''} onChange={(e) => c.setData('company_phone', e.target.value)} />
+                                </Field>
+                            </div>
+                            <div className="mt-3">
+                                <Field label="Email" error={c.errors.company_email}>
+                                    <input className={input} value={c.data.company_email || ''} onChange={(e) => c.setData('company_email', e.target.value)} />
+                                </Field>
+                            </div>
+                            <div className="mt-3">
+                                <Field label="Invoice Footer Note" error={c.errors.invoice_footer}>
+                                    <input className={input} value={c.data.invoice_footer || ''} onChange={(e) => c.setData('invoice_footer', e.target.value)} />
+                                </Field>
+                            </div>
+                        </div>
                         <button disabled={c.processing} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">
                             Save Company Settings
                         </button>
