@@ -132,15 +132,20 @@ class BalanceService
 
     private function creditRepaymentsByBucket(string $bucket): string
     {
+        // Only count repayments whose parent transaction is not soft-deleted.
         return $this->d((string) DB::table('credit_payments')
             ->join('payment_methods', 'credit_payments.payment_method_id', '=', 'payment_methods.id')
+            ->join('transactions', 'credit_payments.transaction_id', '=', 'transactions.id')
+            ->whereNull('transactions.deleted_at')
             ->where('payment_methods.type', $bucket)
             ->sum('credit_payments.amount'));
     }
 
     private function totalExpensesAll(): string
     {
-        return $this->d((string) TransactionExpense::sum('amount'));
+        // whereHas respects the Transaction soft-delete scope, so expenses of
+        // deleted transactions are excluded.
+        return $this->d((string) TransactionExpense::whereHas('transaction')->sum('amount'));
     }
 
     private function d(string $value): string

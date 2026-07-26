@@ -117,6 +117,7 @@ class LedgerService
     private function cashOrBankRepayments(string $bucket)
     {
         return CreditPayment::query()
+            ->whereHas('transaction') // exclude repayments of soft-deleted transactions
             ->whereHas('paymentMethod', fn ($q) => $q->where('type', $bucket))
             ->with('transaction:id,invoice_no')
             ->get()

@@ -30,8 +30,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Books (running-balance ledgers)
-    Route::get('books/cash', [BookController::class, 'cashBook'])->name('books.cash');
-    Route::get('books/bank', [BookController::class, 'bankBook'])->name('books.bank');
+    Route::get('books/cash-bank', [BookController::class, 'cashBank'])->name('books.cashbank');
+    Route::get('books/cash', [BookController::class, 'cashBook'])->name('books.cash'); // export/deep-link
+    Route::get('books/bank', [BookController::class, 'bankBook'])->name('books.bank'); // export/deep-link
     Route::get('books/ledger', [BookController::class, 'ledger'])->name('books.ledger');
 
     // Credits / receivables

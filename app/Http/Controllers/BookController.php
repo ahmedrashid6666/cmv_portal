@@ -13,6 +13,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookController extends Controller
 {
+    /**
+     * Combined Cash & Bank book view. Which books show is driven by
+     * ?show=cash,bank (both by default). Export still uses cashBook/bankBook.
+     */
+    public function cashBank(Request $request, LedgerService $ledger)
+    {
+        $filters = $request->only(['from', 'to']);
+        $show = $request->filled('show')
+            ? explode(',', $request->string('show')->value())
+            : ['cash', 'bank'];
+
+        return Inertia::render('Books/CashBank', [
+            'filters' => $filters,
+            'show' => $show,
+            'cash' => in_array('cash', $show, true) ? $ledger->cashBook($filters) : null,
+            'bank' => in_array('bank', $show, true) ? $ledger->bankBook($filters) : null,
+        ]);
+    }
+
     public function cashBook(Request $request, LedgerService $ledger)
     {
         return $this->render('cash', 'Cash Book', $ledger->cashBook($request->only(['from', 'to'])), $request);
