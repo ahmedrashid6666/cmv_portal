@@ -41,6 +41,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Tools
     Route::get('import', [ImportController::class, 'index'])->name('import.index');
+    Route::middleware('role:super_admin,admin')->group(function () {
+        Route::post('import/preview', [ImportController::class, 'preview'])->name('import.preview');
+        Route::post('import/commit', [ImportController::class, 'commit'])->name('import.commit');
+    });
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
 
     // Profile (Breeze)
