@@ -1,24 +1,49 @@
 <?php
 
+use App\Http\Controllers\CreditPaymentController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ImportController;
+use App\Http\Controllers\MasterController;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('dashboard');
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+    // Transactions — writes limited to super_admin/admin/accountant
+    Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::middleware('role:super_admin,admin,accountant')->group(function () {
+        Route::get('transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
+        Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
+        Route::get('transactions/{transaction}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
+        Route::put('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
+        Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+    });
+
+    // Credits / receivables
+    Route::get('credits', [CreditPaymentController::class, 'index'])->name('credits.index');
+    Route::post('credits', [CreditPaymentController::class, 'store'])
+        ->middleware('role:super_admin,admin,accountant')->name('credits.store');
+
+    // Masters (read for all; writes for super_admin/admin)
+    Route::get('masters/{master}', [MasterController::class, 'index'])->name('masters.index');
+    Route::middleware('role:super_admin,admin')->group(function () {
+        Route::post('masters/{master}', [MasterController::class, 'store'])->name('masters.store');
+        Route::put('masters/{master}/{id}', [MasterController::class, 'update'])->name('masters.update');
+        Route::delete('masters/{master}/{id}', [MasterController::class, 'destroy'])->name('masters.destroy');
+    });
+
+    // Tools
+    Route::get('import', [ImportController::class, 'index'])->name('import.index');
+    Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+
+    // Profile (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
