@@ -52,10 +52,12 @@ class NotificationService
             ];
         }
 
-        // Low cash balance
+        // Low cash balance — only once there is real activity, so a fresh
+        // empty system doesn't nag about being below the threshold.
         $lowCash = (float) Setting::get('low_cash_threshold', 500);
         $cash = (float) $this->balances->cashBalance();
-        if ($cash < $lowCash) {
+        $hasActivity = Transaction::query()->exists() || (float) Setting::get('cash_opening_balance', 0) != 0;
+        if ($hasActivity && $cash < $lowCash) {
             $alerts[] = [
                 'level' => 'danger',
                 'title' => 'Low cash balance',

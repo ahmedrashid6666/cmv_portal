@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+
 use App\Observers\TransactionObserver;
 use App\Services\TransactionCalculator;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -12,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[ObservedBy(TransactionObserver::class)]
 class Transaction extends Model
 {
-    use HasFactory, SoftDeletes;
+    use Auditable, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'transaction_date', 'invoice_no', 'boe_no',
@@ -36,6 +38,21 @@ class Transaction extends Model
             'grand_total' => 'decimal:2',
             'net_profit' => 'decimal:2',
         ];
+    }
+
+    public function auditLabel(): string
+    {
+        return 'Invoice '.($this->invoice_no ?? '#'.$this->getKey());
+    }
+
+    /**
+     * Derived fields are recomputed automatically — keep them out of history.
+     *
+     * @return array<int, string>
+     */
+    public function auditExclude(): array
+    {
+        return ['vat_amount', 'total_amount', 'grand_total', 'net_profit'];
     }
 
     public function customer()

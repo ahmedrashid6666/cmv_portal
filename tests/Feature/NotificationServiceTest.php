@@ -30,12 +30,19 @@ it('always includes a monthly profit summary', function () {
     expect($titles)->toContain('Monthly profit');
 });
 
-it('raises a low cash alert when below threshold', function () {
+it('raises a low cash alert when below threshold (with activity)', function () {
     Setting::put('low_cash_threshold', 500);
-    // no cash → 0 < 500
+    // a small cash sale leaves cash at 100, below 500
+    notifTx(['payment_method_id' => $this->cash->id, 'customs_fees' => 100, 'profit' => 0]);
 
-    $alerts = collect($this->svc->alerts());
-    expect($alerts->pluck('title'))->toContain('Low cash balance');
+    expect(collect($this->svc->alerts())->pluck('title'))->toContain('Low cash balance');
+});
+
+it('does not nag about low cash on an empty system', function () {
+    Setting::put('low_cash_threshold', 500);
+    // no transactions, no opening balance
+
+    expect(collect($this->svc->alerts())->pluck('title'))->not->toContain('Low cash balance');
 });
 
 it('raises a pending-credits alert', function () {

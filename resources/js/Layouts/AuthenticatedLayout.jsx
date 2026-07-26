@@ -109,6 +109,15 @@ export default function AuthenticatedLayout({ header, children }) {
                     <NavItem href={route('users.index')} active={current('users.*')} icon="◉">
                         Users
                     </NavItem>
+                    <NavItem href={route('activity.index')} active={current('activity.*')} icon="⌗">
+                        Activity Log
+                    </NavItem>
+                    <NavItem href={route('bin.index')} active={current('bin.*')} icon="♻">
+                        Recycle Bin
+                    </NavItem>
+                    <NavItem href={route('backup.index')} active={current('backup.*')} icon="⤓">
+                        Backup
+                    </NavItem>
                     <NavItem href={route('settings.index')} active={current('settings.*')} icon="⚙">
                         Settings
                     </NavItem>

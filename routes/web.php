@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\CreditPaymentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RecycleBinController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TransactionController;
@@ -54,6 +57,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('users', [UserController::class, 'store'])->name('users.store');
         Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('activity', [ActivityLogController::class, 'index'])->name('activity.index');
+
+        // Recycle bin (soft-deleted transactions)
+        Route::get('bin', [RecycleBinController::class, 'index'])->name('bin.index');
+        Route::put('bin/{id}/restore', [RecycleBinController::class, 'restore'])->name('bin.restore');
+        Route::delete('bin/{id}', [RecycleBinController::class, 'forceDelete'])->name('bin.force-delete');
+
+        // Backups
+        Route::get('backup', [BackupController::class, 'index'])->name('backup.index');
+        Route::post('backup', [BackupController::class, 'create'])->name('backup.create');
+        Route::get('backup/{name}/download', [BackupController::class, 'download'])->name('backup.download');
+        Route::delete('backup/{name}', [BackupController::class, 'destroy'])->name('backup.destroy');
 
         Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('settings/company', [SettingsController::class, 'updateCompany'])->name('settings.company');
