@@ -25,7 +25,7 @@ class Transaction extends Model
     protected function casts(): array
     {
         return [
-            'transaction_date' => 'date',
+            'transaction_date' => 'date:Y-m-d',
             'customs_fees' => 'decimal:2',
             'gov_fees' => 'decimal:2',
             'profit' => 'decimal:2',
