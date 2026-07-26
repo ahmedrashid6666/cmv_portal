@@ -46,6 +46,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('import/commit', [ImportController::class, 'commit'])->name('import.commit');
     });
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/{type}/export', [ReportController::class, 'export'])->name('reports.export');
+    Route::get('reports/{type}', [ReportController::class, 'show'])->name('reports.show');
 
     // Profile (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
