@@ -41,11 +41,31 @@ function NavItem({ href, active, children, icon }) {
     );
 }
 
-function SectionLabel({ children }) {
+function NavGroup({ label, icon, active, open, onToggle, children }) {
     return (
-        <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-navy-300">
-            {children}
-        </p>
+        <div>
+            <button
+                type="button"
+                onClick={onToggle}
+                className={
+                    'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition ' +
+                    (active
+                        ? 'text-white'
+                        : 'text-navy-100 hover:bg-navy-700/60 hover:text-white')
+                }
+            >
+                <span className="w-5 text-center text-base leading-none">{icon}</span>
+                <span className="flex-1 text-left">{label}</span>
+                <span className={'text-[10px] transition-transform duration-200 ' + (open ? 'rotate-90' : '')}>
+                    ▶
+                </span>
+            </button>
+            {open && (
+                <div className="mb-1 ml-3 mt-0.5 space-y-0.5 border-l border-navy-700 pl-2">
+                    {children}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -55,87 +75,104 @@ export default function AuthenticatedLayout({ header, children }) {
     const current = (name) => route().current(name);
     const isSuperAdmin = user.role === 'super_admin';
 
+    const masterDefs = [
+        ['customers', 'Customers', '◈'],
+        ['references', 'References', '◇'],
+        ['vehicles', 'Vehicles', '⬒'],
+        ['expense-categories', 'Expense Categories', '⬓'],
+        ['payment-methods', 'Payment Methods', '⬔'],
+        ['banks', 'Banks', '⛁'],
+    ];
+
+    const groups = [
+        {
+            key: 'operations',
+            label: 'Operations',
+            icon: '₪',
+            items: [
+                { label: 'Transactions', href: route('transactions.index'), icon: '₪', active: current('transactions.*') },
+                { label: 'Invoices', href: route('invoices.index'), icon: '🧾', active: current('invoices.*') },
+                { label: 'Credits', href: route('credits.index'), icon: '◔', active: current('credits.*') },
+            ],
+        },
+        {
+            key: 'books',
+            label: 'Books',
+            icon: '₵',
+            items: [
+                { label: 'Cash & Bank Book', href: route('books.cashbank'), icon: '₵', active: current('books.cashbank') },
+                { label: 'Customer Ledger', href: route('books.ledger'), icon: '≣', active: current('books.ledger') },
+            ],
+        },
+        {
+            key: 'masters',
+            label: 'Master Data',
+            icon: '◈',
+            items: masterDefs.map(([m, label, icon]) => ({
+                label,
+                icon,
+                href: route('masters.index', m),
+                active: current('masters.*') && route().params.master === m,
+            })),
+        },
+        {
+            key: 'tools',
+            label: 'Tools',
+            icon: '▦',
+            items: [
+                { label: 'Import Excel', href: route('import.index'), icon: '↥', active: current('import.*') },
+                { label: 'Reports', href: route('reports.index'), icon: '▦', active: current('reports.*') },
+            ],
+        },
+        ...(isSuperAdmin
+            ? [{
+                key: 'admin',
+                label: 'Administration',
+                icon: '⚙',
+                items: [
+                    { label: 'Users', href: route('users.index'), icon: '◉', active: current('users.*') },
+                    { label: 'Activity Log', href: route('activity.index'), icon: '⌗', active: current('activity.*') },
+                    { label: 'Custom Fields', href: route('custom-fields.index'), icon: '⊕', active: current('custom-fields.*') },
+                    { label: 'Recycle Bin', href: route('bin.index'), icon: '♻', active: current('bin.*') },
+                    { label: 'Backup', href: route('backup.index'), icon: '⤓', active: current('backup.*') },
+                    { label: 'Settings', href: route('settings.index'), icon: '⚙', active: current('settings.*') },
+                ],
+            }]
+            : []),
+    ];
+
+    // Accordion: only one group open at a time; the active page's group opens by default.
+    const activeGroupKey = groups.find((g) => g.items.some((i) => i.active))?.key ?? null;
+    const [openGroup, setOpenGroup] = useState(activeGroupKey);
+
     const nav = (
         <nav className="flex flex-1 flex-col gap-0.5">
             <NavItem href={route('dashboard')} active={current('dashboard')} icon="▤">
                 Dashboard
             </NavItem>
-            <NavItem href={route('transactions.index')} active={current('transactions.*')} icon="₪">
-                Transactions
-            </NavItem>
-            <NavItem href={route('invoices.index')} active={current('invoices.*')} icon="🧾">
-                Invoices
-            </NavItem>
-            <NavItem href={route('credits.index')} active={current('credits.*')} icon="◔">
-                Credits
-            </NavItem>
-
-            <SectionLabel>Books</SectionLabel>
-            <NavItem href={route('books.cashbank')} active={current('books.cashbank')} icon="₵">
-                Cash &amp; Bank Book
-            </NavItem>
-            <NavItem href={route('books.ledger')} active={current('books.ledger')} icon="≣">
-                Customer Ledger
-            </NavItem>
-
-            <SectionLabel>Master Data</SectionLabel>
-            <NavItem href={route('masters.index', 'customers')} active={current('masters.*') && route().params.master === 'customers'} icon="◈">
-                Customers
-            </NavItem>
-            <NavItem href={route('masters.index', 'references')} active={current('masters.*') && route().params.master === 'references'} icon="◇">
-                References
-            </NavItem>
-            <NavItem href={route('masters.index', 'vehicles')} active={current('masters.*') && route().params.master === 'vehicles'} icon="⬒">
-                Vehicles
-            </NavItem>
-            <NavItem href={route('masters.index', 'expense-categories')} active={current('masters.*') && route().params.master === 'expense-categories'} icon="⬓">
-                Expense Categories
-            </NavItem>
-            <NavItem href={route('masters.index', 'payment-methods')} active={current('masters.*') && route().params.master === 'payment-methods'} icon="⬔">
-                Payment Methods
-            </NavItem>
-            <NavItem href={route('masters.index', 'banks')} active={current('masters.*') && route().params.master === 'banks'} icon="⛁">
-                Banks
-            </NavItem>
-
-            <SectionLabel>Tools</SectionLabel>
-            <NavItem href={route('import.index')} active={current('import.*')} icon="↥">
-                Import Excel
-            </NavItem>
-            <NavItem href={route('reports.index')} active={current('reports.*')} icon="▦">
-                Reports
-            </NavItem>
-
-            {isSuperAdmin && (
-                <>
-                    <SectionLabel>Administration</SectionLabel>
-                    <NavItem href={route('users.index')} active={current('users.*')} icon="◉">
-                        Users
-                    </NavItem>
-                    <NavItem href={route('activity.index')} active={current('activity.*')} icon="⌗">
-                        Activity Log
-                    </NavItem>
-                    <NavItem href={route('custom-fields.index')} active={current('custom-fields.*')} icon="⊕">
-                        Custom Fields
-                    </NavItem>
-                    <NavItem href={route('bin.index')} active={current('bin.*')} icon="♻">
-                        Recycle Bin
-                    </NavItem>
-                    <NavItem href={route('backup.index')} active={current('backup.*')} icon="⤓">
-                        Backup
-                    </NavItem>
-                    <NavItem href={route('settings.index')} active={current('settings.*')} icon="⚙">
-                        Settings
-                    </NavItem>
-                </>
-            )}
+            {groups.map((g) => (
+                <NavGroup
+                    key={g.key}
+                    label={g.label}
+                    icon={g.icon}
+                    active={g.items.some((i) => i.active)}
+                    open={openGroup === g.key}
+                    onToggle={() => setOpenGroup(openGroup === g.key ? null : g.key)}
+                >
+                    {g.items.map((i) => (
+                        <NavItem key={i.label} href={i.href} active={i.active} icon={i.icon}>
+                            {i.label}
+                        </NavItem>
+                    ))}
+                </NavGroup>
+            ))}
         </nav>
     );
 
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Sidebar */}
-            <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-navy-800 px-3 py-4 lg:flex">
+            <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto bg-navy-800 px-3 py-4 lg:flex">
                 <div className="flex items-center gap-2 px-2 pb-4">
                     <img src="/logo.png" alt="CMV" className="h-9 w-9 brightness-0 invert" />
                     <div className="leading-tight">
@@ -151,7 +188,7 @@ export default function AuthenticatedLayout({ header, children }) {
             {open && (
                 <div className="fixed inset-0 z-40 lg:hidden">
                     <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-                    <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-navy-800 px-3 py-4">
+                    <aside className="absolute inset-y-0 left-0 flex w-64 flex-col overflow-y-auto bg-navy-800 px-3 py-4">
                         <div className="flex items-center gap-2 px-2 pb-4">
                             <img src="/logo.png" alt="CMV" className="h-9 w-9 brightness-0 invert" />
                             <p className="text-sm font-bold text-white">CMV Shipping</p>
