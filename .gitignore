@@ -21,7 +21,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
-/vendor
+# NOTE: vendor/ IS committed so hosting without Composer (shared hosting) runs the app.
+# After changing PHP dependencies: composer install, then commit vendor.
 _ide_helper.php
 Homestead.json
 Homestead.yaml
