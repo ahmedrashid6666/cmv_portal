@@ -43,6 +43,19 @@ class DefaultDataSeeder extends Seeder
             Setting::put('vat_rate', 0);
         }
 
+        // Company / invoice details (from cmvshipping.com — Dubai HQ)
+        foreach ([
+            'company_address' => 'Suhail Bin Ghedayer Building, Lehbab Second, Shop No 17, Dubai, UAE',
+            'company_phone' => '+971 58 94 34 366',
+            'company_email' => 'info@cmvshipping.com',
+            'company_trn' => '',
+            'invoice_footer' => 'Thank you for your business.',
+        ] as $key => $value) {
+            if (Setting::get($key) === null) {
+                Setting::put($key, $value);
+            }
+        }
+
         // Super admin (idempotent). Password only set on first creation.
         User::firstOrCreate(
             ['email' => 'admin@cmvshipping.com'],

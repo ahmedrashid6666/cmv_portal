@@ -58,7 +58,7 @@ class ReportBuilder
 
         return [
             'type' => 'daily',
-            'title' => 'Daily Report — '.$date,
+            'title' => 'Daily Report — '.Carbon::parse($date)->format('d/m/Y'),
             'columns' => ['Invoice', 'Customer', 'Method', 'Customs', 'Profit', 'Total', 'Grand Total', 'Net Profit'],
             'rows' => $txns->map(fn ($t) => [
                 $t->invoice_no ?? '—', $t->customer?->name, $t->paymentMethod?->name,
@@ -91,7 +91,7 @@ class ReportBuilder
             'title' => 'Monthly Report — '.Carbon::create($year, $month)->format('F Y'),
             'columns' => ['Day', 'Transactions', 'Income', 'Net Profit'],
             'rows' => $byDay->map(fn ($d) => [
-                $d['day'],
+                Carbon::parse($d['day'])->format('d/m/Y'),
                 (string) $txns->filter(fn ($t) => $t->transaction_date->format('Y-m-d') === $d['day'])->count(),
                 number_format($d['income'], 2),
                 number_format($d['profit'], 2),
@@ -141,7 +141,7 @@ class ReportBuilder
                 }
                 $total += $out;
                 $rows[] = [
-                    $t->transaction_date->format('Y-m-d'),
+                    $t->transaction_date->format('d/m/Y'),
                     $t->invoice_no ?? '—',
                     $t->customer?->name,
                     number_format((float) $t->credit_amount, 2),
@@ -163,14 +163,15 @@ class ReportBuilder
     {
         $txns = $this->baseQuery($filters)->orderBy('transaction_date')->orderBy('id')->get();
         $label = $type === 'weekly' ? 'Weekly Report' : 'Custom Period Report';
-        $range = ($filters['from'] ?? '…').' → '.($filters['to'] ?? '…');
+        $fmt = fn ($d) => $d ? Carbon::parse($d)->format('d/m/Y') : '…';
+        $range = $fmt($filters['from'] ?? null).' → '.$fmt($filters['to'] ?? null);
 
         return [
             'type' => $type,
             'title' => $label.' ('.$range.')',
             'columns' => ['Date', 'Invoice', 'Customer', 'Method', 'Total', 'Grand Total', 'Net Profit'],
             'rows' => $txns->map(fn ($t) => [
-                $t->transaction_date->format('Y-m-d'), $t->invoice_no ?? '—', $t->customer?->name,
+                $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
                 $t->paymentMethod?->name, (string) $t->total_amount, (string) $t->grand_total, (string) $t->net_profit,
             ])->all(),
             'totals' => $this->totals($txns),
@@ -238,7 +239,7 @@ class ReportBuilder
             'title' => 'Commission Report',
             'columns' => ['Date', 'Invoice', 'Customer', 'Label', 'Type', 'Reference', 'Amount'],
             'rows' => $rows->map(fn ($c) => [
-                $c->transaction?->transaction_date?->format('Y-m-d'), $c->transaction?->invoice_no ?? '—',
+                $c->transaction?->transaction_date?->format('d/m/Y'), $c->transaction?->invoice_no ?? '—',
                 $c->transaction?->customer?->name, $c->label ?? '—',
                 $c->type === 'charged_to_customer' ? 'To Customer' : 'To Reference',
                 $c->reference?->name ?? '—', number_format((float) $c->amount, 2),
@@ -282,7 +283,7 @@ class ReportBuilder
             'title' => ($type === 'income' ? 'Income' : 'Profit').' Report',
             'columns' => ['Date', 'Transactions', ucfirst($type)],
             'rows' => $byDay->map(fn ($d) => [
-                $d['day'],
+                Carbon::parse($d['day'])->format('d/m/Y'),
                 (string) $txns->filter(fn ($t) => $t->transaction_date->format('Y-m-d') === $d['day'])->count(),
                 number_format($d['value'], 2),
             ])->all(),

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
-import { AED } from '@/lib/format';
+import { AED, fmtDate } from '@/lib/format';
 import { Head, Link, router } from '@inertiajs/react';
 
 export default function BinIndex({ trashed }) {
@@ -30,8 +30,8 @@ export default function BinIndex({ trashed }) {
                             {trashed.data.length === 0 && <tr><td colSpan="7" className="py-8 text-center text-slate-400">Recycle bin is empty.</td></tr>}
                             {trashed.data.map((t) => (
                                 <tr key={t.id} className="border-b last:border-0 hover:bg-slate-50">
-                                    <td className="py-2 pr-4 whitespace-nowrap text-slate-500">{t.deleted_at}</td>
-                                    <td className="py-2 pr-4">{t.transaction_date}</td>
+                                    <td className="py-2 pr-4 whitespace-nowrap text-slate-500">{fmtDate(t.deleted_at)}</td>
+                                    <td className="py-2 pr-4">{fmtDate(t.transaction_date)}</td>
                                     <td className="py-2 pr-4">{t.invoice_no || '—'}</td>
                                     <td className="py-2 pr-4">{t.customer}</td>
                                     <td className="py-2 pr-4">{t.method}</td>

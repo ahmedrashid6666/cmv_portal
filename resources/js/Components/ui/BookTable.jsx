@@ -1,4 +1,4 @@
-import { AED } from '@/lib/format';
+import { AED, fmtDate } from '@/lib/format';
 import { Card } from '@/Components/ui/Card';
 
 export function BookTable({ book, inLabel = 'Debit (In)', outLabel = 'Credit (Out)' }) {
@@ -34,7 +34,7 @@ export function BookTable({ book, inLabel = 'Debit (In)', outLabel = 'Credit (Ou
                             )}
                             {book.rows.map((r, i) => (
                                 <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
-                                    <td className="py-2 pr-4 whitespace-nowrap">{r.date}</td>
+                                    <td className="py-2 pr-4 whitespace-nowrap">{fmtDate(r.date)}</td>
                                     <td className="py-2 pr-4">{r.description}</td>
                                     <td className="py-2 pr-4 text-slate-400">{r.ref || '—'}</td>
                                     <td className="py-2 pr-4 text-right text-emerald-700">{r.debit ? AED(r.debit) : '—'}</td>

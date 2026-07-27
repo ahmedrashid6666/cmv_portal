@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { AED } from '@/lib/format';
+import { AED, fmtDate } from '@/lib/format';
 import { Head, Link } from '@inertiajs/react';
 
 const statusStyle = {
@@ -39,7 +39,7 @@ export default function InvoiceShow({ invoice }) {
                         <div className="text-right">
                             <p className="text-3xl font-bold text-primary-600">INVOICE</p>
                             <p className="mt-1 text-sm text-slate-500"># {invoice.invoice_no}</p>
-                            <p className="text-sm text-slate-500">Date: {invoice.date}</p>
+                            <p className="text-sm text-slate-500">Date: {fmtDate(invoice.date)}</p>
                             <span className={'mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold uppercase ' + statusStyle[invoice.status]}>{invoice.status}</span>
                         </div>
                     </div>

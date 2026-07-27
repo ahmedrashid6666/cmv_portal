@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
-import { AED } from '@/lib/format';
+import { AED, fmtDate } from '@/lib/format';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -56,7 +56,7 @@ export default function InvoicesIndex({ invoices, filters, customers }) {
                             {invoices.data.map((inv) => (
                                 <tr key={inv.id} className="border-b last:border-0 hover:bg-slate-50">
                                     <td className="py-2 pr-4 font-medium text-navy-800">{inv.invoice_no || `TXN-${inv.id}`}</td>
-                                    <td className="py-2 pr-4">{inv.date}</td>
+                                    <td className="py-2 pr-4">{fmtDate(inv.date)}</td>
                                     <td className="py-2 pr-4">{inv.customer}</td>
                                     <td className="py-2 pr-4 text-right font-semibold">{AED(inv.grand_total)}</td>
                                     <td className="py-2 pr-4 text-right text-accent-red">{inv.outstanding > 0 ? AED(inv.outstanding) : '—'}</td>

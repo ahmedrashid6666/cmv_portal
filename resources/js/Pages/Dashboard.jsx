@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { StatCard } from '@/Components/ui/StatCard';
-import { AED } from '@/lib/format';
+import { AED, fmtDate } from '@/lib/format';
 import { Head, Link } from '@inertiajs/react';
 import {
     Area,
@@ -172,7 +172,7 @@ export default function Dashboard({
                             <tbody>
                                 {recent.map((t) => (
                                     <tr key={t.id} className="border-b last:border-0">
-                                        <td className="py-2 pr-4">{t.transaction_date}</td>
+                                        <td className="py-2 pr-4">{fmtDate(t.transaction_date)}</td>
                                         <td className="py-2 pr-4">{t.invoice_no || '—'}</td>
                                         <td className="py-2 pr-4">{t.customer?.name}</td>
                                         <td className="py-2 pr-4">{t.payment_method?.name}</td>

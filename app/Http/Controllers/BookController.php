@@ -74,7 +74,7 @@ class BookController extends Controller
     {
         $columns = ['Date', 'Description', 'Ref', 'Debit (In)', 'Credit (Out)', 'Balance'];
         $rows = array_map(fn ($r) => [
-            $r['date'], $r['description'], $r['ref'] ?? '',
+            \Illuminate\Support\Carbon::parse($r['date'])->format('d/m/Y'), $r['description'], $r['ref'] ?? '',
             number_format($r['debit'], 2), number_format($r['credit'], 2), number_format($r['balance'], 2),
         ], $book['rows']);
 

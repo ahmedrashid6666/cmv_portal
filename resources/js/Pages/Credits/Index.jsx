@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
-import { AED } from '@/lib/format';
+import { AED, fmtDate } from '@/lib/format';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -59,7 +59,7 @@ export default function CreditsIndex({ outstanding, paymentMethods }) {
                                 {outstanding.length === 0 && <tr><td colSpan="6" className="py-8 text-center text-slate-400">No outstanding credit. 🎉</td></tr>}
                                 {outstanding.map((r) => (
                                     <tr key={r.id} className="border-b last:border-0 hover:bg-slate-50">
-                                        <td className="py-2 pr-4">{r.date}</td>
+                                        <td className="py-2 pr-4">{fmtDate(r.date)}</td>
                                         <td className="py-2 pr-4">{r.invoice_no || '—'}</td>
                                         <td className="py-2 pr-4">{r.customer}</td>
                                         <td className="py-2 pr-4 text-right">{AED(r.credit_amount)}</td>
