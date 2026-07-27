@@ -27,11 +27,13 @@ it('seeds default settings with vat_rate 0', function () {
         ->and(Setting::get('company_name'))->toBe('CMV Shipping');
 });
 
-it('seeds a super admin user', function () {
+it('seeds a super admin user whose password actually works (no double-hash)', function () {
     $admin = User::where('email', 'admin@cmvshipping.com')->first();
 
     expect($admin)->not->toBeNull()
-        ->and($admin->role)->toBe(Role::SUPER_ADMIN);
+        ->and($admin->role)->toBe(Role::SUPER_ADMIN)
+        // password must verify against the plain default — guards the double-hash bug
+        ->and(\Illuminate\Support\Facades\Hash::check('cmv12345', $admin->password))->toBeTrue();
 });
 
 it('is idempotent', function () {

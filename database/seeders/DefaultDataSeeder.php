@@ -57,11 +57,13 @@ class DefaultDataSeeder extends Seeder
         }
 
         // Super admin (idempotent). Password only set on first creation.
+        // Pass the PLAIN password — the User model's `hashed` cast hashes it once.
+        // (Do not pre-hash here, or it risks a double-hash.)
         User::firstOrCreate(
             ['email' => 'admin@cmvshipping.com'],
             [
                 'name' => 'CMV Admin',
-                'password' => Hash::make(env('SEED_ADMIN_PASSWORD', 'cmv12345')),
+                'password' => env('SEED_ADMIN_PASSWORD', 'cmv12345'),
                 'role' => Role::SUPER_ADMIN->value,
                 'email_verified_at' => now(),
             ],
