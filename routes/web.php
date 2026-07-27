@@ -8,6 +8,7 @@ use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\LedgerEntryController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecycleBinController;
@@ -44,6 +45,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('invoices/{transaction}', [InvoiceController::class, 'show'])->name('invoices.show');
     Route::get('invoices/{transaction}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+
+    // Daily Credit & Borrowed Amount (typed ledger)
+    Route::get('ledger/{slug}/export', [LedgerEntryController::class, 'export'])->name('ledger.export');
+    Route::get('ledger/{slug}', [LedgerEntryController::class, 'index'])->name('ledger.index');
+    Route::middleware('role:super_admin,admin,accountant')->group(function () {
+        Route::post('ledger/{slug}', [LedgerEntryController::class, 'store'])->name('ledger.store');
+        Route::put('ledger/{slug}/{ledgerEntry}', [LedgerEntryController::class, 'update'])->name('ledger.update');
+        Route::delete('ledger/{slug}/{ledgerEntry}', [LedgerEntryController::class, 'destroy'])->name('ledger.destroy');
+    });
 
     // Credits / receivables
     Route::get('credits', [CreditPaymentController::class, 'index'])->name('credits.index');
