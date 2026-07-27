@@ -137,7 +137,7 @@ export default function AuthenticatedLayout({ header, children }) {
             {/* Sidebar */}
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-navy-800 px-3 py-4 lg:flex">
                 <div className="flex items-center gap-2 px-2 pb-4">
-                    <img src="/logo.png" alt="CMV" className="h-9 w-9" />
+                    <img src="/logo.png" alt="CMV" className="h-9 w-9 brightness-0 invert" />
                     <div className="leading-tight">
                         <p className="text-sm font-bold text-white">CMV Shipping</p>
                         <p className="text-[11px] text-navy-300">Accounts System</p>
@@ -153,7 +153,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
                     <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-navy-800 px-3 py-4">
                         <div className="flex items-center gap-2 px-2 pb-4">
-                            <img src="/logo.png" alt="CMV" className="h-9 w-9" />
+                            <img src="/logo.png" alt="CMV" className="h-9 w-9 brightness-0 invert" />
                             <p className="text-sm font-bold text-white">CMV Shipping</p>
                         </div>
                         {nav}
