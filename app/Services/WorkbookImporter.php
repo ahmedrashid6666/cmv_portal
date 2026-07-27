@@ -59,6 +59,16 @@ class WorkbookImporter
         $existingReferences = Reference::pluck('name')->map(fn ($n) => mb_strtolower(trim($n)))->all();
         $existingVehicles = Vehicle::pluck('number')->map(fn ($n) => mb_strtolower(trim($n)))->all();
 
+        // Preload existing (invoice_no + date) so we can flag duplicates in the preview.
+        $existingInvoiceKeys = [];
+        \App\Models\Transaction::query()
+            ->whereNotNull('invoice_no')
+            ->get(['invoice_no', 'transaction_date'])
+            ->each(function ($t) use (&$existingInvoiceKeys) {
+                $existingInvoiceKeys[trim($t->invoice_no).'|'.$t->transaction_date->format('Y-m-d')] = true;
+            });
+        $duplicateCount = 0;
+
         foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
             $data = $sheet->toArray(null, true, false, false);
             $headerRow = $this->findHeaderRow($data);
@@ -109,11 +119,16 @@ class WorkbookImporter
 
                 $parsed['_sheet'] = $sheet->getTitle();
                 $parsed['_row'] = $rowNo;
+                $parsed['_duplicate'] = $parsed['invoice_no']
+                    && isset($existingInvoiceKeys[trim($parsed['invoice_no']).'|'.$parsed['transaction_date']]);
+                if ($parsed['_duplicate']) {
+                    $duplicateCount++;
+                }
                 $rows[] = $parsed;
             }
         }
 
-        return compact('rows', 'errors', 'newCustomers', 'newReferences', 'newVehicles', 'sheets');
+        return compact('rows', 'errors', 'newCustomers', 'newReferences', 'newVehicles', 'sheets', 'duplicateCount');
     }
 
     /**

@@ -63,6 +63,21 @@ it('parses rows, expense amount, commission and flags a bad numeric', function (
     expect((float) $bad['customs_fees'])->toBe(0.0);
 });
 
+it('flags rows already in the system as duplicates in the preview', function () {
+    $importer = app(WorkbookImporter::class);
+    $path = makeWorkbook();
+
+    // first import — nothing is a duplicate yet
+    $first = $importer->parse($path);
+    expect($first['duplicateCount'])->toBe(0);
+    $importer->commit($first);
+
+    // re-parse the same file — now every invoice+date already exists
+    $second = $importer->parse($path);
+    expect($second['duplicateCount'])->toBeGreaterThan(0)
+        ->and(collect($second['rows'])->firstWhere('invoice_no', '56732')['_duplicate'])->toBeTrue();
+});
+
 it('commits rows idempotently', function () {
     $importer = app(WorkbookImporter::class);
     $path = makeWorkbook();

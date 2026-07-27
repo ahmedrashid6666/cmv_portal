@@ -29,6 +29,8 @@ class ImportController extends Controller
                 'token' => $path, // reference the stored file for commit
                 'sheets' => $preview['sheets'],
                 'rowCount' => count($preview['rows']),
+                'duplicateCount' => $preview['duplicateCount'] ?? 0,
+                'newCount' => count($preview['rows']) - ($preview['duplicateCount'] ?? 0),
                 'errors' => $preview['errors'],
                 'newCustomers' => $preview['newCustomers'],
                 'newReferences' => $preview['newReferences'],
