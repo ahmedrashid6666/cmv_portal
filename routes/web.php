@@ -3,9 +3,11 @@
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\BulkPaymentController;
 use App\Http\Controllers\CreditPaymentController;
 use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EntryController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LedgerEntryController;
@@ -24,6 +26,10 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+    // Unified Add Entry page (transaction / daily-credit / borrowed)
+    Route::get('/add-entry', [EntryController::class, 'create'])
+        ->middleware('role:super_admin,admin,accountant')->name('entry.create');
 
     // Transactions — writes limited to super_admin/admin/accountant
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
@@ -45,6 +51,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('invoices/{transaction}', [InvoiceController::class, 'show'])->name('invoices.show');
     Route::get('invoices/{transaction}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+
+    // Bulk Return / Bulk Payment (settle many ledger entries at once)
+    Route::get('bulk-payment/{slug}', [BulkPaymentController::class, 'index'])->name('bulk.index');
+    Route::post('bulk-payment/{slug}', [BulkPaymentController::class, 'store'])
+        ->middleware('role:super_admin,admin,accountant')->name('bulk.store');
 
     // Daily Credit & Borrowed Amount (typed ledger)
     Route::get('ledger/{slug}/export', [LedgerEntryController::class, 'export'])->name('ledger.export');

@@ -95,6 +95,8 @@ export default function AuthenticatedLayout({ header, children }) {
                 { label: 'Credits', href: route('credits.index'), icon: '◔', active: current('credits.*') },
                 { label: 'Daily Credit', href: route('ledger.index', 'daily-credit'), icon: '↗', active: current('ledger.*') && route().params.slug === 'daily-credit' },
                 { label: 'Borrowed Amount', href: route('ledger.index', 'borrowed'), icon: '↘', active: current('ledger.*') && route().params.slug === 'borrowed' },
+                { label: 'Bulk Payment', href: route('bulk.index', 'daily-credit'), icon: '⇉', active: current('bulk.*') && route().params.slug === 'daily-credit' },
+                { label: 'Bulk Return', href: route('bulk.index', 'borrowed'), icon: '⇇', active: current('bulk.*') && route().params.slug === 'borrowed' },
             ],
         },
         {
@@ -147,8 +149,18 @@ export default function AuthenticatedLayout({ header, children }) {
     const activeGroupKey = groups.find((g) => g.items.some((i) => i.active))?.key ?? null;
     const [openGroup, setOpenGroup] = useState(activeGroupKey);
 
+    const canWrite = ['super_admin', 'admin', 'accountant'].includes(user.role);
+
     const nav = (
         <nav className="flex flex-1 flex-col gap-0.5">
+            {canWrite && (
+                <Link
+                    href={route('entry.create')}
+                    className="mb-1 flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow transition hover:bg-primary-500"
+                >
+                    <span className="text-base leading-none">＋</span> Add Entry
+                </Link>
+            )}
             <NavItem href={route('dashboard')} active={current('dashboard')} icon="▤">
                 Dashboard
             </NavItem>

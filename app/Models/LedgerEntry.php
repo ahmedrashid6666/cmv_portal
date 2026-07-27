@@ -68,6 +68,11 @@ class LedgerEntry extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function payments()
+    {
+        return $this->hasMany(LedgerPayment::class)->latest('payment_date');
+    }
+
     public function scopeOfType($query, string $type)
     {
         return $query->where('type', $type);
