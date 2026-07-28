@@ -1,5 +1,5 @@
 import ComboBox from '@/Components/ComboBox';
-import { AED } from '@/lib/format';
+import { money } from '@/lib/format';
 import { useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 
@@ -38,6 +38,7 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
         reference: entry?.reference ?? '',
         vehicle_number: entry?.vehicle_number ?? '',
         total_amount: entry?.total_amount ?? '',
+        currency: entry?.currency ?? 'AED',
         paid_amount: entry?.paid_amount ?? 0,
         return_date: entry?.return_date ?? '',
         remarks: entry?.remarks ?? '',
@@ -69,6 +70,12 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
                     <ComboBox options={vehOptions} value={data.vehicle_number} onChange={(v) => setData('vehicle_number', v)} placeholder="—" createSlug="vehicles" createField="number" valueField="label" />
                 </Field>
             </div>
+            <Field label="Currency" error={errors.currency}>
+                <select className={input} value={data.currency} onChange={(e) => setData('currency', e.target.value)}>
+                    <option value="AED">AED — UAE Dirham</option>
+                    <option value="OMR">OMR — Omani Rial</option>
+                </select>
+            </Field>
             <div className="grid grid-cols-2 gap-3">
                 <Field label="Total Amount" error={errors.total_amount} required>
                     <input type="number" step="0.01" className={input} value={data.total_amount} onChange={(e) => setData('total_amount', e.target.value)} />
@@ -81,7 +88,7 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
             <div className="rounded-lg bg-slate-50 p-3 text-sm">
                 <div className="flex items-center justify-between">
                     <span className="text-slate-500">Balance</span>
-                    <span className="text-lg font-bold text-accent-red">{AED(liveBalance)}</span>
+                    <span className="text-lg font-bold text-accent-red">{money(liveBalance, data.currency)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between">
                     <span className="text-slate-500">Status</span>

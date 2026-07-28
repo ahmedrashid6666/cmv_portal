@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
-import { AED } from '@/lib/format';
+import { AED, money } from '@/lib/format';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -262,9 +262,9 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         <h3 className="text-lg font-semibold text-navy-800">Receive Payment</h3>
                         <p className="mt-1 text-sm text-slate-500">{settleRow.label}</p>
                         <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-2 text-center text-xs">
-                            <div><div className="text-slate-400">Credit</div><div className="font-semibold">{AED(settleRow.credit)}</div></div>
-                            <div><div className="text-slate-400">Received</div><div className="font-semibold text-emerald-700">{AED(settleRow.credit - settleRow.outstanding)}</div></div>
-                            <div><div className="text-slate-400">Outstanding</div><div className="font-semibold text-accent-red">{AED(settleRow.outstanding)}</div></div>
+                            <div><div className="text-slate-400">Credit</div><div className="font-semibold">{money(settleRow.credit, settleRow.currency)}</div></div>
+                            <div><div className="text-slate-400">Received</div><div className="font-semibold text-emerald-700">{money(settleRow.credit - settleRow.outstanding, settleRow.currency)}</div></div>
+                            <div><div className="text-slate-400">Outstanding</div><div className="font-semibold text-accent-red">{money(settleRow.outstanding, settleRow.currency)}</div></div>
                         </div>
 
                         {settleRow.outstanding > 0 && (
@@ -299,7 +299,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 <ul className="space-y-1 text-sm">
                                     {settleRow.payments.map((p) => (
                                         <li key={p.id} className="flex items-center justify-between rounded bg-slate-50 px-2 py-1">
-                                            <span>{p.date} · {AED(p.amount)} <span className="text-xs text-slate-400">{p.method}</span></span>
+                                            <span>{p.date} · {money(p.amount, settleRow.currency)} <span className="text-xs text-slate-400">{p.method}</span></span>
                                             <button onClick={() => reversePayment(p.id)} className="text-xs text-accent-red hover:underline">Reverse</button>
                                         </li>
                                     ))}
@@ -319,8 +319,8 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         <p className="mt-1 text-sm text-slate-500">{settleRow.label}</p>
                         <form onSubmit={submitLedgerSettle} className="mt-3 space-y-3">
                             <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2 text-center text-xs">
-                                <div><div className="text-slate-400">Total</div><div className="font-semibold">{AED(settleRow.total)}</div></div>
-                                <div><div className="text-slate-400">Balance</div><div className="font-semibold text-accent-red">{AED(ledBalance)}</div></div>
+                                <div><div className="text-slate-400">Total</div><div className="font-semibold">{money(settleRow.total, settleRow.currency)}</div></div>
+                                <div><div className="text-slate-400">Balance</div><div className="font-semibold text-accent-red">{money(ledBalance, settleRow.currency)}</div></div>
                             </div>
                             <label className="block">
                                 <span className="mb-1 block text-xs font-medium text-slate-600">Paid / Returned amount <span className="text-slate-400">(set the new total received)</span></span>

@@ -148,6 +148,7 @@ class LedgerEntryController extends Controller
             'vehicle_number' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string'],
             'total_amount' => ['required', 'numeric', 'min:0.01'],
+            'currency' => ['nullable', Rule::in(['AED', 'OMR'])],
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'return_date' => ['nullable', 'date'],
             'status' => ['nullable', Rule::in(['pending', 'partial', 'returned'])],

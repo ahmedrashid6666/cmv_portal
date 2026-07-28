@@ -57,6 +57,7 @@ class TransactionWriter
             'gov_fees' => $data['gov_fees'] ?? 0,
             'profit' => $data['profit'] ?? 0,
             'vat_rate' => $data['vat_rate'] ?? 0,
+            'currency' => $data['currency'] ?? 'AED',
             'payment_method_id' => $data['payment_method_id'],
             'credit_amount' => $data['credit_amount'] ?? 0,
             'remarks' => $data['remarks'] ?? null,

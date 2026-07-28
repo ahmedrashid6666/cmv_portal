@@ -26,7 +26,7 @@ class LedgerEntry extends Model
 
     protected $fillable = [
         'type', 'entry_date', 'party_name', 'reference', 'vehicle_number', 'remarks',
-        'total_amount', 'paid_amount', 'balance_amount', 'status', 'return_date', 'created_by',
+        'total_amount', 'currency', 'paid_amount', 'balance_amount', 'status', 'return_date', 'created_by',
     ];
 
     protected function casts(): array

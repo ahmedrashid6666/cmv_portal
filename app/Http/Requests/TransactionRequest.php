@@ -30,6 +30,7 @@ class TransactionRequest extends FormRequest
             'gov_fees' => ['required', 'numeric', 'min:0'],
             'profit' => ['required', 'numeric', 'min:0'],
             'vat_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'currency' => ['nullable', Rule::in(['AED', 'OMR'])],
 
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'credit_amount' => ['nullable', 'numeric', 'min:0'],

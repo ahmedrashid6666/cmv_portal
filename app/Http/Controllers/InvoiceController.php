@@ -80,7 +80,7 @@ class InvoiceController extends Controller
                 'email' => Setting::get('company_email', ''),
             ],
             'footer' => Setting::get('invoice_footer', 'Thank you for your business.'),
-            'currency' => Setting::get('currency', 'AED'),
+            'currency' => $t->currency ?: 'AED',
             'invoice_no' => $t->invoice_no ?? ('TXN-'.$t->id),
             'date' => $t->transaction_date->format('Y-m-d'),
             'boe_no' => $t->boe_no,

@@ -1,6 +1,6 @@
 import { Card } from '@/Components/ui/Card';
 import ComboBox from '@/Components/ComboBox';
-import { AED } from '@/lib/format';
+import { money } from '@/lib/format';
 import { computeTotals } from '@/lib/calc';
 import { Link, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
@@ -20,12 +20,12 @@ function Field({ label, error, children, required }) {
     );
 }
 
-function Row({ label, value, strong, big, accent }) {
+function Row({ label, value, strong, big, accent, currency = 'AED' }) {
     const color = accent === 'primary' ? 'text-primary-700' : accent === 'green' ? 'text-emerald-700' : 'text-navy-900';
     return (
         <div className="flex items-center justify-between">
             <dt className={'text-slate-500 ' + (big ? 'font-semibold' : '')}>{label}</dt>
-            <dd className={(big ? 'text-lg font-bold ' : strong ? 'font-semibold ' : '') + color}>{AED(value)}</dd>
+            <dd className={(big ? 'text-lg font-bold ' : strong ? 'font-semibold ' : '') + color}>{money(value, currency)}</dd>
         </div>
     );
 }
@@ -57,6 +57,7 @@ export default function TransactionEntryForm({
         gov_fees: transaction?.gov_fees ?? 0,
         profit: transaction?.profit ?? 0,
         vat_rate: transaction?.vat_rate ?? vatRate ?? 0,
+        currency: transaction?.currency ?? 'AED',
         payment_method_id: transaction?.payment_method_id ?? '',
         credit_amount: transaction?.credit_amount ?? 0,
         remarks: transaction?.remarks ?? '',
@@ -205,6 +206,12 @@ export default function TransactionEntryForm({
             <div className="space-y-6">
                 <Card title="Payment">
                     <div className="space-y-4">
+                        <Field label="Currency" error={errors.currency}>
+                            <select className={input} value={data.currency} onChange={(e) => setData('currency', e.target.value)}>
+                                <option value="AED">AED — UAE Dirham</option>
+                                <option value="OMR">OMR — Omani Rial</option>
+                            </select>
+                        </Field>
                         <Field label="Payment Method" required error={errors.payment_method_id}>
                             <select className={input} value={data.payment_method_id} onChange={(e) => setData('payment_method_id', e.target.value)}>
                                 <option value="">Select…</option>
@@ -222,13 +229,13 @@ export default function TransactionEntryForm({
 
                 <Card title="Auto-Calculated Totals">
                     <dl className="space-y-2 text-sm">
-                        <Row label="VAT Amount" value={totals.vat_amount} />
-                        <Row label="Total Amount" value={totals.total_amount} strong />
-                        <Row label="Total Expenses" value={totals.total_expenses} />
-                        <Row label="Commission (payable)" value={totals.commission_payable} />
+                        <Row label="VAT Amount" value={totals.vat_amount} currency={data.currency} />
+                        <Row label="Total Amount" value={totals.total_amount} strong currency={data.currency} />
+                        <Row label="Total Expenses" value={totals.total_expenses} currency={data.currency} />
+                        <Row label="Commission (payable)" value={totals.commission_payable} currency={data.currency} />
                         <div className="my-2 border-t" />
-                        <Row label="Grand Total" value={totals.grand_total} big accent="primary" />
-                        <Row label="Net Profit" value={totals.net_profit} big accent="green" />
+                        <Row label="Grand Total" value={totals.grand_total} big accent="primary" currency={data.currency} />
+                        <Row label="Net Profit" value={totals.net_profit} big accent="green" currency={data.currency} />
                     </dl>
                 </Card>
 

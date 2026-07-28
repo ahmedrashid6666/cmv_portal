@@ -104,6 +104,7 @@ class OperationsController extends Controller
             'kind' => 'credit',
             'id' => $t->id,
             'label' => ($t->invoice_no ?? 'TXN-'.$t->id).' — '.$t->customer?->name,
+            'currency' => $t->currency ?: 'AED',
             'credit' => (float) $t->credit_amount,
             'outstanding' => round((float) $t->creditOutstanding(), 2),
             'payments' => $t->creditPayments->map(fn ($p) => [
@@ -135,7 +136,9 @@ class OperationsController extends Controller
             'action_url' => route('transactions.edit', $t->id), 'settle' => $this->creditSettle($t),
             'cells' => [
                 $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
-                $t->paymentMethod?->name, number_format((float) $t->grand_total, 2), number_format((float) $t->net_profit, 2),
+                $t->paymentMethod?->name,
+                ($t->currency ?: 'AED').' '.number_format((float) $t->grand_total, 2),
+                ($t->currency ?: 'AED').' '.number_format((float) $t->net_profit, 2),
             ],
         ]);
 
@@ -162,7 +165,8 @@ class OperationsController extends Controller
             'id' => $t->id, 'status' => $t->invoiceStatus(), 'action_url' => route('invoices.show', $t->id),
             'cells' => [
                 $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
-                number_format((float) $t->grand_total, 2), number_format((float) $t->creditOutstanding(), 2),
+                ($t->currency ?: 'AED').' '.number_format((float) $t->grand_total, 2),
+                ($t->currency ?: 'AED').' '.number_format((float) $t->creditOutstanding(), 2),
             ],
         ]);
 
@@ -194,7 +198,8 @@ class OperationsController extends Controller
                 'action_url' => route('credits.index'), 'settle' => $this->creditSettle($t),
                 'cells' => [
                     $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
-                    number_format((float) $t->credit_amount, 2), number_format($out, 2),
+                    ($t->currency ?: 'AED').' '.number_format((float) $t->credit_amount, 2),
+                    ($t->currency ?: 'AED').' '.number_format($out, 2),
                 ],
             ];
         });
@@ -224,10 +229,12 @@ class OperationsController extends Controller
 
         $rows = $query->paginate(50)->withQueryString()->through(fn ($e) => [
             'id' => $e->id, 'status' => $e->status, 'action_url' => route('ledger.index', $type),
-            'settle' => ['kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name, 'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount],
+            'settle' => ['kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name, 'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount, 'currency' => $e->currency ?: 'AED'],
             'cells' => [
                 $e->entry_date->format('d/m/Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
-                number_format((float) $e->total_amount, 2), number_format((float) $e->paid_amount, 2), number_format((float) $e->balance_amount, 2),
+                ($e->currency ?: 'AED').' '.number_format((float) $e->total_amount, 2),
+                ($e->currency ?: 'AED').' '.number_format((float) $e->paid_amount, 2),
+                ($e->currency ?: 'AED').' '.number_format((float) $e->balance_amount, 2),
             ],
         ]);
 
