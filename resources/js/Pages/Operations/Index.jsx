@@ -14,12 +14,13 @@ const statusStyle = {
     unpaid: 'bg-red-100 text-accent-red-dark',
 };
 
-export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods }) {
+export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], align = null, totals = null, isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const canBulkDelete = ['super_admin', 'admin'].includes(role);
     const showChecks = bulkDeletable && canWrite;
     const isBorrowed = type === 'borrowed';
+    const isRight = (i) => (align ? !!align[i] : i >= 4);
 
     const [f, setF] = useState(filters);
     const [selected, setSelected] = useState([]);
@@ -162,9 +163,9 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         <thead>
                             <tr className="border-b text-left text-xs uppercase text-slate-500">
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
-                                <th className="py-2 pr-3">Sl No</th>
+                                <th className="whitespace-nowrap py-2 pr-3">Sl No</th>
                                 {columns.map((c, i) => (
-                                    <th key={c} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right' : '')}>
+                                    <th key={c} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right' : '')}>
                                         {sortKeys[i] ? (
                                             <button onClick={() => sortBy(sortKeys[i])} className="inline-flex items-center gap-1 uppercase hover:text-navy-700">
                                                 {c} {arrow(sortKeys[i])}
@@ -181,8 +182,8 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                             {rows.data.map((r, ri) => (
                                 <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-50 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
                                     {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
-                                    <td className="py-2 pr-3 text-slate-400">{(rows.from || 1) + ri}</td>
-                                    {r.cells.map((cell, i) => <td key={i} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right tabular-nums' : '') + (i === 0 ? ' whitespace-nowrap' : '')}>{cell}</td>)}
+                                    <td className="whitespace-nowrap py-2 pr-3 text-slate-400">{(rows.from || 1) + ri}</td>
+                                    {r.cells.map((cell, i) => <td key={i} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums' : '')}>{cell}</td>)}
                                     <td className="py-2 pr-3">
                                         {r.settle && canWrite ? (
                                             <button onClick={() => openSettle(r.settle)} title="Click to collect / pay / edit paid amount"

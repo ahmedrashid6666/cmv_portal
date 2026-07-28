@@ -38,9 +38,10 @@ class MasterRegistry
                 'model' => Reference::class,
                 'label' => 'References',
                 'singular' => 'Reference',
-                'columns' => ['name' => 'Name', 'contact' => 'Contact'],
+                'columns' => ['name' => 'Name', 'company' => 'Company', 'contact' => 'Contact'],
                 'fields' => [
                     ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'required' => true],
+                    ['name' => 'company', 'label' => 'Company', 'type' => 'text'],
                     ['name' => 'contact', 'label' => 'Contact', 'type' => 'text'],
                 ],
             ],

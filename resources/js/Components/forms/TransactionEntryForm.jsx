@@ -41,6 +41,8 @@ export default function TransactionEntryForm({
     vehicles,
     paymentMethods,
     expenseCategories,
+    banks = [],
+    customsBank = null,
     vatRate,
     customFields = [],
     onDone,
@@ -55,6 +57,7 @@ export default function TransactionEntryForm({
         vehicle_id: transaction?.vehicle_id ?? '',
         customs_fees: transaction?.customs_fees ?? 0,
         gov_fees: transaction?.gov_fees ?? 0,
+        gov_bank_id: transaction?.gov_bank_id ?? '',
         profit: transaction?.profit ?? 0,
         vat_rate: transaction?.vat_rate ?? vatRate ?? 0,
         currency: transaction?.currency ?? 'AED',
@@ -68,8 +71,8 @@ export default function TransactionEntryForm({
             ? transaction.expenses.map((e) => ({ expense_category_id: e.expense_category_id ?? '', description: e.description ?? '', amount: e.amount ?? '' }))
             : [],
         commissions: transaction?.commissions?.length
-            ? transaction.commissions.map((c) => ({ label: c.label ?? '', amount: c.amount ?? '', type: c.type ?? 'charged_to_customer', reference_id: c.reference_id ?? '' }))
-            : [{ label: '', amount: '', type: 'charged_to_customer', reference_id: '' }],
+            ? transaction.commissions.map((c, i) => ({ label: c.label || `Com-${i + 1}`, amount: c.amount ?? '', type: c.type ?? 'charged_to_customer', reference_id: c.reference_id ?? '' }))
+            : [{ label: 'Com-1', amount: '', type: 'charged_to_customer', reference_id: '' }],
         custom_data: transaction?.custom_data ?? {},
     });
 
@@ -77,7 +80,7 @@ export default function TransactionEntryForm({
     const totals = useMemo(() => computeTotals(data), [data]);
 
     const setCommission = (i, k, v) => setData('commissions', data.commissions.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
-    const addCommission = () => setData('commissions', [...data.commissions, { label: '', amount: '', type: 'charged_to_customer', reference_id: '' }]);
+    const addCommission = () => setData('commissions', [...data.commissions, { label: `Com-${data.commissions.length + 1}`, amount: '', type: 'charged_to_customer', reference_id: '' }]);
     const removeCommission = (i) => setData('commissions', data.commissions.filter((_, idx) => idx !== i));
 
     const submit = (e) => {
@@ -109,7 +112,7 @@ export default function TransactionEntryForm({
                         </Field>
                         <Field label="Reference" error={errors.reference_id}>
                             <ComboBox
-                                options={references.map((r) => ({ value: r.id, label: r.name }))}
+                                options={references.map((r) => ({ value: r.id, label: r.name, sublabel: r.company }))}
                                 value={data.reference_id} onChange={(v) => setData('reference_id', v)}
                                 placeholder="—" createSlug="references" createField="name"
                             />
@@ -128,9 +131,17 @@ export default function TransactionEntryForm({
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                         <Field label="Customs Fees (CDR)" required error={errors.customs_fees}>
                             <input type="number" step="0.01" className={input} value={data.customs_fees} onChange={(e) => setData('customs_fees', e.target.value)} />
+                            <span className="mt-1 block text-[11px] text-slate-400">
+                                Paid from <span className="font-semibold text-navy-600">{customsBank?.name ?? 'CDR'}</span> bank
+                            </span>
                         </Field>
                         <Field label="Government Fees" required error={errors.gov_fees}>
                             <input type="number" step="0.01" className={input} value={data.gov_fees} onChange={(e) => setData('gov_fees', e.target.value)} />
+                            <select className={input + ' mt-1 text-xs'} value={data.gov_bank_id} onChange={(e) => setData('gov_bank_id', e.target.value)}>
+                                <option value="">Pay from bank…</option>
+                                {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            {errors.gov_bank_id && <span className="mt-1 block text-xs text-accent-red">{errors.gov_bank_id}</span>}
                         </Field>
                         <Field label="Profit" required error={errors.profit}>
                             <input type="number" step="0.01" className={input} value={data.profit} onChange={(e) => setData('profit', e.target.value)} />
@@ -152,7 +163,7 @@ export default function TransactionEntryForm({
                                 </select>
                                 <select className={input + ' col-span-3'} value={row.reference_id} onChange={(e) => setCommission(i, 'reference_id', e.target.value)}>
                                     <option value="">Reference…</option>
-                                    {references.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                    {references.map((r) => <option key={r.id} value={r.id}>{r.company ? `${r.name} — ${r.company}` : r.name}</option>)}
                                 </select>
                                 <input type="number" step="0.01" className={input + ' col-span-1'} placeholder="Amt" value={row.amount} onChange={(e) => setCommission(i, 'amount', e.target.value)} />
                                 <button type="button" onClick={() => removeCommission(i)} className="col-span-1 text-accent-red hover:text-accent-red-dark">✕</button>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BulkPaymentController;
 use App\Http\Controllers\CashCountController;
@@ -66,6 +67,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('books/cash', [BookController::class, 'cashBook'])->name('books.cash'); // export/deep-link
     Route::get('books/bank', [BookController::class, 'bankBook'])->name('books.bank'); // export/deep-link
     Route::get('books/ledger', [BookController::class, 'ledger'])->name('books.ledger');
+
+    // Bank accounts — per-bank balances (customs/gov disbursements) + statement
+    Route::get('bank-accounts', [BankAccountController::class, 'index'])->name('bank-accounts.index');
+    Route::get('bank-accounts/{bank}/statement', [BankAccountController::class, 'statement'])->name('bank-accounts.statement');
 
     // Invoices (generated from transactions)
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');

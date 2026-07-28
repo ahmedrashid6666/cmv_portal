@@ -12,7 +12,7 @@ const ledgerLabels = (t) => ({
     returned: 'Returned',
 });
 
-export default function AddEntry({ customers, references, vehicles, paymentMethods, expenseCategories, vatRate, customFields, ledgerMetas }) {
+export default function AddEntry({ customers, references, vehicles, paymentMethods, expenseCategories, banks, customsBank, vatRate, customFields, ledgerMetas }) {
     const [type, setType] = useState('transaction');
 
     const types = [
@@ -59,6 +59,8 @@ export default function AddEntry({ customers, references, vehicles, paymentMetho
                     vehicles={vehicles}
                     paymentMethods={paymentMethods}
                     expenseCategories={expenseCategories}
+                    banks={banks}
+                    customsBank={customsBank}
                     vatRate={vatRate}
                     customFields={customFields}
                     onDone={() => router.visit(route('transactions.index'))}

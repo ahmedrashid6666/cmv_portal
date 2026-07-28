@@ -28,9 +28,9 @@ function Field({ label, error, required, children }) {
 export default function LedgerEntryForm({ meta, entry, labels, onDone, customers = [], references = [], vehicles = [] }) {
     const editing = !!entry;
     const isBorrowed = meta.type === 'borrowed';
-    const partyOptions = (isBorrowed ? references : customers).map((x) => ({ value: x.name, label: x.name }));
+    const partyOptions = (isBorrowed ? references : customers).map((x) => ({ value: x.name, label: x.name, sublabel: isBorrowed ? x.company : undefined }));
     const partySlug = isBorrowed ? 'references' : 'customers';
-    const refOptions = references.map((r) => ({ value: r.name, label: r.name }));
+    const refOptions = references.map((r) => ({ value: r.name, label: r.name, sublabel: r.company }));
     const vehOptions = vehicles.map((v) => ({ value: v.number, label: v.number }));
     const blank = {
         entry_date: entry?.entry_date ?? new Date().toISOString().slice(0, 10),

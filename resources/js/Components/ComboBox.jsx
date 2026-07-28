@@ -67,7 +67,10 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
     return (
         <div className={'relative ' + className} ref={wrap}>
             <button type="button" onClick={() => setOpen((o) => !o)} className={base + ' flex items-center justify-between px-3 py-2 text-left'}>
-                <span className={selected ? 'text-navy-900' : 'text-slate-400'}>{selected ? selected.label : placeholder}</span>
+                <span className="min-w-0">
+                    <span className={'block truncate ' + (selected ? 'text-navy-900' : 'text-slate-400')}>{selected ? selected.label : placeholder}</span>
+                    {selected?.sublabel && <span className="mt-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[11px] leading-none text-slate-500">{selected.sublabel}</span>}
+                </span>
                 <span className="ml-2 text-slate-400">▾</span>
             </button>
 
@@ -92,7 +95,8 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
                         {filtered.map((o) => (
                             <li key={o.value}>
                                 <button type="button" onClick={() => pick(o)} className={'w-full px-3 py-1.5 text-left hover:bg-slate-50 ' + (String(o.value) === String(value) ? 'bg-primary-50 font-medium text-primary-700' : 'text-navy-800')}>
-                                    {o.label}
+                                    <span className="block truncate">{o.label}</span>
+                                    {o.sublabel && <span className="mt-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[11px] leading-none text-slate-500">{o.sublabel}</span>}
                                 </button>
                             </li>
                         ))}

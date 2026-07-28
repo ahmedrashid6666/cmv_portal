@@ -19,7 +19,7 @@ class Transaction extends Model
     protected $fillable = [
         'transaction_date', 'invoice_no', 'boe_no',
         'customer_id', 'reference_id', 'vehicle_id',
-        'customs_fees', 'gov_fees', 'profit', 'vat_rate', 'currency', 'vat_amount', 'total_amount',
+        'customs_fees', 'gov_fees', 'gov_bank_id', 'profit', 'vat_rate', 'currency', 'vat_amount', 'total_amount',
         'payment_method_id', 'credit_amount', 'remarks', 'attachment_path',
         'grand_total', 'net_profit', 'created_by', 'custom_data',
     ];
@@ -74,6 +74,11 @@ class Transaction extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function govBank()
+    {
+        return $this->belongsTo(Bank::class, 'gov_bank_id');
     }
 
     public function creator()

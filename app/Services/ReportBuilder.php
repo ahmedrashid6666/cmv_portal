@@ -15,7 +15,7 @@ class ReportBuilder
     public const TYPES = [
         'daily', 'monthly', 'customer', 'outstanding-credit',
         'weekly', 'yearly', 'custom', 'vehicle', 'reference',
-        'commission', 'payment-method', 'expense', 'income', 'profit',
+        'commission', 'payment-method', 'expense', 'income', 'profit', 'bank',
     ];
 
     /**
@@ -38,6 +38,7 @@ class ReportBuilder
             'expense' => $this->expense($filters),
             'income' => $this->incomeOrProfit('income', $filters),
             'profit' => $this->incomeOrProfit('profit', $filters),
+            'bank' => $this->bank(),
             default => abort(404),
         };
     }
@@ -267,6 +268,30 @@ class ReportBuilder
             'rows' => $byCat->map(fn ($c) => [$c['name'], (string) $c['count'], number_format($c['total'], 2)])->all(),
             'totals' => ['Total Expenses' => round((float) $expenses->sum('amount'), 2)],
             'chart' => $byCat->take(8)->map(fn ($c) => ['label' => $c['name'], 'income' => $c['total']])->all(),
+        ];
+    }
+
+    private function bank(): array
+    {
+        $rows = app(BankService::class)->balances();
+
+        return [
+            'type' => 'bank',
+            'title' => 'Bank-wise Report',
+            'columns' => ['Bank', 'Opening', 'Customs Paid', 'Gov. Paid', 'Balance'],
+            'rows' => collect($rows)->map(fn ($b) => [
+                $b['name'].($b['is_customs'] ? ' (CDR)' : ''),
+                number_format($b['opening'], 2),
+                number_format($b['customs_paid'], 2),
+                number_format($b['gov_paid'], 2),
+                number_format($b['balance'], 2),
+            ])->all(),
+            'totals' => [
+                'Customs Paid' => round((float) array_sum(array_column($rows, 'customs_paid')), 2),
+                'Gov. Paid' => round((float) array_sum(array_column($rows, 'gov_paid')), 2),
+                'Balance' => round((float) array_sum(array_column($rows, 'balance')), 2),
+            ],
+            'chart' => collect($rows)->map(fn ($b) => ['label' => $b['name'], 'income' => $b['balance']])->all(),
         ];
     }
 

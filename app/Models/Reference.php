@@ -12,5 +12,5 @@ class Reference extends Model
 {
     use Auditable, HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'contact'];
+    protected $fillable = ['name', 'company', 'contact'];
 }

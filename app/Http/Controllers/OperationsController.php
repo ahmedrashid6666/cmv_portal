@@ -122,12 +122,23 @@ class OperationsController extends Controller
     private function transactions(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
     {
         $query = Transaction::query()
-            ->with(['customer:id,name', 'paymentMethod:id,name', 'creditPayments.paymentMethod:id,name'])
+            ->with(['customer:id,name', 'reference:id,name', 'vehicle:id,number', 'paymentMethod:id,name', 'creditPayments.paymentMethod:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
                 ->orWhere('boe_no', 'like', "%{$search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        // Totals across the whole filtered set (not just the current page).
+        $totalsSource = (clone $query)->setEagerLoads([]);
+        $agg = (clone $totalsSource)->selectRaw('SUM(customs_fees) customs, SUM(gov_fees) gov, SUM(profit) profit, SUM(vat_amount) vat, SUM(total_amount) total_amount, SUM(grand_total) grand_total, SUM(credit_amount) credit_amount')->first();
+        $commTotal = \App\Models\TransactionCommission::whereIn('transaction_id', (clone $totalsSource)->select('id'))->sum('amount');
+        $currencies = (clone $totalsSource)->distinct()->pluck('currency')->map(fn ($c) => $c ?: 'AED')->unique();
+        $tPrefix = $currencies->count() === 1 ? $currencies->first().' ' : '';
+        $t = fn ($v) => $tPrefix.number_format((float) $v, 2);
+        $totals = ['', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($commTotal), $t($agg->grand_total), $t($agg->credit_amount), ''];
+
+        $query->withSum('commissions', 'amount');
 
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
@@ -136,19 +147,37 @@ class OperationsController extends Controller
             'grand_total' => 'grand_total', 'net_profit' => 'net_profit',
         ], 'transaction_date');
 
-        $rows = $query->paginate(50)->withQueryString()->through(fn ($t) => [
-            'id' => $t->id, 'status' => $t->invoiceStatus(),
-            'action_url' => route('transactions.edit', $t->id), 'settle' => $this->creditSettle($t),
-            'cells' => [
-                $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
-                $t->paymentMethod?->name,
-                ($t->currency ?: 'AED').' '.number_format((float) $t->grand_total, 2),
-                ($t->currency ?: 'AED').' '.number_format((float) $t->net_profit, 2),
-            ],
-        ]);
+        $rows = $query->paginate(50)->withQueryString()->through(function ($t) {
+            $cur = $t->currency ?: 'AED';
+            $money = fn ($v) => $cur.' '.number_format((float) $v, 2);
 
-        return ['columns' => ['Date', 'Invoice', 'Customer', 'Method', 'Grand Total', 'Net Profit'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', 'customer', 'method', 'grand_total', 'net_profit'],
+            return [
+                'id' => $t->id, 'status' => $t->invoiceStatus(),
+                'action_url' => route('transactions.edit', $t->id), 'settle' => $this->creditSettle($t),
+                'cells' => [
+                    $t->transaction_date->format('d/m/Y'),
+                    $t->invoice_no ?? '—',
+                    $t->boe_no ?? '—',
+                    $t->customer?->name,
+                    $t->reference?->name ?? '—',
+                    $t->vehicle?->number ?? '—',
+                    $money($t->customs_fees),
+                    $money($t->gov_fees),
+                    $money($t->profit),
+                    $money($t->vat_amount),
+                    $money($t->total_amount),
+                    $money($t->commissions_sum_amount),
+                    $money($t->grand_total),
+                    $money($t->credit_amount),
+                    $t->paymentMethod?->name ?? '—',
+                ],
+            ];
+        });
+
+        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT', 'Total Amount', 'Commissions', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
+            'align' => [false, false, false, false, false, false, true, true, true, true, true, true, true, true, false],
+            'totals' => $totals,
             'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
     }
 

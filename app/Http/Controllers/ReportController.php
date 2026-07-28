@@ -28,6 +28,7 @@ class ReportController extends Controller
                 ['key' => 'payment-method', 'title' => 'Payment Method', 'desc' => 'Totals grouped by payment method.'],
                 ['key' => 'commission', 'title' => 'Commission Report', 'desc' => 'All commissions by type and reference.'],
                 ['key' => 'expense', 'title' => 'Expense Report', 'desc' => 'Expenses grouped by category.'],
+                ['key' => 'bank', 'title' => 'Bank-wise Report', 'desc' => 'Opening, customs & gov paid, and balance per bank.'],
                 ['key' => 'income', 'title' => 'Income Report', 'desc' => 'Income totals per day.'],
                 ['key' => 'profit', 'title' => 'Profit Report', 'desc' => 'Net profit per day.'],
                 ['key' => 'outstanding-credit', 'title' => 'Outstanding Credit', 'desc' => 'Unpaid receivables by invoice.'],

@@ -79,6 +79,27 @@ class LedgerService
             $events[] = $this->event($p->payment_date, 'Credit repayment', $p->invoice_no, (float) $p->amount, 0);
         });
 
+        // Customs fees (paid from the CDR bank) — money out
+        if (app(BankService::class)->customsBank()) {
+            Transaction::query()
+                ->where('customs_fees', '>', 0)
+                ->with('customer:id,name')
+                ->get()
+                ->each(function ($t) use (&$events) {
+                    $events[] = $this->event($t->transaction_date, 'Customs fee — '.($t->customer?->name ?? ''), $t->invoice_no, 0, (float) $t->customs_fees);
+                });
+        }
+
+        // Government fees assigned to a bank — money out
+        Transaction::query()
+            ->whereNotNull('gov_bank_id')
+            ->where('gov_fees', '>', 0)
+            ->with('customer:id,name')
+            ->get()
+            ->each(function ($t) use (&$events) {
+                $events[] = $this->event($t->transaction_date, 'Government fee — '.($t->customer?->name ?? ''), $t->invoice_no, 0, (float) $t->gov_fees);
+            });
+
         return $this->assemble($opening, $events, $filters);
     }
 

@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  */
 class BalanceService
 {
-    public function __construct(private TransactionCalculator $calc) {}
+    public function __construct(private TransactionCalculator $calc, private BankService $banks) {}
 
     public function cashBalance(): string
     {
@@ -49,8 +49,29 @@ class BalanceService
 
         $balance = bcadd($this->d($opening), $receipts, 2);
         $balance = bcadd($balance, $repayments, 2);
+        $balance = bcsub($balance, $this->officeExpensesByBucket('bank'), 2);
 
-        return bcsub($balance, $this->officeExpensesByBucket('bank'), 2);
+        // Customs fees drain the CDR bank; government fees drain the bank chosen
+        // on each shipment. Both reduce the overall bank balance.
+        $balance = bcsub($balance, $this->totalCustomsPaid(), 2);
+
+        return bcsub($balance, $this->totalGovPaid(), 2);
+    }
+
+    /** All customs fees — always disbursed from the CDR bank (if one exists). */
+    private function totalCustomsPaid(): string
+    {
+        if (! $this->banks->customsBank()) {
+            return '0.00';
+        }
+
+        return $this->d((string) Transaction::sum('customs_fees'));
+    }
+
+    /** Government fees that were assigned to a bank on the shipment. */
+    private function totalGovPaid(): string
+    {
+        return $this->d((string) Transaction::whereNotNull('gov_bank_id')->sum('gov_fees'));
     }
 
     /** Total unpaid receivables across all credit sales. */
