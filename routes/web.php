@@ -87,6 +87,7 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:super_admin,admin,accountant')->name('masters.quick');
     Route::middleware('role:super_admin,admin')->group(function () {
         Route::post('masters/{master}', [MasterController::class, 'store'])->name('masters.store');
+        Route::post('masters/{master}/bulk', [MasterController::class, 'bulkStore'])->name('masters.bulk');
         Route::put('masters/{master}/{id}', [MasterController::class, 'update'])->name('masters.update');
         Route::delete('masters/{master}/{id}', [MasterController::class, 'destroy'])->name('masters.destroy');
     });

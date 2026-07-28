@@ -55,6 +55,39 @@ class MasterController extends Controller
         return response()->json(['id' => $record->id, 'label' => $record->{$field}]);
     }
 
+    /**
+     * Bulk-add: create many records from a comma-separated list. Only the
+     * primary field is set; other required fields fall back to sensible defaults.
+     */
+    public function bulkStore(Request $request, string $master)
+    {
+        $config = MasterRegistry::get($master);
+        $request->validate(['values' => ['required', 'string']]);
+        $field = $config['fields'][0]['name'];
+
+        $defaults = [];
+        foreach (array_slice($config['fields'], 1) as $f) {
+            if (($f['required'] ?? false) || array_key_exists('default', $f)) {
+                $defaults[$f['name']] = $f['default']
+                    ?? ($f['type'] === 'select' ? ($f['options'][0] ?? null) : ($f['type'] === 'number' ? 0 : ''));
+            }
+        }
+
+        $created = 0;
+        collect(explode(',', $request->string('values')))
+            ->map(fn ($v) => trim($v))
+            ->filter()
+            ->unique()
+            ->each(function ($value) use ($config, $field, $defaults, &$created) {
+                $record = $config['model']::firstOrCreate([$field => $value], $defaults);
+                if ($record->wasRecentlyCreated) {
+                    $created++;
+                }
+            });
+
+        return back()->with('success', "{$created} {$config['label']} added.");
+    }
+
     public function update(Request $request, string $master, int $id)
     {
         $config = MasterRegistry::get($master);

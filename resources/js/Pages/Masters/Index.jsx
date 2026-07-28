@@ -23,6 +23,11 @@ export default function MastersIndex({ master, label, singular, columns, fields,
     };
     const del = (id) => { if (confirm(`Delete this ${singular}?`)) router.delete(route('masters.destroy', [master, id])); };
 
+    // Bulk add: comma-separated values
+    const bulk = useForm({ values: '' });
+    const submitBulk = (e) => { e.preventDefault(); bulk.post(route('masters.bulk', master), { onSuccess: () => bulk.reset() }); };
+    const primaryLabel = fields[0]?.label ?? 'value';
+
     return (
         <AuthenticatedLayout header={label}>
             <Head title={label} />
@@ -91,6 +96,27 @@ export default function MastersIndex({ master, label, singular, columns, fields,
                                 {editing ? 'Update' : 'Add'}
                             </button>
                         </form>
+
+                        {/* Bulk add (comma-separated) */}
+                        {!editing && (
+                            <div className="mt-5 border-t pt-4">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Bulk add</p>
+                                <form onSubmit={submitBulk} className="space-y-2">
+                                    <textarea
+                                        rows="3"
+                                        className={input}
+                                        placeholder={`Paste multiple ${label.toLowerCase()} separated by commas — e.g. ${primaryLabel} 1, ${primaryLabel} 2, ${primaryLabel} 3`}
+                                        value={bulk.data.values}
+                                        onChange={(e) => bulk.setData('values', e.target.value)}
+                                    />
+                                    {bulk.errors.values && <span className="block text-xs text-accent-red">{bulk.errors.values}</span>}
+                                    <button disabled={bulk.processing} className="w-full rounded-lg border border-primary-600 px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-50">
+                                        Add All (comma-separated)
+                                    </button>
+                                    <p className="text-[11px] text-slate-400">Duplicates are skipped. Only the {primaryLabel} is set; edit afterwards to add other details.</p>
+                                </form>
+                            </div>
+                        )}
                     </Card>
                 )}
             </div>
