@@ -210,6 +210,17 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 </tr>
                             ))}
                         </tbody>
+                        {totals && rows.data.length > 0 && (
+                            <tfoot>
+                                <tr className="border-t-2 border-navy-800 bg-navy-800 font-bold text-white">
+                                    {showChecks && <td className="py-3 pr-3"></td>}
+                                    <td className="whitespace-nowrap py-3 pr-3">Total</td>
+                                    {totals.map((cell, i) => <td key={i} className={'whitespace-nowrap py-3 pr-3 ' + (isRight(i) ? 'text-right tabular-nums' : '')}>{cell}</td>)}
+                                    <td className="py-3 pr-3"></td>
+                                    {canWrite && <td className="py-3"></td>}
+                                </tr>
+                            </tfoot>
+                        )}
                     </table>
                 </div>
                 {rows.last_page > 1 && (
