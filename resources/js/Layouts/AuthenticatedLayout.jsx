@@ -90,11 +90,9 @@ export default function AuthenticatedLayout({ header, children }) {
             label: 'Operations',
             icon: '₪',
             items: [
-                { label: 'Transactions', href: route('transactions.index'), icon: '₪', active: current('transactions.*') },
+                { label: 'All Operations', href: route('operations.index'), icon: '▤', active: current('operations.*') },
                 { label: 'Invoices', href: route('invoices.index'), icon: '🧾', active: current('invoices.*') },
                 { label: 'Credits', href: route('credits.index'), icon: '◔', active: current('credits.*') },
-                { label: 'Daily Credit', href: route('ledger.index', 'daily-credit'), icon: '↗', active: current('ledger.*') && route().params.slug === 'daily-credit' },
-                { label: 'Borrowed Amount', href: route('ledger.index', 'borrowed'), icon: '↘', active: current('ledger.*') && route().params.slug === 'borrowed' },
                 { label: 'Bulk Payment', href: route('bulk.index', 'daily-credit'), icon: '⇉', active: current('bulk.*') && route().params.slug === 'daily-credit' },
                 { label: 'Bulk Return', href: route('bulk.index', 'borrowed'), icon: '⇇', active: current('bulk.*') && route().params.slug === 'borrowed' },
             ],

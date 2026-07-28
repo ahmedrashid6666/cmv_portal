@@ -12,6 +12,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LedgerEntryController;
 use App\Http\Controllers\MasterController;
+use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecycleBinController;
 use App\Http\Controllers\ReportController;
@@ -30,6 +31,11 @@ Route::middleware(['auth'])->group(function () {
     // Unified Add Entry page (transaction / daily-credit / borrowed)
     Route::get('/add-entry', [EntryController::class, 'create'])
         ->middleware('role:super_admin,admin,accountant')->name('entry.create');
+
+    // Unified Operations workspace (list all types by filter + bulk delete)
+    Route::get('/operations', [OperationsController::class, 'index'])->name('operations.index');
+    Route::post('/operations/bulk-delete', [OperationsController::class, 'bulkDestroy'])
+        ->middleware('role:super_admin,admin')->name('operations.bulk-delete');
 
     // Transactions — writes limited to super_admin/admin/accountant
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
