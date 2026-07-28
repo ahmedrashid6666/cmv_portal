@@ -30,7 +30,7 @@ it('distributes a bulk amount FIFO across the oldest entries first', function ()
         'payment_date' => '2026-07-15',
         'payment_method_id' => $this->method->id,
         'entry_ids' => [$a->id, $b->id, $c->id],
-    ])->assertRedirect(route('ledger.index', 'daily-credit'));
+    ])->assertRedirect();
 
     // 8000 → 5000 to A (settled), 3000 to B (partial), 0 to C
     expect((float) $a->fresh()->paid_amount)->toBe(5000.0)->and($a->fresh()->status)->toBe('returned');

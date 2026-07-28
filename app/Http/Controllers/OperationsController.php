@@ -2,23 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
 use App\Models\LedgerEntry;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 
 /**
- * One unified "Operations" workspace. A type tab (transactions / daily-credit /
- * borrowed) picks what to list; results default to today's date and support
- * search, status and date filters plus bulk delete.
+ * One unified "Operations" workspace. A type tab picks what to list
+ * (transactions / invoices / credits / daily-credit / borrowed); every list
+ * supports search + date filters, and the deletable/ledger types support
+ * bulk delete and bulk payment/return on the selected rows.
  */
 class OperationsController extends Controller
 {
     private const TABS = [
         'transactions' => 'Transactions',
+        'invoices' => 'Invoices',
+        'credits' => 'Credits',
         'daily-credit' => 'Daily Credit',
         'borrowed' => 'Borrowed Amount',
     ];
@@ -29,22 +30,25 @@ class OperationsController extends Controller
             ? $request->string('type')->value()
             : 'transactions';
 
-        // Default to the current day unless the user cleared/changed the range.
-        $today = Carbon::today()->toDateString();
-        $from = $request->has('from') ? $request->input('from') : $today;
-        $to = $request->has('to') ? $request->input('to') : $today;
+        // Default: show all dates (never empty); date filters are optional.
+        $from = $request->input('from') ?: null;
+        $to = $request->input('to') ?: null;
         $search = $request->string('search')->trim()->value();
         $status = $request->string('status')->value();
 
-        $payload = $type === 'transactions'
-            ? $this->transactions($from, $to, $search)
-            : $this->ledger($type, $from, $to, $search, $status);
+        $payload = match ($type) {
+            'invoices' => $this->invoices($from, $to, $search),
+            'credits' => $this->credits($from, $to, $search),
+            'daily-credit', 'borrowed' => $this->ledger($type, $from, $to, $search, $status),
+            default => $this->transactions($from, $to, $search),
+        };
 
         return Inertia::render('Operations/Index', array_merge($payload, [
             'tabs' => collect(self::TABS)->map(fn ($label, $key) => ['key' => $key, 'label' => $label])->values(),
             'type' => $type,
             'filters' => ['search' => $search, 'from' => $from, 'to' => $to, 'status' => $status],
-            'isLedger' => $type !== 'transactions',
+            'isLedger' => in_array($type, ['daily-credit', 'borrowed'], true),
+            'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name']),
         ]));
     }
 
@@ -64,7 +68,7 @@ class OperationsController extends Controller
         return back()->with('success', "{$count} record(s) moved to the recycle bin.");
     }
 
-    private function transactions(string $from, string $to, string $search): array
+    private function transactions(?string $from, ?string $to, string $search): array
     {
         $rows = Transaction::query()
             ->with(['customer:id,name', 'paymentMethod:id,name'])
@@ -78,29 +82,72 @@ class OperationsController extends Controller
             ->through(fn ($t) => [
                 'id' => $t->id,
                 'status' => $t->invoiceStatus(),
-                'edit_url' => route('transactions.edit', $t->id),
+                'action_url' => route('transactions.edit', $t->id),
                 'cells' => [
-                    $t->transaction_date->format('d/m/Y'),
-                    $t->invoice_no ?? '—',
-                    $t->customer?->name,
-                    $t->paymentMethod?->name,
-                    number_format((float) $t->grand_total, 2),
-                    number_format((float) $t->net_profit, 2),
+                    $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
+                    $t->paymentMethod?->name, number_format((float) $t->grand_total, 2), number_format((float) $t->net_profit, 2),
                 ],
             ]);
 
-        return [
-            'columns' => ['Date', 'Invoice', 'Customer', 'Method', 'Grand Total', 'Net Profit'],
-            'rows' => $rows,
-            'statusOptions' => [],
-            'summary' => null,
-        ];
+        return ['columns' => ['Date', 'Invoice', 'Customer', 'Method', 'Grand Total', 'Net Profit'], 'rows' => $rows,
+            'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
     }
 
-    private function ledger(string $type, string $from, string $to, string $search, string $status): array
+    private function invoices(?string $from, ?string $to, string $search): array
+    {
+        $rows = Transaction::query()
+            ->with(['customer:id,name'])
+            ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
+            ->when($search, fn ($q) => $q->where('invoice_no', 'like', "%{$search}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")))
+            ->latest('transaction_date')->latest('id')
+            ->paginate(50)->withQueryString()
+            ->through(fn ($t) => [
+                'id' => $t->id,
+                'status' => $t->invoiceStatus(),
+                'action_url' => route('invoices.show', $t->id),
+                'cells' => [
+                    $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
+                    number_format((float) $t->grand_total, 2), number_format((float) $t->creditOutstanding(), 2),
+                ],
+            ]);
+
+        return ['columns' => ['Date', 'Invoice', 'Customer', 'Grand Total', 'Outstanding'], 'rows' => $rows,
+            'statusOptions' => [], 'actionLabel' => 'View', 'bulkDeletable' => false];
+    }
+
+    private function credits(?string $from, ?string $to, string $search): array
+    {
+        $rows = Transaction::query()
+            ->where('credit_amount', '>', 0)
+            ->with(['customer:id,name', 'creditPayments'])
+            ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
+            ->when($search, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")))
+            ->latest('transaction_date')->latest('id')
+            ->paginate(50)->withQueryString()
+            ->through(function ($t) {
+                $out = (float) $t->creditOutstanding();
+
+                return [
+                    'id' => $t->id,
+                    'status' => $out <= 0 ? 'paid' : ($out < (float) $t->credit_amount ? 'partial' : 'unpaid'),
+                    'action_url' => route('credits.index'),
+                    'cells' => [
+                        $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
+                        number_format((float) $t->credit_amount, 2), number_format($out, 2),
+                    ],
+                ];
+            });
+
+        return ['columns' => ['Date', 'Invoice', 'Customer', 'Credit', 'Outstanding'], 'rows' => $rows,
+            'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false];
+    }
+
+    private function ledger(string $type, ?string $from, ?string $to, string $search, string $status): array
     {
         $modelType = $type === 'daily-credit' ? 'daily_credit' : 'borrowed';
-        $slug = $type;
 
         $rows = LedgerEntry::ofType($modelType)
             ->when($from, fn ($q) => $q->whereDate('entry_date', '>=', $from))
@@ -114,15 +161,10 @@ class OperationsController extends Controller
             ->through(fn ($e) => [
                 'id' => $e->id,
                 'status' => $e->status,
-                'edit_url' => route('ledger.index', $slug),
+                'action_url' => route('ledger.index', $type),
                 'cells' => [
-                    $e->entry_date->format('d/m/Y'),
-                    $e->party_name,
-                    $e->reference ?? '—',
-                    $e->vehicle_number ?? '—',
-                    number_format((float) $e->total_amount, 2),
-                    number_format((float) $e->paid_amount, 2),
-                    number_format((float) $e->balance_amount, 2),
+                    $e->entry_date->format('d/m/Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
+                    number_format((float) $e->total_amount, 2), number_format((float) $e->paid_amount, 2), number_format((float) $e->balance_amount, 2),
                 ],
             ]);
 
@@ -130,7 +172,8 @@ class OperationsController extends Controller
             'columns' => ['Date', $type === 'borrowed' ? 'Person' : 'Customer', 'Reference', 'Vehicle', 'Total', $type === 'borrowed' ? 'Returned' : 'Paid', 'Balance'],
             'rows' => $rows,
             'statusOptions' => ['pending' => 'Pending', 'partial' => $type === 'borrowed' ? 'Partially Returned' : 'Partially Paid', 'returned' => 'Returned'],
-            'summary' => null,
+            'actionLabel' => 'Edit',
+            'bulkDeletable' => true,
         ];
     }
 }

@@ -153,6 +153,7 @@ class BulkPaymentController extends Controller
             $msg .= ' AED '.number_format($leftover, 2).' left unallocated (exceeded outstanding balance).';
         }
 
-        return redirect()->route('ledger.index', $meta['slug'])->with('success', $meta['actionLabel'].': AED '.$msg);
+        // back() so this works from both the standalone page and the Operations modal
+        return back()->with('success', $meta['actionLabel'].': AED '.$msg);
     }
 }

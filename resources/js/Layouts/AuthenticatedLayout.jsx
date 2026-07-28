@@ -93,8 +93,6 @@ export default function AuthenticatedLayout({ header, children }) {
                 { label: 'All Operations', href: route('operations.index'), icon: '▤', active: current('operations.*') },
                 { label: 'Invoices', href: route('invoices.index'), icon: '🧾', active: current('invoices.*') },
                 { label: 'Credits', href: route('credits.index'), icon: '◔', active: current('credits.*') },
-                { label: 'Bulk Payment', href: route('bulk.index', 'daily-credit'), icon: '⇉', active: current('bulk.*') && route().params.slug === 'daily-credit' },
-                { label: 'Bulk Return', href: route('bulk.index', 'borrowed'), icon: '⇇', active: current('bulk.*') && route().params.slug === 'borrowed' },
             ],
         },
         {

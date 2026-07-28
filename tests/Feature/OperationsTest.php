@@ -22,7 +22,7 @@ function opTx(string $date): Transaction
     ]);
 }
 
-it('defaults the operations list to today', function () {
+it('defaults the operations list to all dates', function () {
     opTx(today()->toDateString());
     opTx(today()->subDays(5)->toDateString());
 
@@ -30,8 +30,17 @@ it('defaults the operations list to today', function () {
         ->assertOk()
         ->assertInertia(fn ($p) => $p
             ->where('type', 'transactions')
-            ->where('filters.from', today()->toDateString())
-            ->where('rows.data', fn ($rows) => count($rows) === 1)); // only today's
+            ->where('filters.from', null)
+            ->where('rows.data', fn ($rows) => count($rows) === 2)); // never empty
+});
+
+it('folds invoices and credits into tabs', function () {
+    opTx(today()->toDateString());
+
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'invoices']))
+        ->assertInertia(fn ($p) => $p->where('type', 'invoices')->where('actionLabel', 'View'));
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
+        ->assertInertia(fn ($p) => $p->where('type', 'credits')->where('actionLabel', 'Receive'));
 });
 
 it('lists a wider range when dates are provided', function () {

@@ -1,32 +1,46 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { AED } from '@/lib/format';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const input = 'rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
 const statusStyle = {
-    // ledger
     pending: 'bg-red-100 text-accent-red-dark',
     partial: 'bg-amber-100 text-amber-700',
     returned: 'bg-emerald-100 text-emerald-700',
-    // transaction invoice status
     paid: 'bg-emerald-100 text-emerald-700',
     unpaid: 'bg-red-100 text-accent-red-dark',
 };
 
-export default function Operations({ tabs, type, columns, rows, filters, isLedger, statusOptions }) {
+export default function Operations({ tabs, type, columns, rows, filters, isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const canBulkDelete = ['super_admin', 'admin'].includes(role);
+    const showChecks = bulkDeletable && canWrite;
+    const isBorrowed = type === 'borrowed';
 
     const [f, setF] = useState(filters);
     const [selected, setSelected] = useState([]);
+    const [payOpen, setPayOpen] = useState(false);
 
-    const go = (params) => router.get(route('operations.index'), { type, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
+    const go = (params) => router.get(route('operations.index'), { type, ...filters, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
     const switchTab = (key) => { setSelected([]); router.get(route('operations.index'), { type: key }, { preserveState: true }); };
     const applyFilters = (e) => { e?.preventDefault(); go(f); };
-    const reset = () => { setF({ from: '', to: '', search: '', status: '' }); router.get(route('operations.index'), { type, from: '', to: '' }); };
+    const reset = () => { setF({ from: '', to: '', search: '', status: '' }); router.get(route('operations.index'), { type }); };
+    const preset = (kind) => {
+        const today = new Date();
+        const iso = (d) => d.toISOString().slice(0, 10);
+        let from = '';
+        const to = iso(today);
+        if (kind === 'today') from = iso(today);
+        else if (kind === 'week') { const d = new Date(today); d.setDate(d.getDate() - 6); from = iso(d); }
+        else if (kind === 'month') from = iso(new Date(today.getFullYear(), today.getMonth(), 1));
+        else { setF({ ...f, from: '', to: '' }); go({ from: '', to: '' }); return; }
+        setF({ ...f, from, to });
+        go({ from, to });
+    };
 
     const ids = rows.data.map((r) => r.id);
     const allChecked = ids.length > 0 && ids.every((id) => selected.includes(id));
@@ -34,36 +48,34 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
     const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
     const bulkDelete = () => {
-        if (!selected.length) return;
         if (!confirm(`Delete ${selected.length} selected record(s)? They go to the Recycle Bin.`)) return;
         router.post(route('operations.bulk-delete'), { type, ids: selected }, { preserveScroll: true, onSuccess: () => setSelected([]) });
+    };
+
+    const pay = useForm({ mode: 'fifo', amount: '', payment_date: new Date().toISOString().slice(0, 10), payment_method_id: '', note: '', entry_ids: [] });
+    const submitPay = (e) => {
+        e.preventDefault();
+        router.post(route('bulk.store', type), { ...pay.data, entry_ids: selected }, {
+            preserveScroll: true,
+            onSuccess: () => { setPayOpen(false); setSelected([]); pay.reset(); },
+        });
     };
 
     return (
         <AuthenticatedLayout header="Operations">
             <Head title="Operations" />
 
-            {/* Type tabs + quick actions */}
+            {/* Tabs + quick actions */}
             <div className="mb-4 flex flex-wrap items-center gap-2">
-                <div className="flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                <div className="flex flex-wrap rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
                     {tabs.map((t) => (
-                        <button
-                            key={t.key}
-                            onClick={() => switchTab(t.key)}
-                            className={'rounded-md px-4 py-1.5 text-sm font-semibold transition ' + (type === t.key ? 'bg-primary-600 text-white shadow' : 'text-slate-600 hover:bg-slate-100')}
-                        >
+                        <button key={t.key} onClick={() => switchTab(t.key)}
+                            className={'rounded-md px-4 py-1.5 text-sm font-semibold transition ' + (type === t.key ? 'bg-primary-600 text-white shadow' : 'text-slate-600 hover:bg-slate-100')}>
                             {t.label}
                         </button>
                     ))}
                 </div>
-                <div className="ml-auto flex gap-2">
-                    {canWrite && <Link href={route('entry.create')} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700">+ Add Entry</Link>}
-                    {isLedger && canWrite && (
-                        <Link href={route('bulk.index', type)} className="rounded-lg border border-navy-600 px-4 py-2 text-sm font-semibold text-navy-700 hover:bg-navy-50">
-                            {type === 'borrowed' ? 'Bulk Return' : 'Bulk Payment'}
-                        </Link>
-                    )}
-                </div>
+                {canWrite && <Link href={route('entry.create')} className="ml-auto rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700">+ Add Entry</Link>}
             </div>
 
             {/* Filters */}
@@ -92,17 +104,28 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
                     )}
                     <button className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800">Filter</button>
                     <button type="button" onClick={reset} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">Reset</button>
-                    <span className="ml-2 text-xs text-slate-400">
-                        {f.from || f.to ? `Showing ${f.from || '…'} → ${f.to || '…'}` : 'Showing all dates'}
-                    </span>
                 </form>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-slate-400">Quick:</span>
+                    {['today', 'week', 'month', 'all'].map((k) => (
+                        <button key={k} onClick={() => preset(k)} className="rounded-full border border-slate-300 px-3 py-1 capitalize hover:bg-slate-50">
+                            {k === 'week' ? 'This Week' : k === 'month' ? 'This Month' : k === 'all' ? 'All Dates' : 'Today'}
+                        </button>
+                    ))}
+                    <span className="ml-1 text-slate-400">{f.from || f.to ? `Showing ${f.from || '…'} → ${f.to || '…'}` : 'Showing all dates'}</span>
+                </div>
             </Card>
 
             {/* Bulk action bar */}
-            {canBulkDelete && selected.length > 0 && (
-                <div className="mb-3 flex items-center gap-3 rounded-lg bg-navy-800 px-4 py-2 text-sm text-white">
+            {showChecks && selected.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-navy-800 px-4 py-2 text-sm text-white">
                     <span>{selected.length} selected</span>
-                    <button onClick={bulkDelete} className="rounded-lg bg-accent-red px-3 py-1.5 font-semibold hover:bg-accent-red-dark">Delete selected</button>
+                    {isLedger && canWrite && (
+                        <button onClick={() => setPayOpen(true)} className="rounded-lg bg-primary-500 px-3 py-1.5 font-semibold hover:bg-primary-400">
+                            {isBorrowed ? 'Bulk Return' : 'Bulk Payment'}
+                        </button>
+                    )}
+                    {canBulkDelete && <button onClick={bulkDelete} className="rounded-lg bg-accent-red px-3 py-1.5 font-semibold hover:bg-accent-red-dark">Delete selected</button>}
                     <button onClick={() => setSelected([])} className="text-navy-200 hover:text-white">Clear</button>
                 </div>
             )}
@@ -113,38 +136,20 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b text-left text-xs uppercase text-slate-500">
-                                {canBulkDelete && (
-                                    <th className="py-2 pr-3">
-                                        <input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} />
-                                    </th>
-                                )}
+                                {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
                                 {columns.map((c, i) => <th key={c} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right' : '')}>{c}</th>)}
                                 <th className="py-2 pr-3">Status</th>
                                 {canWrite && <th className="py-2"></th>}
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.data.length === 0 && (
-                                <tr><td colSpan={columns.length + 3} className="py-10 text-center text-slate-400">No records for this filter.</td></tr>
-                            )}
+                            {rows.data.length === 0 && <tr><td colSpan={columns.length + 3} className="py-10 text-center text-slate-400">No records for this filter.</td></tr>}
                             {rows.data.map((r) => (
                                 <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-50 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
-                                    {canBulkDelete && (
-                                        <td className="py-2 pr-3">
-                                            <input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} />
-                                        </td>
-                                    )}
-                                    {r.cells.map((cell, i) => (
-                                        <td key={i} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right tabular-nums' : '') + (i === 0 ? ' whitespace-nowrap' : '')}>{cell}</td>
-                                    ))}
-                                    <td className="py-2 pr-3">
-                                        <span className={'rounded-full px-2 py-0.5 text-xs font-semibold ' + (statusStyle[r.status] || 'bg-slate-100 text-slate-600')}>{r.status}</span>
-                                    </td>
-                                    {canWrite && (
-                                        <td className="py-2 whitespace-nowrap text-right">
-                                            <Link href={r.edit_url} className="font-semibold text-primary-600 hover:underline">Edit</Link>
-                                        </td>
-                                    )}
+                                    {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
+                                    {r.cells.map((cell, i) => <td key={i} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right tabular-nums' : '') + (i === 0 ? ' whitespace-nowrap' : '')}>{cell}</td>)}
+                                    <td className="py-2 pr-3"><span className={'rounded-full px-2 py-0.5 text-xs font-semibold ' + (statusStyle[r.status] || 'bg-slate-100 text-slate-600')}>{r.status}</span></td>
+                                    {canWrite && <td className="py-2 whitespace-nowrap text-right"><Link href={r.action_url} className="font-semibold text-primary-600 hover:underline">{actionLabel}</Link></td>}
                                 </tr>
                             ))}
                         </tbody>
@@ -158,6 +163,45 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
                     </div>
                 )}
             </Card>
+
+            {/* Bulk payment / return modal */}
+            {payOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+                        <h3 className="text-lg font-semibold text-navy-800">{isBorrowed ? 'Bulk Return' : 'Bulk Payment'} — {selected.length} entries</h3>
+                        <p className="mt-1 text-xs text-slate-500">The amount is distributed across the selected entries, oldest first (FIFO).</p>
+                        <form onSubmit={submitPay} className="mt-4 space-y-3">
+                            <label className="block">
+                                <span className="mb-1 block text-xs font-medium text-slate-600">Total {isBorrowed ? 'Return' : 'Payment'} Amount</span>
+                                <input type="number" step="0.01" className={input + ' w-full'} value={pay.data.amount} onChange={(e) => pay.setData('amount', e.target.value)} required />
+                                {pay.errors.amount && <span className="mt-1 block text-xs text-accent-red">{pay.errors.amount}</span>}
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Date</span>
+                                    <input type="date" className={input + ' w-full'} value={pay.data.payment_date} onChange={(e) => pay.setData('payment_date', e.target.value)} />
+                                </label>
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Via</span>
+                                    <select className={input + ' w-full'} value={pay.data.payment_method_id} onChange={(e) => pay.setData('payment_method_id', e.target.value)}>
+                                        <option value="">—</option>
+                                        {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </select>
+                                </label>
+                            </div>
+                            <label className="block">
+                                <span className="mb-1 block text-xs font-medium text-slate-600">Note</span>
+                                <input className={input + ' w-full'} value={pay.data.note} onChange={(e) => pay.setData('note', e.target.value)} />
+                            </label>
+                            {pay.errors.bulk && <p className="rounded bg-red-50 p-2 text-xs text-accent-red-dark">{pay.errors.bulk}</p>}
+                            <div className="flex gap-2 pt-1">
+                                <button disabled={pay.processing} className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">Apply</button>
+                                <button type="button" onClick={() => setPayOpen(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }
