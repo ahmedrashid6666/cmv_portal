@@ -63,6 +63,64 @@ it('parses rows, expense amount, commission and flags a bad numeric', function (
     expect((float) $bad['customs_fees'])->toBe(0.0);
 });
 
+/**
+ * Builds the newer "Sales Invoice Profit Report" layout: header on row 1, no
+ * gov-fees column, "Net Amount" instead of "Total Amount", and two commission
+ * columns both labelled plainly "COMMISION" (no Com-1/Com-2 suffix).
+ */
+function makeProfitReport(): string
+{
+    $ss = new Spreadsheet();
+    $sheet = $ss->getActiveSheet();
+    $sheet->setTitle('ProfitReport_28072026');
+
+    $headers = ['Sl No.', 'Invoice No', 'Boe No.', 'Customer', 'Reference', 'Vehicle No.',
+        'Customs', 'Profit', 'VAT', 'Net Amount', 'Payment Received', 'COMMISION', 'COMMISION'];
+    foreach ($headers as $i => $h) {
+        $sheet->setCellValue([$i + 1, 1], $h);
+    }
+
+    // single-commission row (30) and dual-commission row (20 + 55)
+    $r1 = [1, '57445', "''2030029961826''", 'MAPEI CONSTRUCTION', 'AHMED', '72458DXB', 245, 25, 0, 270, 'CASH', 30, ''];
+    $r2 = [6, '57450', "''2030029979426''", 'GP GLOBAL MAG L.L.C', 'STP', '1584HW', 245, 30, 0, 275, 'CASH', 20, 55];
+
+    foreach ([$r1, $r2] as $ri => $row) {
+        foreach ($row as $ci => $val) {
+            if ($val !== '') {
+                $sheet->setCellValue([$ci + 1, 2 + $ri], $val);
+            }
+        }
+    }
+
+    $path = tempnam(sys_get_temp_dir(), 'pr').'.xlsx';
+    (new Xlsx($ss))->save($path);
+
+    return $path;
+}
+
+it('imports commission from the profit-report layout (plain COMMISION headers)', function () {
+    $importer = app(WorkbookImporter::class);
+    $preview = $importer->parse(makeProfitReport());
+
+    // both commission columns are picked up despite the identical header text
+    $dual = collect($preview['rows'])->firstWhere('invoice_no', '57450');
+    expect((float) $dual['commission_1'])->toBe(20.0)
+        ->and((float) $dual['commission_2'])->toBe(55.0)
+        ->and((float) $dual['customs_fees'])->toBe(245.0)
+        ->and((float) $dual['profit'])->toBe(30.0);
+
+    $importer->commit($preview);
+
+    $t = Transaction::where('invoice_no', '57450')->with('commissions')->first();
+    expect($t->commissions)->toHaveCount(2)
+        ->and((float) $t->commissions->sum('amount'))->toBe(75.0)
+        ->and((float) $t->total_amount)->toBe(275.0); // 245 customs + 30 profit, no gov
+
+    $single = Transaction::where('invoice_no', '57445')->with('commissions')->first();
+    expect($single->commissions)->toHaveCount(1)
+        ->and((float) $single->commissions->first()->amount)->toBe(30.0);
+});
+
 it('flags rows already in the system as duplicates in the preview', function () {
     $importer = app(WorkbookImporter::class);
     $path = makeWorkbook();

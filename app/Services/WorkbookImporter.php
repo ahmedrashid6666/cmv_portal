@@ -36,8 +36,8 @@ class WorkbookImporter
         'credit' => 'credit_amount',
         'expenses details' => 'expense_desc',
         'expense details' => 'expense_desc',
-        'com-1' => 'commission_1',
-        'com-2' => 'commission_2',
+        // Commission columns ("Com-1"/"Com-2" or plain "COMMISION") are matched
+        // separately in mapColumns() so both spellings and duplicate headers work.
     ];
 
     /**
@@ -261,6 +261,20 @@ class WorkbookImporter
             // and "Credit Amount" — match it exactly so substrings don't collide.
             if ($norm === 'amount' && ! isset($map['expense_amount'])) {
                 $map['expense_amount'] = $idx;
+
+                continue;
+            }
+
+            // Commission columns. Workbooks label them either "Com-1"/"Com-2" or
+            // just "COMMISION"/"COMMISSION" (sometimes two identical headers side
+            // by side). Assign the first commission column to Com-1, the next to
+            // Com-2, regardless of the exact spelling.
+            if (str_contains($norm, 'commis') || preg_match('/\bcom-?\s*[12]?\b/', $norm)) {
+                if (! isset($map['commission_1'])) {
+                    $map['commission_1'] = $idx;
+                } elseif (! isset($map['commission_2'])) {
+                    $map['commission_2'] = $idx;
+                }
 
                 continue;
             }
