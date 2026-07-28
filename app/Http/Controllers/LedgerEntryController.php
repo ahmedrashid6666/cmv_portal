@@ -92,6 +92,20 @@ class LedgerEntryController extends Controller
         return back()->with('success', $meta['label'].' entry deleted.');
     }
 
+    /**
+     * Quick-settle: set the paid/returned amount directly (from the status dialog).
+     * The model recomputes balance, status and return date.
+     */
+    public function settle(Request $request, string $slug, LedgerEntry $ledgerEntry)
+    {
+        $meta = $this->meta($slug);
+        abort_unless($ledgerEntry->type === $meta['type'], 404);
+        $data = $request->validate(['paid_amount' => ['required', 'numeric', 'min:0']]);
+        $ledgerEntry->update(['paid_amount' => $data['paid_amount']]);
+
+        return back()->with('success', 'Paid amount updated.');
+    }
+
     public function export(Request $request, string $slug)
     {
         $meta = $this->meta($slug);

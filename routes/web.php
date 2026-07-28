@@ -69,13 +69,16 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:super_admin,admin,accountant')->group(function () {
         Route::post('ledger/{slug}', [LedgerEntryController::class, 'store'])->name('ledger.store');
         Route::put('ledger/{slug}/{ledgerEntry}', [LedgerEntryController::class, 'update'])->name('ledger.update');
+        Route::put('ledger/{slug}/{ledgerEntry}/settle', [LedgerEntryController::class, 'settle'])->name('ledger.settle');
         Route::delete('ledger/{slug}/{ledgerEntry}', [LedgerEntryController::class, 'destroy'])->name('ledger.destroy');
     });
 
     // Credits / receivables
     Route::get('credits', [CreditPaymentController::class, 'index'])->name('credits.index');
-    Route::post('credits', [CreditPaymentController::class, 'store'])
-        ->middleware('role:super_admin,admin,accountant')->name('credits.store');
+    Route::middleware('role:super_admin,admin,accountant')->group(function () {
+        Route::post('credits', [CreditPaymentController::class, 'store'])->name('credits.store');
+        Route::delete('credits/payments/{creditPayment}', [CreditPaymentController::class, 'destroyPayment'])->name('credits.payment.destroy');
+    });
 
     // Masters (read for all; writes for super_admin/admin)
     Route::get('masters/{master}', [MasterController::class, 'index'])->name('masters.index');

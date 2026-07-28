@@ -68,10 +68,32 @@ class OperationsController extends Controller
         return back()->with('success', "{$count} record(s) moved to the recycle bin.");
     }
 
+    /** Payment/collect state for a credit sale (transactions + credits tabs). */
+    private function creditSettle(Transaction $t): ?array
+    {
+        if ((float) $t->credit_amount <= 0) {
+            return null;
+        }
+
+        return [
+            'kind' => 'credit',
+            'id' => $t->id,
+            'label' => ($t->invoice_no ?? 'TXN-'.$t->id).' — '.$t->customer?->name,
+            'credit' => (float) $t->credit_amount,
+            'outstanding' => round((float) $t->creditOutstanding(), 2),
+            'payments' => $t->creditPayments->map(fn ($p) => [
+                'id' => $p->id,
+                'date' => $p->payment_date->format('d/m/Y'),
+                'amount' => (float) $p->amount,
+                'method' => $p->paymentMethod?->name ?? '—',
+            ])->values(),
+        ];
+    }
+
     private function transactions(?string $from, ?string $to, string $search): array
     {
         $rows = Transaction::query()
-            ->with(['customer:id,name', 'paymentMethod:id,name'])
+            ->with(['customer:id,name', 'paymentMethod:id,name', 'creditPayments.paymentMethod:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
@@ -83,6 +105,7 @@ class OperationsController extends Controller
                 'id' => $t->id,
                 'status' => $t->invoiceStatus(),
                 'action_url' => route('transactions.edit', $t->id),
+                'settle' => $this->creditSettle($t),
                 'cells' => [
                     $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
                     $t->paymentMethod?->name, number_format((float) $t->grand_total, 2), number_format((float) $t->net_profit, 2),
@@ -121,7 +144,7 @@ class OperationsController extends Controller
     {
         $rows = Transaction::query()
             ->where('credit_amount', '>', 0)
-            ->with(['customer:id,name', 'creditPayments'])
+            ->with(['customer:id,name', 'creditPayments.paymentMethod:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")))
@@ -134,12 +157,7 @@ class OperationsController extends Controller
                     'id' => $t->id,
                     'status' => $out <= 0 ? 'paid' : ($out < (float) $t->credit_amount ? 'partial' : 'unpaid'),
                     'action_url' => route('credits.index'),
-                    // powers the in-page Receive dialog (only when something is owed)
-                    'receive' => $out > 0 ? [
-                        'id' => $t->id,
-                        'outstanding' => round($out, 2),
-                        'label' => ($t->invoice_no ?? 'TXN-'.$t->id).' — '.$t->customer?->name,
-                    ] : null,
+                    'settle' => $this->creditSettle($t),
                     'cells' => [
                         $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
                         number_format((float) $t->credit_amount, 2), number_format($out, 2),
@@ -168,6 +186,14 @@ class OperationsController extends Controller
                 'id' => $e->id,
                 'status' => $e->status,
                 'action_url' => route('ledger.index', $type),
+                'settle' => [
+                    'kind' => 'ledger',
+                    'slug' => $type,
+                    'id' => $e->id,
+                    'label' => $e->party_name,
+                    'total' => (float) $e->total_amount,
+                    'paid' => (float) $e->paid_amount,
+                ],
                 'cells' => [
                     $e->entry_date->format('d/m/Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
                     number_format((float) $e->total_amount, 2), number_format((float) $e->paid_amount, 2), number_format((float) $e->balance_amount, 2),

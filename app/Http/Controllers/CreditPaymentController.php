@@ -58,4 +58,12 @@ class CreditPaymentController extends Controller
 
         return back()->with('success', 'Payment recorded.');
     }
+
+    /** Reverse a recorded credit payment (edits the effective paid amount). */
+    public function destroyPayment(CreditPayment $creditPayment)
+    {
+        $creditPayment->delete();
+
+        return back()->with('success', 'Payment reversed.');
+    }
 }
