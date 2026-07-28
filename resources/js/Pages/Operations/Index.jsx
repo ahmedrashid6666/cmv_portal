@@ -24,6 +24,7 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
     const [f, setF] = useState(filters);
     const [selected, setSelected] = useState([]);
     const [payOpen, setPayOpen] = useState(false);
+    const [receiveRow, setReceiveRow] = useState(null); // credits tab: {id, outstanding, label}
 
     const go = (params) => router.get(route('operations.index'), { type, ...filters, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
     const switchTab = (key) => { setSelected([]); router.get(route('operations.index'), { type: key }, { preserveState: true }); };
@@ -59,6 +60,14 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
             preserveScroll: true,
             onSuccess: () => { setPayOpen(false); setSelected([]); pay.reset(); },
         });
+    };
+
+    // Credits tab: receive a (partial or full) payment against a credit sale
+    const rcv = useForm({ transaction_id: null, amount: '', payment_date: new Date().toISOString().slice(0, 10), payment_method_id: '', note: '' });
+    const openReceive = (r) => { setReceiveRow(r); rcv.setData({ transaction_id: r.id, amount: r.outstanding, payment_date: new Date().toISOString().slice(0, 10), payment_method_id: '', note: '' }); };
+    const submitReceive = (e) => {
+        e.preventDefault();
+        rcv.post(route('credits.store'), { preserveScroll: true, onSuccess: () => setReceiveRow(null) });
     };
 
     return (
@@ -149,7 +158,15 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
                                     {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
                                     {r.cells.map((cell, i) => <td key={i} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right tabular-nums' : '') + (i === 0 ? ' whitespace-nowrap' : '')}>{cell}</td>)}
                                     <td className="py-2 pr-3"><span className={'rounded-full px-2 py-0.5 text-xs font-semibold ' + (statusStyle[r.status] || 'bg-slate-100 text-slate-600')}>{r.status}</span></td>
-                                    {canWrite && <td className="py-2 whitespace-nowrap text-right"><Link href={r.action_url} className="font-semibold text-primary-600 hover:underline">{actionLabel}</Link></td>}
+                                    {canWrite && (
+                                        <td className="py-2 whitespace-nowrap text-right">
+                                            {type === 'credits'
+                                                ? (r.receive
+                                                    ? <button onClick={() => openReceive(r.receive)} className="font-semibold text-primary-600 hover:underline">Receive</button>
+                                                    : <span className="text-slate-300">Paid</span>)
+                                                : <Link href={r.action_url} className="font-semibold text-primary-600 hover:underline">{actionLabel}</Link>}
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -197,6 +214,46 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
                             <div className="flex gap-2 pt-1">
                                 <button disabled={pay.processing} className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">Apply</button>
                                 <button type="button" onClick={() => setPayOpen(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Receive credit payment dialog */}
+            {receiveRow && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+                        <h3 className="text-lg font-semibold text-navy-800">Receive Payment</h3>
+                        <p className="mt-1 text-sm text-slate-500">{receiveRow.label}</p>
+                        <p className="text-sm">Outstanding: <span className="font-semibold text-accent-red">{AED(receiveRow.outstanding)}</span></p>
+                        <form onSubmit={submitReceive} className="mt-4 space-y-3">
+                            <label className="block">
+                                <span className="mb-1 block text-xs font-medium text-slate-600">Amount received <span className="text-slate-400">(enter less for a partial payment)</span></span>
+                                <input type="number" step="0.01" max={receiveRow.outstanding} className={input + ' w-full'} value={rcv.data.amount} onChange={(e) => rcv.setData('amount', e.target.value)} required />
+                                {rcv.errors.amount && <span className="mt-1 block text-xs text-accent-red">{rcv.errors.amount}</span>}
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Date</span>
+                                    <input type="date" className={input + ' w-full'} value={rcv.data.payment_date} onChange={(e) => rcv.setData('payment_date', e.target.value)} />
+                                </label>
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Received Via</span>
+                                    <select className={input + ' w-full'} value={rcv.data.payment_method_id} onChange={(e) => rcv.setData('payment_method_id', e.target.value)}>
+                                        <option value="">—</option>
+                                        {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </select>
+                                    {rcv.errors.payment_method_id && <span className="mt-1 block text-xs text-accent-red">{rcv.errors.payment_method_id}</span>}
+                                </label>
+                            </div>
+                            <label className="block">
+                                <span className="mb-1 block text-xs font-medium text-slate-600">Note</span>
+                                <input className={input + ' w-full'} value={rcv.data.note} onChange={(e) => rcv.setData('note', e.target.value)} />
+                            </label>
+                            <div className="flex gap-2 pt-1">
+                                <button disabled={rcv.processing} className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">Receive Payment</button>
+                                <button type="button" onClick={() => setReceiveRow(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
                             </div>
                         </form>
                     </div>

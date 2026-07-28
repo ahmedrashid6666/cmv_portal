@@ -134,6 +134,12 @@ class OperationsController extends Controller
                     'id' => $t->id,
                     'status' => $out <= 0 ? 'paid' : ($out < (float) $t->credit_amount ? 'partial' : 'unpaid'),
                     'action_url' => route('credits.index'),
+                    // powers the in-page Receive dialog (only when something is owed)
+                    'receive' => $out > 0 ? [
+                        'id' => $t->id,
+                        'outstanding' => round($out, 2),
+                        'label' => ($t->invoice_no ?? 'TXN-'.$t->id).' — '.$t->customer?->name,
+                    ] : null,
                     'cells' => [
                         $t->transaction_date->format('d/m/Y'), $t->invoice_no ?? '—', $t->customer?->name,
                         number_format((float) $t->credit_amount, 2), number_format($out, 2),

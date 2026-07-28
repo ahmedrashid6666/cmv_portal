@@ -90,9 +90,7 @@ export default function AuthenticatedLayout({ header, children }) {
             label: 'Operations',
             icon: '₪',
             items: [
-                { label: 'All Operations', href: route('operations.index'), icon: '▤', active: current('operations.*') },
-                { label: 'Invoices', href: route('invoices.index'), icon: '🧾', active: current('invoices.*') },
-                { label: 'Credits', href: route('credits.index'), icon: '◔', active: current('credits.*') },
+                { label: 'All Operations', href: route('operations.index'), icon: '▤', active: current('operations.*') || current('invoices.*') || current('credits.*') },
             ],
         },
         {
