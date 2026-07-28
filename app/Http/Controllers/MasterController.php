@@ -104,4 +104,29 @@ class MasterController extends Controller
 
         return back()->with('success', $config['singular'].' deleted.');
     }
+
+    /** Delete many masters at once; records still in use are skipped. */
+    public function bulkDestroy(Request $request, string $master)
+    {
+        $config = MasterRegistry::get($master);
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1'], 'ids.*' => ['integer']]);
+
+        $deleted = 0;
+        $blocked = 0;
+        foreach ($config['model']::whereIn('id', $data['ids'])->get() as $record) {
+            try {
+                $record->delete();
+                $deleted++;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $blocked++; // referenced by a transaction/entry
+            }
+        }
+
+        $msg = "{$deleted} deleted.";
+        if ($blocked > 0) {
+            $msg .= " {$blocked} in use and skipped.";
+        }
+
+        return back()->with('success', $msg);
+    }
 }

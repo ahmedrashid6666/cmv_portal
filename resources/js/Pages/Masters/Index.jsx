@@ -28,16 +28,35 @@ export default function MastersIndex({ master, label, singular, columns, fields,
     const submitBulk = (e) => { e.preventDefault(); bulk.post(route('masters.bulk', master), { onSuccess: () => bulk.reset() }); };
     const primaryLabel = fields[0]?.label ?? 'value';
 
+    // Bulk delete
+    const [selected, setSelected] = useState([]);
+    const ids = rows.data.map((r) => r.id);
+    const allChecked = ids.length > 0 && ids.every((id) => selected.includes(id));
+    const toggleAll = () => setSelected(allChecked ? [] : ids);
+    const toggleOne = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+    const bulkDelete = () => {
+        if (!confirm(`Delete ${selected.length} selected ${label}? Records still in use are skipped.`)) return;
+        router.post(route('masters.bulk-destroy', master), { ids: selected }, { preserveScroll: true, onSuccess: () => setSelected([]) });
+    };
+
     return (
         <AuthenticatedLayout header={label}>
             <Head title={label} />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <Card title={label} className="lg:col-span-2">
+                    {canWrite && selected.length > 0 && (
+                        <div className="mb-3 flex items-center gap-3 rounded-lg bg-navy-800 px-4 py-2 text-sm text-white">
+                            <span>{selected.length} selected</span>
+                            <button onClick={bulkDelete} className="rounded-lg bg-accent-red px-3 py-1.5 font-semibold hover:bg-accent-red-dark">Delete selected</button>
+                            <button onClick={() => setSelected([])} className="text-navy-200 hover:text-white">Clear</button>
+                        </div>
+                    )}
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b text-left text-xs uppercase text-slate-500">
+                                    {canWrite && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
                                     {Object.values(columns).map((c) => <th key={c} className="py-2 pr-4">{c}</th>)}
                                     {canWrite && <th className="py-2"></th>}
                                 </tr>
@@ -47,7 +66,8 @@ export default function MastersIndex({ master, label, singular, columns, fields,
                                     <tr><td colSpan="9" className="py-8 text-center text-slate-400">No records yet.</td></tr>
                                 )}
                                 {rows.data.map((row) => (
-                                    <tr key={row.id} className="border-b last:border-0 hover:bg-slate-50">
+                                    <tr key={row.id} className={'border-b last:border-0 hover:bg-slate-50 ' + (selected.includes(row.id) ? 'bg-primary-50' : '')}>
+                                        {canWrite && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(row.id)} onChange={() => toggleOne(row.id)} /></td>}
                                         {Object.keys(columns).map((k) => <td key={k} className="py-2 pr-4">{String(row[k] ?? '—')}</td>)}
                                         {canWrite && (
                                             <td className="py-2 whitespace-nowrap text-right">
