@@ -86,14 +86,6 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const groups = [
         {
-            key: 'operations',
-            label: 'Operations',
-            icon: '₪',
-            items: [
-                { label: 'All Operations', href: route('operations.index'), icon: '▤', active: current('operations.*') || current('invoices.*') || current('credits.*') },
-            ],
-        },
-        {
             key: 'books',
             label: 'Books',
             icon: '₵',
@@ -157,6 +149,13 @@ export default function AuthenticatedLayout({ header, children }) {
             )}
             <NavItem href={route('dashboard')} active={current('dashboard')} icon="▤">
                 Dashboard
+            </NavItem>
+            <NavItem
+                href={route('operations.index')}
+                active={current('operations.*') || current('invoices.*') || current('credits.*')}
+                icon="₪"
+            >
+                Operations
             </NavItem>
             {groups.map((g) => (
                 <NavGroup

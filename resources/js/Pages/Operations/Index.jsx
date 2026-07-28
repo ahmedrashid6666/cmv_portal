@@ -152,16 +152,18 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
                         <thead>
                             <tr className="border-b text-left text-xs uppercase text-slate-500">
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
+                                <th className="py-2 pr-3">Sl No</th>
                                 {columns.map((c, i) => <th key={c} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right' : '')}>{c}</th>)}
                                 <th className="py-2 pr-3">Status</th>
                                 {canWrite && <th className="py-2"></th>}
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.data.length === 0 && <tr><td colSpan={columns.length + 3} className="py-10 text-center text-slate-400">No records for this filter.</td></tr>}
-                            {rows.data.map((r) => (
+                            {rows.data.length === 0 && <tr><td colSpan={columns.length + 4} className="py-10 text-center text-slate-400">No records for this filter.</td></tr>}
+                            {rows.data.map((r, ri) => (
                                 <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-50 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
                                     {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
+                                    <td className="py-2 pr-3 text-slate-400">{(rows.from || 1) + ri}</td>
                                     {r.cells.map((cell, i) => <td key={i} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right tabular-nums' : '') + (i === 0 ? ' whitespace-nowrap' : '')}>{cell}</td>)}
                                     <td className="py-2 pr-3">
                                         {r.settle && canWrite ? (
