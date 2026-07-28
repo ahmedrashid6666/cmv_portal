@@ -61,9 +61,12 @@ export default function TransactionEntryForm({
         payment_method_id: transaction?.payment_method_id ?? '',
         credit_amount: transaction?.credit_amount ?? 0,
         remarks: transaction?.remarks ?? '',
+        // Office/overhead expenses now live in their own entry (Add Entry → Office
+        // Expense). Any expenses already attached to a transaction (e.g. legacy
+        // imports) are preserved on edit but no longer editable here.
         expenses: transaction?.expenses?.length
             ? transaction.expenses.map((e) => ({ expense_category_id: e.expense_category_id ?? '', description: e.description ?? '', amount: e.amount ?? '' }))
-            : [{ expense_category_id: '', description: '', amount: '' }],
+            : [],
         commissions: transaction?.commissions?.length
             ? transaction.commissions.map((c) => ({ label: c.label ?? '', amount: c.amount ?? '', type: c.type ?? 'charged_to_customer', reference_id: c.reference_id ?? '' }))
             : [{ label: '', amount: '', type: 'charged_to_customer', reference_id: '' }],
@@ -73,11 +76,8 @@ export default function TransactionEntryForm({
     const setCustom = (key, value) => setData('custom_data', { ...data.custom_data, [key]: value });
     const totals = useMemo(() => computeTotals(data), [data]);
 
-    const setExpense = (i, k, v) => setData('expenses', data.expenses.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
     const setCommission = (i, k, v) => setData('commissions', data.commissions.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
-    const addExpense = () => setData('expenses', [...data.expenses, { expense_category_id: '', description: '', amount: '' }]);
     const addCommission = () => setData('commissions', [...data.commissions, { label: '', amount: '', type: 'charged_to_customer', reference_id: '' }]);
-    const removeExpense = (i) => setData('expenses', data.expenses.filter((_, idx) => idx !== i));
     const removeCommission = (i) => setData('commissions', data.commissions.filter((_, idx) => idx !== i));
 
     const submit = (e) => {
@@ -138,22 +138,6 @@ export default function TransactionEntryForm({
                         <Field label="VAT Rate (%)" error={errors.vat_rate}>
                             <input type="number" step="0.01" className={input} value={data.vat_rate} onChange={(e) => setData('vat_rate', e.target.value)} />
                         </Field>
-                    </div>
-                </Card>
-
-                <Card title="Expenses" action={<button type="button" onClick={addExpense} className="text-xs font-semibold text-primary-600 hover:underline">+ Add row</button>}>
-                    <div className="space-y-2">
-                        {data.expenses.map((row, i) => (
-                            <div key={i} className="grid grid-cols-12 gap-2">
-                                <select className={input + ' col-span-4'} value={row.expense_category_id} onChange={(e) => setExpense(i, 'expense_category_id', e.target.value)}>
-                                    <option value="">Category…</option>
-                                    {expenseCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                                <input className={input + ' col-span-5'} placeholder="Description" value={row.description} onChange={(e) => setExpense(i, 'description', e.target.value)} />
-                                <input type="number" step="0.01" className={input + ' col-span-2'} placeholder="Amount" value={row.amount} onChange={(e) => setExpense(i, 'amount', e.target.value)} />
-                                <button type="button" onClick={() => removeExpense(i)} className="col-span-1 text-accent-red hover:text-accent-red-dark">✕</button>
-                            </div>
-                        ))}
                     </div>
                 </Card>
 
@@ -231,7 +215,7 @@ export default function TransactionEntryForm({
                     <dl className="space-y-2 text-sm">
                         <Row label="VAT Amount" value={totals.vat_amount} currency={data.currency} />
                         <Row label="Total Amount" value={totals.total_amount} strong currency={data.currency} />
-                        <Row label="Total Expenses" value={totals.total_expenses} currency={data.currency} />
+                        {totals.total_expenses > 0 && <Row label="Total Expenses" value={totals.total_expenses} currency={data.currency} />}
                         <Row label="Commission (payable)" value={totals.commission_payable} currency={data.currency} />
                         <div className="my-2 border-t" />
                         <Row label="Grand Total" value={totals.grand_total} big accent="primary" currency={data.currency} />

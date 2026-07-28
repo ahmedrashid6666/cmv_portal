@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Models\Customer;
+use App\Models\ExpenseCategory;
 use App\Models\User;
 use App\Models\Vehicle;
 
@@ -22,6 +23,15 @@ it('quick-adds a vehicle by number and is idempotent', function () {
     $this->actingAs($user)->postJson(route('masters.quick', 'vehicles'), ['number' => 'DXB-999'])->assertOk();
 
     expect(Vehicle::where('number', 'DXB-999')->count())->toBe(1);
+});
+
+it('quick-adds an expense category from the office-expense dropdown', function () {
+    $this->actingAs(User::factory()->role(Role::ACCOUNTANT)->create())
+        ->postJson(route('masters.quick', 'expense-categories'), ['name' => 'Cleaning'])
+        ->assertOk()
+        ->assertJsonPath('label', 'Cleaning');
+
+    expect(ExpenseCategory::where('name', 'Cleaning')->exists())->toBeTrue();
 });
 
 it('rejects quick-add for non-allowed master types', function () {

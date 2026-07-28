@@ -15,6 +15,7 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
     const [query, setQuery] = useState('');
     const [created, setCreated] = useState([]); // items added inline this session
     const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
     const wrap = useRef(null);
 
     // Prop options + anything created inline (kept even as `options` re-renders).
@@ -36,8 +37,9 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
 
     const create = async () => {
         const label = query.trim();
-        if (!label || !createSlug) return;
+        if (!label || !createSlug || busy) return;
         setBusy(true);
+        setError('');
         try {
             const { data } = await window.axios.post(route('masters.quick', createSlug), { [createField]: label });
             const opt = { value: valueField === 'label' ? data.label : data.id, label: data.label };
@@ -46,7 +48,15 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
             setOpen(false);
             setQuery('');
         } catch (e) {
-            // keep dialog open on failure
+            // Surface the real reason instead of failing silently.
+            const status = e?.response?.status;
+            const validation = e?.response?.data?.errors?.[createField]?.[0];
+            setError(
+                validation
+                    || (status === 419 ? 'Session expired — please refresh the page and try again.'
+                        : status === 403 ? 'You do not have permission to add here.'
+                            : e?.response?.data?.message || 'Could not add. Please try again.')
+            );
         } finally {
             setBusy(false);
         }
@@ -67,7 +77,7 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
                         <input
                             autoFocus
                             value={query}
-                            onChange={(e) => setQuery(e.target.value)}
+                            onChange={(e) => { setQuery(e.target.value); if (error) setError(''); }}
                             onKeyDown={(e) => { if (e.key === 'Enter' && canCreate) { e.preventDefault(); create(); } }}
                             placeholder={createSlug ? 'Search or type to add…' : 'Search…'}
                             className="w-full rounded-md border-slate-300 text-sm focus:border-primary-500 focus:ring-primary-500"
@@ -91,11 +101,12 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
                             <li className="border-t">
                                 <button type="button" disabled={busy} onClick={create} className="flex w-full items-center gap-2 px-3 py-2 text-left font-semibold text-primary-600 hover:bg-primary-50 disabled:opacity-50">
                                     <span className="flex h-5 w-5 items-center justify-center rounded bg-primary-600 text-xs text-white">+</span>
-                                    Add “{query.trim()}”
+                                    {busy ? 'Adding…' : `Add “${query.trim()}”`}
                                 </button>
                             </li>
                         )}
                     </ul>
+                    {error && <p className="border-t bg-red-50 px-3 py-2 text-xs text-accent-red-dark">{error}</p>}
                 </div>
             )}
         </div>

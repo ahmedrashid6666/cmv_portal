@@ -55,3 +55,31 @@ it('forbids an accountant from importing', function () {
         ->post(route('import.preview'), ['file' => uploadedWorkbook()])
         ->assertForbidden();
 });
+
+it('shows a validation error (not a 500) when the workbook cannot be read', function () {
+    $this->mock(\App\Services\WorkbookImporter::class)
+        ->shouldReceive('parse')->andThrow(new \RuntimeException('Could not open file for reading'));
+
+    $this->actingAs(User::factory()->role(Role::ADMIN)->create())
+        ->from(route('import.index'))
+        ->post(route('import.preview'), ['file' => uploadedWorkbook()])
+        ->assertRedirect(route('import.index'))
+        ->assertSessionHasErrors('file');
+});
+
+it('flashes an error (not a 500) when a commit fails', function () {
+    $mock = $this->mock(\App\Services\WorkbookImporter::class);
+    $mock->shouldReceive('parse')->andReturn(['rows' => []]);
+    $mock->shouldReceive('commit')->andThrow(new \Illuminate\Database\QueryException(
+        'mysql', 'insert', [], new \Exception("SQLSTATE[42S22]: Unknown column 'currency'")
+    ));
+
+    $admin = User::factory()->role(Role::ADMIN)->create();
+    \Illuminate\Support\Facades\Storage::disk('local')->put('imports/x.xlsx', 'data');
+
+    $this->actingAs($admin)
+        ->from(route('import.index'))
+        ->post(route('import.commit'), ['token' => 'imports/x.xlsx'])
+        ->assertRedirect(route('import.index'))
+        ->assertSessionHas('error');
+});

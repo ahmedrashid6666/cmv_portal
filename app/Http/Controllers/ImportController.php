@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\WorkbookImporter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ImportController extends Controller
@@ -22,7 +24,17 @@ class ImportController extends Controller
 
         $path = $request->file('file')->store('imports', 'local');
         $absolute = Storage::disk('local')->path($path);
-        $preview = $importer->parse($absolute);
+
+        try {
+            $preview = $importer->parse($absolute);
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            Log::warning('Excel import preview failed', ['error' => $e->getMessage()]);
+
+            throw ValidationException::withMessages([
+                'file' => 'Could not read this file: '.$this->friendly($e),
+            ]);
+        }
 
         return Inertia::render('Import/Index', [
             'preview' => [
@@ -48,7 +60,15 @@ class ImportController extends Controller
         abort_unless(Storage::disk('local')->exists($path), 404, 'Upload expired, please re-upload.');
 
         $absolute = Storage::disk('local')->path($path);
-        $result = $importer->commit($importer->parse($absolute), $request->user()->id);
+
+        try {
+            $result = $importer->commit($importer->parse($absolute), $request->user()->id);
+        } catch (\Throwable $e) {
+            Log::error('Excel import commit failed', ['error' => $e->getMessage()]);
+
+            return back()->with('error', 'Import failed — nothing was saved. '.$this->friendly($e));
+        }
+
         Storage::disk('local')->delete($path);
 
         return redirect()->route('transactions.index')->with(
@@ -56,5 +76,22 @@ class ImportController extends Controller
             "Imported {$result['created']} transaction(s), skipped {$result['skipped']} duplicate(s). "
             ."Created {$result['customers']} customers, {$result['references']} references, {$result['vehicles']} vehicles."
         );
+    }
+
+    /**
+     * Turn a raw exception into a message that helps the user, not a stack trace.
+     */
+    private function friendly(\Throwable $e): string
+    {
+        $msg = $e->getMessage();
+
+        if (str_contains($msg, 'Unknown column') || str_contains($msg, 'SQLSTATE')) {
+            return 'the database is missing a recent update. Please run the pending migrations (php artisan migrate) and try again.';
+        }
+        if (stripos($msg, 'zip') !== false || stripos($msg, 'not recognised') !== false || stripos($msg, 'could not open') !== false) {
+            return 'the file appears to be corrupt or is not a valid .xlsx/.xlsm/.csv workbook.';
+        }
+
+        return \Illuminate\Support\Str::limit($msg, 200);
     }
 }

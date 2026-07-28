@@ -45,7 +45,7 @@ class MasterController extends Controller
      */
     public function quickStore(Request $request, string $master)
     {
-        abort_unless(in_array($master, ['customers', 'references', 'vehicles'], true), 404);
+        abort_unless(in_array($master, ['customers', 'references', 'vehicles', 'expense-categories'], true), 404);
         $config = MasterRegistry::get($master);
         $field = $config['fields'][0]['name']; // name / number
 

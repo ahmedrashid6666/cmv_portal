@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import TransactionEntryForm from '@/Components/forms/TransactionEntryForm';
 import LedgerEntryForm from '@/Components/forms/LedgerEntryForm';
+import OfficeExpenseForm from '@/Components/forms/OfficeExpenseForm';
 import { Card } from '@/Components/ui/Card';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
@@ -15,7 +16,8 @@ export default function AddEntry({ customers, references, vehicles, paymentMetho
     const [type, setType] = useState('transaction');
 
     const types = [
-        { key: 'transaction', title: 'New Transaction', sub: 'Income / Expense shipment entry', icon: '₪' },
+        { key: 'transaction', title: 'New Transaction', sub: 'Shipment income entry', icon: '₪' },
+        { key: 'office-expense', title: 'Office Expense', sub: 'Overhead / running cost', icon: '⛁' },
         { key: 'daily-credit', title: 'Daily Credit', sub: 'Credit given to a customer', icon: '↗' },
         { key: 'borrowed', title: 'Borrowed Amount', sub: 'Amount borrowed from a person', icon: '↘' },
     ];
@@ -26,7 +28,7 @@ export default function AddEntry({ customers, references, vehicles, paymentMetho
             <Head title="Add Entry" />
 
             {/* Transaction type selector */}
-            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {types.map((t) => (
                     <button
                         key={t.key}
@@ -61,6 +63,21 @@ export default function AddEntry({ customers, references, vehicles, paymentMetho
                     customFields={customFields}
                     onDone={() => router.visit(route('transactions.index'))}
                 />
+            ) : type === 'office-expense' ? (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <Card title="Office Expense" className="lg:col-span-1">
+                        <OfficeExpenseForm
+                            expenseCategories={expenseCategories}
+                            paymentMethods={paymentMethods}
+                            onDone={() => router.visit(route('operations.index', { type: 'office-expenses' }))}
+                        />
+                    </Card>
+                    <div className="hidden rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-400 lg:col-span-2 lg:block">
+                        Record a running cost that isn't tied to a shipment — rent, salaries, utilities, stationery, etc.
+                        Paying by a cash method reduces the Cash Book; a bank method reduces the Bank Book. Saved expenses
+                        appear under Operations → Office Expenses.
+                    </div>
+                </div>
             ) : (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <Card title={ledgerMeta.label} className="lg:col-span-1 lg:col-start-1">

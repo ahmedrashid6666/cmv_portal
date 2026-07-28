@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Bank;
 use App\Models\Customer;
+use App\Models\OfficeExpense;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\TransactionExpense;
@@ -18,7 +19,9 @@ use Illuminate\Support\Facades\DB;
  *    method's `type` (cash|bank). Credit sales land nowhere yet — they
  *    become receivables tracked by credit_amount.
  *  - Later credit repayments land in cash or bank by their own method type.
- *  - Expenses are petty-cash outflows: they reduce the cash balance.
+ *  - Transaction expenses are petty-cash outflows: they reduce the cash balance.
+ *  - Office expenses are standalone outflows: they reduce cash or bank by the
+ *    bucket of their own payment method.
  */
 class BalanceService
 {
@@ -33,8 +36,9 @@ class BalanceService
 
         $balance = bcadd($this->d($opening), $receipts, 2);
         $balance = bcadd($balance, $repayments, 2);
+        $balance = bcsub($balance, $expenses, 2);
 
-        return bcsub($balance, $expenses, 2);
+        return bcsub($balance, $this->officeExpensesByBucket('cash'), 2);
     }
 
     public function bankBalance(): string
@@ -44,8 +48,9 @@ class BalanceService
         $repayments = $this->creditRepaymentsByBucket('bank');
 
         $balance = bcadd($this->d($opening), $receipts, 2);
+        $balance = bcadd($balance, $repayments, 2);
 
-        return bcadd($balance, $repayments, 2);
+        return bcsub($balance, $this->officeExpensesByBucket('bank'), 2);
     }
 
     /** Total unpaid receivables across all credit sales. */
@@ -95,7 +100,10 @@ class BalanceService
     {
         $date ??= Carbon::today();
 
-        return $this->d((string) TransactionExpense::whereHas('transaction', fn ($q) => $q->whereDate('transaction_date', $date))->sum('amount'));
+        $txn = (string) TransactionExpense::whereHas('transaction', fn ($q) => $q->whereDate('transaction_date', $date))->sum('amount');
+        $office = (string) OfficeExpense::whereDate('expense_date', $date)->sum('amount');
+
+        return $this->d(bcadd($this->d($txn), $this->d($office), 2));
     }
 
     public function monthlyIncome(int $year, int $month): string
@@ -107,10 +115,14 @@ class BalanceService
 
     public function monthlyExpenses(int $year, int $month): string
     {
-        return $this->d((string) TransactionExpense::whereHas('transaction', fn ($q) => $q
+        $txn = (string) TransactionExpense::whereHas('transaction', fn ($q) => $q
             ->whereYear('transaction_date', $year)
             ->whereMonth('transaction_date', $month))
-            ->sum('amount'));
+            ->sum('amount');
+        $office = (string) OfficeExpense::whereYear('expense_date', $year)
+            ->whereMonth('expense_date', $month)->sum('amount');
+
+        return $this->d(bcadd($this->d($txn), $this->d($office), 2));
     }
 
     public function totalProfit(): string
@@ -146,6 +158,14 @@ class BalanceService
         // whereHas respects the Transaction soft-delete scope, so expenses of
         // deleted transactions are excluded.
         return $this->d((string) TransactionExpense::whereHas('transaction')->sum('amount'));
+    }
+
+    /** Standalone office expenses paid from the given bucket (cash|bank). */
+    private function officeExpensesByBucket(string $bucket): string
+    {
+        return $this->d((string) OfficeExpense::query()
+            ->whereHas('paymentMethod', fn ($q) => $q->where('type', $bucket))
+            ->sum('amount'));
     }
 
     private function d(string $value): string

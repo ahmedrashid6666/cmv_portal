@@ -13,6 +13,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LedgerEntryController;
 use App\Http\Controllers\MasterController;
+use App\Http\Controllers\OfficeExpenseController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecycleBinController;
@@ -46,6 +47,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('transactions/{transaction}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
         Route::put('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+    });
+
+    // Office / overhead expenses (standalone cash-out entries)
+    Route::middleware('role:super_admin,admin,accountant')->group(function () {
+        Route::post('office-expenses', [OfficeExpenseController::class, 'store'])->name('office-expenses.store');
+        Route::delete('office-expenses/{officeExpense}', [OfficeExpenseController::class, 'destroy'])->name('office-expenses.destroy');
     });
 
     // Daily cash count (physical denomination count + reconciliation)

@@ -189,8 +189,10 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                                 className={'rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ring-transparent transition hover:ring-slate-300 ' + (statusStyle[r.status] || 'bg-slate-100 text-slate-600')}>
                                                 {r.status} ✎
                                             </button>
-                                        ) : (
+                                        ) : r.status ? (
                                             <span className={'rounded-full px-2 py-0.5 text-xs font-semibold ' + (statusStyle[r.status] || 'bg-slate-100 text-slate-600')}>{r.status}</span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
                                         )}
                                     </td>
                                     {canWrite && (
@@ -199,7 +201,9 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                                 ? (r.settle && r.settle.outstanding > 0
                                                     ? <button onClick={() => openSettle(r.settle)} className="font-semibold text-primary-600 hover:underline">Receive</button>
                                                     : <span className="text-slate-300">Paid</span>)
-                                                : <Link href={r.action_url} className="font-semibold text-primary-600 hover:underline">{actionLabel}</Link>}
+                                                : (actionLabel && r.action_url
+                                                    ? <Link href={r.action_url} className="font-semibold text-primary-600 hover:underline">{actionLabel}</Link>
+                                                    : <span className="text-slate-300">—</span>)}
                                         </td>
                                     )}
                                 </tr>

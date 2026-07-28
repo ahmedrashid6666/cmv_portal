@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\LedgerEntry;
+use App\Models\OfficeExpense;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class OperationsController extends Controller
         'credits' => 'Credits',
         'daily-credit' => 'Daily Credit',
         'borrowed' => 'Borrowed Amount',
+        'office-expenses' => 'Office Expenses',
     ];
 
     public function index(Request $request)
@@ -42,6 +44,7 @@ class OperationsController extends Controller
             'invoices' => $this->invoices($from, $to, $search, $sort, $dir),
             'credits' => $this->credits($from, $to, $search, $sort, $dir),
             'daily-credit', 'borrowed' => $this->ledger($type, $from, $to, $search, $status, $sort, $dir),
+            'office-expenses' => $this->officeExpenses($from, $to, $search, $sort, $dir),
             default => $this->transactions($from, $to, $search, $sort, $dir),
         };
 
@@ -58,15 +61,17 @@ class OperationsController extends Controller
     public function bulkDestroy(Request $request)
     {
         $data = $request->validate([
-            'type' => ['required', 'in:transactions,daily-credit,borrowed'],
+            'type' => ['required', 'in:transactions,daily-credit,borrowed,office-expenses'],
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer'],
         ]);
 
-        $count = $data['type'] === 'transactions'
-            ? Transaction::whereIn('id', $data['ids'])->delete()
-            : LedgerEntry::ofType($data['type'] === 'daily-credit' ? 'daily_credit' : 'borrowed')
-                ->whereIn('id', $data['ids'])->delete();
+        $count = match ($data['type']) {
+            'transactions' => Transaction::whereIn('id', $data['ids'])->delete(),
+            'office-expenses' => OfficeExpense::whereIn('id', $data['ids'])->delete(),
+            default => LedgerEntry::ofType($data['type'] === 'daily-credit' ? 'daily_credit' : 'borrowed')
+                ->whereIn('id', $data['ids'])->delete(),
+        };
 
         return back()->with('success', "{$count} record(s) moved to the recycle bin.");
     }
@@ -207,6 +212,39 @@ class OperationsController extends Controller
         return ['columns' => ['Date', 'Invoice', 'Customer', 'Credit', 'Outstanding'], 'rows' => $rows,
             'sortKeys' => ['transaction_date', 'invoice_no', 'customer', 'credit_amount', null],
             'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false];
+    }
+
+    private function officeExpenses(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
+    {
+        $query = OfficeExpense::query()
+            ->with(['category:id,name', 'paymentMethod:id,name'])
+            ->when($from, fn ($q) => $q->whereDate('expense_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('expense_date', '<=', $to))
+            ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('description', 'like', "%{$search}%")
+                ->orWhere('remarks', 'like', "%{$search}%")
+                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        $this->sort($query, $sort, $dir, [
+            'expense_date' => 'expense_date',
+            'category' => fn ($q, $d) => $q->orderBy(\App\Models\ExpenseCategory::select('name')->whereColumn('expense_categories.id', 'office_expenses.expense_category_id')->limit(1), $d),
+            'method' => fn ($q, $d) => $q->orderBy(PaymentMethod::select('name')->whereColumn('payment_methods.id', 'office_expenses.payment_method_id')->limit(1), $d),
+            'amount' => 'amount',
+        ], 'expense_date');
+
+        $rows = $query->paginate(50)->withQueryString()->through(fn ($e) => [
+            'id' => $e->id, 'status' => null, 'action_url' => null,
+            'cells' => [
+                $e->expense_date->format('d/m/Y'),
+                $e->category?->name ?? '—',
+                $e->description ?: '—',
+                $e->paymentMethod?->name ?? '—',
+                ($e->currency ?: 'AED').' '.number_format((float) $e->amount, 2),
+            ],
+        ]);
+
+        return ['columns' => ['Date', 'Category', 'Description', 'Method', 'Amount'], 'rows' => $rows,
+            'sortKeys' => ['expense_date', 'category', null, 'method', 'amount'],
+            'statusOptions' => [], 'actionLabel' => null, 'bulkDeletable' => true];
     }
 
     private function ledger(string $type, ?string $from, ?string $to, string $search, string $status, ?string $sort, string $dir): array
