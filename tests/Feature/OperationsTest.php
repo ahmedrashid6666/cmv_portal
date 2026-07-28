@@ -59,6 +59,17 @@ it('switches to the daily-credit type', function () {
         ->assertInertia(fn ($p) => $p->where('type', 'daily-credit')->where('isLedger', true));
 });
 
+it('sorts the list by a column and direction', function () {
+    Transaction::create(['transaction_date' => today()->toDateString(), 'invoice_no' => 'A', 'customer_id' => $this->customer->id, 'payment_method_id' => $this->cash->id, 'customs_fees' => 100, 'gov_fees' => 0, 'profit' => 10, 'vat_rate' => 0]);
+    Transaction::create(['transaction_date' => today()->toDateString(), 'invoice_no' => 'B', 'customer_id' => $this->customer->id, 'payment_method_id' => $this->cash->id, 'customs_fees' => 900, 'gov_fees' => 0, 'profit' => 10, 'vat_rate' => 0]);
+
+    // grand_total ascending → the 110 row (invoice A) comes first
+    $this->actingAs($this->admin)->get(route('operations.index', ['sort' => 'grand_total', 'dir' => 'asc']))
+        ->assertInertia(fn ($p) => $p
+            ->where('sort.by', 'grand_total')->where('sort.dir', 'asc')
+            ->where('rows.data.0.cells.1', 'A'));
+});
+
 it('bulk-deletes selected transactions to the recycle bin', function () {
     $a = opTx(today()->toDateString());
     $b = opTx(today()->toDateString());

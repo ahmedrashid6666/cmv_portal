@@ -14,7 +14,7 @@ const statusStyle = {
     unpaid: 'bg-red-100 text-accent-red-dark',
 };
 
-export default function Operations({ tabs, type, columns, rows, filters, isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods }) {
+export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const canBulkDelete = ['super_admin', 'admin'].includes(role);
@@ -26,7 +26,17 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
     const [payOpen, setPayOpen] = useState(false);
     const [settleRow, setSettleRow] = useState(null); // row.settle {kind:'credit'|'ledger', ...}
 
-    const go = (params) => router.get(route('operations.index'), { type, ...filters, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
+    const go = (params) => router.get(route('operations.index'), { type, ...filters, sort: sort?.by, dir: sort?.dir, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
+    const sortBy = (key) => {
+        if (!key) return;
+        const dir = sort?.by === key && sort?.dir === 'asc' ? 'desc' : 'asc';
+        go({ sort: key, dir });
+    };
+    const arrow = (key) => {
+        if (!key) return null;
+        if (sort?.by !== key) return <span className="text-slate-300">⇅</span>;
+        return <span className="text-primary-600">{sort.dir === 'asc' ? '↑' : '↓'}</span>;
+    };
     const switchTab = (key) => { setSelected([]); router.get(route('operations.index'), { type: key }, { preserveState: true }); };
     const applyFilters = (e) => { e?.preventDefault(); go(f); };
     const reset = () => { setF({ from: '', to: '', search: '', status: '' }); router.get(route('operations.index'), { type }); };
@@ -153,7 +163,15 @@ export default function Operations({ tabs, type, columns, rows, filters, isLedge
                             <tr className="border-b text-left text-xs uppercase text-slate-500">
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
                                 <th className="py-2 pr-3">Sl No</th>
-                                {columns.map((c, i) => <th key={c} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right' : '')}>{c}</th>)}
+                                {columns.map((c, i) => (
+                                    <th key={c} className={'py-2 pr-3 ' + (i >= 4 ? 'text-right' : '')}>
+                                        {sortKeys[i] ? (
+                                            <button onClick={() => sortBy(sortKeys[i])} className="inline-flex items-center gap-1 uppercase hover:text-navy-700">
+                                                {c} {arrow(sortKeys[i])}
+                                            </button>
+                                        ) : c}
+                                    </th>
+                                ))}
                                 <th className="py-2 pr-3">Status</th>
                                 {canWrite && <th className="py-2"></th>}
                             </tr>
