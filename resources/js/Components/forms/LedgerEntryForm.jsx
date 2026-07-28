@@ -1,3 +1,4 @@
+import ComboBox from '@/Components/ComboBox';
 import { AED } from '@/lib/format';
 import { useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
@@ -24,9 +25,13 @@ function Field({ label, error, required, children }) {
  * Add / edit form for a Daily-Credit or Borrowed ledger entry.
  * `meta` = { slug, type, label, partyLabel, paidLabel }.
  */
-export default function LedgerEntryForm({ meta, entry, labels, onDone }) {
+export default function LedgerEntryForm({ meta, entry, labels, onDone, customers = [], references = [], vehicles = [] }) {
     const editing = !!entry;
     const isBorrowed = meta.type === 'borrowed';
+    const partyOptions = (isBorrowed ? references : customers).map((x) => ({ value: x.name, label: x.name }));
+    const partySlug = isBorrowed ? 'references' : 'customers';
+    const refOptions = references.map((r) => ({ value: r.name, label: r.name }));
+    const vehOptions = vehicles.map((v) => ({ value: v.number, label: v.number }));
     const blank = {
         entry_date: entry?.entry_date ?? new Date().toISOString().slice(0, 10),
         party_name: entry?.party_name ?? '',
@@ -54,14 +59,14 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone }) {
                 <input type="date" className={input} value={data.entry_date} onChange={(e) => setData('entry_date', e.target.value)} />
             </Field>
             <Field label={meta.partyLabel} error={errors.party_name} required>
-                <input className={input} value={data.party_name} onChange={(e) => setData('party_name', e.target.value)} />
+                <ComboBox options={partyOptions} value={data.party_name} onChange={(v) => setData('party_name', v)} placeholder={`Select or add ${meta.partyLabel}`} createSlug={partySlug} createField="name" valueField="label" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
                 <Field label="Reference" error={errors.reference}>
-                    <input className={input} value={data.reference} onChange={(e) => setData('reference', e.target.value)} />
+                    <ComboBox options={refOptions} value={data.reference} onChange={(v) => setData('reference', v)} placeholder="—" createSlug="references" createField="name" valueField="label" />
                 </Field>
                 <Field label="Vehicle No" error={errors.vehicle_number}>
-                    <input className={input} value={data.vehicle_number} onChange={(e) => setData('vehicle_number', e.target.value)} />
+                    <ComboBox options={vehOptions} value={data.vehicle_number} onChange={(v) => setData('vehicle_number', v)} placeholder="—" createSlug="vehicles" createField="number" valueField="label" />
                 </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">

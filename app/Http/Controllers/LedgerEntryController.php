@@ -60,6 +60,9 @@ class LedgerEntryController extends Controller
             'entries' => $this->filtered($request, $type)
                 ->latest('entry_date')->latest('id')->paginate(20)->withQueryString(),
             'filters' => $request->only(['search', 'status', 'from', 'to']),
+            'customers' => \App\Models\Customer::orderBy('name')->get(['id', 'name']),
+            'references' => \App\Models\Reference::orderBy('name')->get(['id', 'name']),
+            'vehicles' => \App\Models\Vehicle::orderBy('number')->get(['id', 'number']),
         ]);
     }
 

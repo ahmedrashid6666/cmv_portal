@@ -1,4 +1,5 @@
 import { Card } from '@/Components/ui/Card';
+import ComboBox from '@/Components/ComboBox';
 import { AED } from '@/lib/format';
 import { computeTotals } from '@/lib/calc';
 import { Link, useForm } from '@inertiajs/react';
@@ -99,22 +100,25 @@ export default function TransactionEntryForm({
                             <input className={input} value={data.boe_no} onChange={(e) => setData('boe_no', e.target.value)} />
                         </Field>
                         <Field label="Customer" required error={errors.customer_id}>
-                            <select className={input} value={data.customer_id} onChange={(e) => setData('customer_id', e.target.value)}>
-                                <option value="">Select customer…</option>
-                                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
+                            <ComboBox
+                                options={customers.map((c) => ({ value: c.id, label: c.name }))}
+                                value={data.customer_id} onChange={(v) => setData('customer_id', v)}
+                                placeholder="Select customer…" createSlug="customers" createField="name"
+                            />
                         </Field>
                         <Field label="Reference" error={errors.reference_id}>
-                            <select className={input} value={data.reference_id} onChange={(e) => setData('reference_id', e.target.value)}>
-                                <option value="">—</option>
-                                {references.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                            </select>
+                            <ComboBox
+                                options={references.map((r) => ({ value: r.id, label: r.name }))}
+                                value={data.reference_id} onChange={(v) => setData('reference_id', v)}
+                                placeholder="—" createSlug="references" createField="name"
+                            />
                         </Field>
                         <Field label="Vehicle" error={errors.vehicle_id}>
-                            <select className={input} value={data.vehicle_id} onChange={(e) => setData('vehicle_id', e.target.value)}>
-                                <option value="">—</option>
-                                {vehicles.map((v) => <option key={v.id} value={v.id}>{v.number}</option>)}
-                            </select>
+                            <ComboBox
+                                options={vehicles.map((v) => ({ value: v.id, label: v.number }))}
+                                value={data.vehicle_id} onChange={(v) => setData('vehicle_id', v)}
+                                placeholder="—" createSlug="vehicles" createField="number"
+                            />
                         </Field>
                     </div>
                 </Card>

@@ -82,6 +82,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Masters (read for all; writes for super_admin/admin)
     Route::get('masters/{master}', [MasterController::class, 'index'])->name('masters.index');
+    // Quick-add from a dropdown (customers/references/vehicles) — accountants too
+    Route::post('quick-add/{master}', [MasterController::class, 'quickStore'])
+        ->middleware('role:super_admin,admin,accountant')->name('masters.quick');
     Route::middleware('role:super_admin,admin')->group(function () {
         Route::post('masters/{master}', [MasterController::class, 'store'])->name('masters.store');
         Route::put('masters/{master}/{id}', [MasterController::class, 'update'])->name('masters.update');

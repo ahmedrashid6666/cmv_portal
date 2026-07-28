@@ -39,6 +39,22 @@ class MasterController extends Controller
         return back()->with('success', $config['singular'].' created.');
     }
 
+    /**
+     * Quick-add a master from a dropdown (customers / references / vehicles),
+     * returning the new record as JSON so the combobox can select it.
+     */
+    public function quickStore(Request $request, string $master)
+    {
+        abort_unless(in_array($master, ['customers', 'references', 'vehicles'], true), 404);
+        $config = MasterRegistry::get($master);
+        $field = $config['fields'][0]['name']; // name / number
+
+        $data = $request->validate([$field => ['required', 'string', 'max:255']]);
+        $record = $config['model']::firstOrCreate([$field => trim($data[$field])]);
+
+        return response()->json(['id' => $record->id, 'label' => $record->{$field}]);
+    }
+
     public function update(Request $request, string $master, int $id)
     {
         $config = MasterRegistry::get($master);

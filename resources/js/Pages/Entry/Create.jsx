@@ -68,6 +68,9 @@ export default function AddEntry({ customers, references, vehicles, paymentMetho
                             key={ledgerMeta.slug}
                             meta={ledgerMeta}
                             labels={ledgerLabels(ledgerMeta.type)}
+                            customers={customers}
+                            references={references}
+                            vehicles={vehicles}
                             onDone={() => router.visit(route('ledger.index', ledgerMeta.slug))}
                         />
                     </Card>

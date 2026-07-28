@@ -18,7 +18,7 @@ const statusLabels = (t) => ({
     returned: 'Returned',
 });
 
-export default function LedgerIndex({ meta, summary, entries, filters }) {
+export default function LedgerIndex({ meta, summary, entries, filters, customers = [], references = [], vehicles = [] }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const labels = statusLabels(meta.type);
@@ -145,6 +145,9 @@ export default function LedgerIndex({ meta, summary, entries, filters }) {
                             meta={meta}
                             entry={editingEntry}
                             labels={labels}
+                            customers={customers}
+                            references={references}
+                            vehicles={vehicles}
                             onDone={() => setEditingEntry(null)}
                         />
                     </Card>
