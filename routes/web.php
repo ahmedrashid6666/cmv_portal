@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BulkPaymentController;
+use App\Http\Controllers\CashCountController;
 use App\Http\Controllers\CreditPaymentController;
 use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
@@ -46,6 +47,12 @@ Route::middleware(['auth'])->group(function () {
         Route::put('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     });
+
+    // Daily cash count (physical denomination count + reconciliation)
+    Route::get('cash-count', [CashCountController::class, 'index'])->name('cash-count.index');
+    Route::get('cash-count/{cashCount}/pdf', [CashCountController::class, 'pdf'])->name('cash-count.pdf');
+    Route::post('cash-count', [CashCountController::class, 'store'])
+        ->middleware('role:super_admin,admin,accountant')->name('cash-count.store');
 
     // Books (running-balance ledgers)
     Route::get('books/cash-bank', [BookController::class, 'cashBank'])->name('books.cashbank');

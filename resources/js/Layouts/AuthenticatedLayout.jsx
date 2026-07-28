@@ -92,6 +92,7 @@ export default function AuthenticatedLayout({ header, children }) {
             items: [
                 { label: 'Cash & Bank Book', href: route('books.cashbank'), icon: '₵', active: current('books.cashbank') },
                 { label: 'Customer Ledger', href: route('books.ledger'), icon: '≣', active: current('books.ledger') },
+                { label: 'Daily Cash Count', href: route('cash-count.index'), icon: '🧮', active: current('cash-count.*') },
             ],
         },
         {
