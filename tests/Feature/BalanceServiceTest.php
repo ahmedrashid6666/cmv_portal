@@ -67,3 +67,23 @@ it('computes today income, expenses and total profit', function () {
         ->and($this->svc->todaysExpenses())->toBe('30.00')
         ->and($this->svc->totalProfit())->toBe('20.00'); // 50 profit - 30 expense
 });
+
+it('recognizes the received (non-credit) portion of a partial credit sale as cash', function () {
+    // grand_total 330 (customs 245 + profit 35 + Com-1 50), of which 110 is on credit.
+    $t = tx(['payment_method_id' => $this->credit->id, 'customs_fees' => 245, 'profit' => 35, 'credit_amount' => 110]);
+    $t->commissions()->create(['label' => 'Com-1', 'amount' => 50, 'type' => 'charged_to_customer']);
+    $t->recomputeTotals();
+
+    // 330 − 110 = 220 received in cash; 110 remains a receivable.
+    expect($this->svc->cashBalance())->toBe('220.00')
+        ->and($this->svc->creditOutstandingTotal())->toBe('110.00');
+});
+
+it('excludes the credit portion of a cash sale from the cash balance', function () {
+    // cash sale grand_total 300, of which 100 is on credit → only 200 received.
+    $t = tx(['payment_method_id' => $this->cash->id, 'customs_fees' => 300, 'profit' => 0, 'credit_amount' => 100]);
+    $t->recomputeTotals();
+
+    expect($this->svc->cashBalance())->toBe('200.00')
+        ->and($this->svc->creditOutstandingTotal())->toBe('100.00');
+});

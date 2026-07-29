@@ -44,6 +44,13 @@ it('marks a partially-paid credit sale as partial', function () {
     expect($t->invoiceStatus())->toBe('partial');
 });
 
+it('marks a credit sale that was partly received at the point of sale as partial', function () {
+    // grand_total 345, of which only 110 is on credit → 235 received up front.
+    $t = invTx(['invoice_no' => '56735', 'payment_method_id' => $this->credit->id, 'credit_amount' => 110]);
+
+    expect($t->invoiceStatus())->toBe('partial');
+});
+
 it('shows the invoice list and a single invoice', function () {
     invTx([]);
 

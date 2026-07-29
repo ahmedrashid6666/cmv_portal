@@ -144,7 +144,14 @@ class Transaction extends Model
             return 'paid';
         }
 
-        return $outstanding < (float) $this->credit_amount ? 'partial' : 'unpaid';
+        // "partial" if any of the sale was already received — either up front
+        // (grand_total − credit_amount) or through a later credit repayment.
+        $receivedAtSale = (float) $this->grand_total - (float) $this->credit_amount;
+        if ($receivedAtSale > 0 || $outstanding < (float) $this->credit_amount) {
+            return 'partial';
+        }
+
+        return 'unpaid';
     }
 
     /** Outstanding credit for this transaction (credit_amount - payments). */

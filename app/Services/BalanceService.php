@@ -162,9 +162,16 @@ class BalanceService
 
     private function saleReceiptsByBucket(string $bucket): string
     {
+        // Received at the point of sale = grand_total − credit_amount. The credit
+        // portion is a receivable (tracked separately), not money in hand.
+        // A "Credit" method sale can still take a partial cash payment, so its
+        // received part lands in cash alongside cash sales.
+        $types = $bucket === 'cash' ? ['cash', 'credit'] : [$bucket];
+
         return $this->d((string) Transaction::query()
-            ->whereHas('paymentMethod', fn ($q) => $q->where('type', $bucket))
-            ->sum('grand_total'));
+            ->whereHas('paymentMethod', fn ($q) => $q->whereIn('type', $types))
+            ->selectRaw('COALESCE(SUM(grand_total - credit_amount), 0) as received')
+            ->value('received'));
     }
 
     private function creditRepaymentsByBucket(string $bucket): string
