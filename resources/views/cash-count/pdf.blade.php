@@ -17,7 +17,7 @@
 <body>
     <div class="head">
         <div class="company">CMV Shipping</div>
-        <div style="font-size:13px;color:#158a8b;">Daily Cash Count — {{ $count->count_date->format('d/m/Y') }}</div>
+        <div style="font-size:13px;color:#158a8b;">Daily Cash Count — {{ $count->count_date->format('d-m-Y') }}</div>
     </div>
 
     <table class="cols"><tr>

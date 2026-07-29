@@ -46,7 +46,7 @@
             </td>
             <td style="text-align:right;">
                 <div class="inv-title">INVOICE</div>
-                <div class="muted"># {{ $invoice['invoice_no'] }}<br>Date: {{ \Illuminate\Support\Carbon::parse($invoice['date'])->format('d/m/Y') }}</div>
+                <div class="muted"># {{ $invoice['invoice_no'] }}<br>Date: {{ \Illuminate\Support\Carbon::parse($invoice['date'])->format('d-m-Y') }}</div>
                 <div style="margin-top:6px;">
                     <span class="badge {{ $invoice['status'] }}">{{ strtoupper($invoice['status']) }}</span>
                 </div>

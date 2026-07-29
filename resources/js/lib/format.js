@@ -11,12 +11,20 @@ export const money = (n, currency = 'AED') => `${currency} ${num(n)}`;
 
 export const CURRENCIES = ['AED', 'OMR'];
 
-// Display a date as DD/MM/YYYY. Accepts 'YYYY-MM-DD', ISO datetime, or 'YYYY-MM-DD HH:mm'.
+// Display a date as DD-MM-YYYY, and any time in 12-hour format (e.g. 06:31 PM).
+// Accepts 'YYYY-MM-DD', ISO datetime, or 'YYYY-MM-DD HH:mm'.
 // Returns the input unchanged if it isn't a recognisable date.
 export const fmtDate = (value) => {
     if (!value) return '';
-    const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2}))?/);
+    const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
     if (!m) return value;
-    const [, y, mo, d, time] = m;
-    return `${d}/${mo}/${y}` + (time ? ` ${time}` : '');
+    const [, y, mo, d, hh, mm] = m;
+    let time = '';
+    if (hh !== undefined) {
+        let h = parseInt(hh, 10);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        time = ` ${String(h).padStart(2, '0')}:${mm} ${ampm}`;
+    }
+    return `${d}-${mo}-${y}${time}`;
 };

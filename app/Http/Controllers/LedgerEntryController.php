@@ -119,10 +119,10 @@ class LedgerEntryController extends Controller
             'title' => $meta['label'].' Report',
             'columns' => ['Date', $meta['partyLabel'], 'Reference', 'Vehicle', 'Total', $meta['paidLabel'], 'Balance', 'Status', 'Return Date'],
             'rows' => $entries->map(fn ($e) => [
-                $e->entry_date->format('d/m/Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
+                $e->entry_date->format('d-m-Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
                 number_format((float) $e->total_amount, 2), number_format((float) $e->paid_amount, 2),
                 number_format((float) $e->balance_amount, 2), ucfirst($e->status),
-                $e->return_date?->format('d/m/Y') ?? '—',
+                $e->return_date?->format('d-m-Y') ?? '—',
             ])->all(),
             'totals' => [
                 'Total' => round((float) $entries->sum('total_amount'), 2),
