@@ -44,7 +44,7 @@ it('previews an uploaded workbook and then commits it', function () {
 
     $this->actingAs($admin)
         ->post(route('import.commit'), ['token' => $files[0]])
-        ->assertRedirect(route('transactions.index'));
+        ->assertRedirect(route('operations.index', ['type' => 'transactions']));
 
     expect(Transaction::count())->toBe(1)
         ->and((float) Transaction::first()->total_amount)->toBe(280.0);

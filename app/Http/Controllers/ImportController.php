@@ -82,7 +82,7 @@ class ImportController extends Controller
 
         Storage::disk('local')->delete($path);
 
-        return redirect()->route('transactions.index')->with(
+        return redirect()->route('operations.index', ['type' => 'transactions'])->with(
             'success',
             "Imported {$result['created']} transaction(s), skipped {$result['skipped']} duplicate(s). "
             ."Created {$result['customers']} customers, {$result['references']} references, {$result['vehicles']} vehicles."
