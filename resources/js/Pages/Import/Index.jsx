@@ -34,12 +34,17 @@ export default function ImportIndex({ preview }) {
                             onChange={(e) => setData('file', e.target.files[0])}
                             className="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary-700"
                         />
-                        {errors.file && <span className="mt-1 block text-xs text-accent-red">{errors.file}</span>}
                     </div>
                     <button disabled={processing} className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800 disabled:opacity-50">
                         {processing ? 'Reading…' : 'Preview'}
                     </button>
                 </form>
+                {errors.file && (
+                    <div className="mt-3 rounded-lg border border-accent-red/40 bg-red-50 px-4 py-3">
+                        <p className="text-sm font-semibold text-accent-red-dark">Could not import this file</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-accent-red-dark">{errors.file}</p>
+                    </div>
+                )}
                 <p className="mt-3 text-xs text-slate-400">
                     We detect per-day sheets and map your columns automatically. Nothing is saved until you confirm.
                 </p>

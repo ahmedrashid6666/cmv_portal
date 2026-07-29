@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\WorkbookFormatException;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Reference;
@@ -69,9 +70,19 @@ class WorkbookImporter
                 $existingInvoiceKeys[trim($t->invoice_no).'|'.$t->transaction_date->format('Y-m-d')] = true;
             });
         $duplicateCount = 0;
+        $firstSheetHeaders = null; // for a helpful "wrong format" message
 
         foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
             $data = $sheet->toArray(null, true, false, false);
+            if ($firstSheetHeaders === null) {
+                foreach ($data as $r) {
+                    $cells = array_values(array_filter(array_map(fn ($c) => trim((string) $c), $r), fn ($c) => $c !== ''));
+                    if ($cells) {
+                        $firstSheetHeaders = $cells;
+                        break;
+                    }
+                }
+            }
             $headerRow = $this->findHeaderRow($data);
             if ($headerRow === null) {
                 continue; // not a data sheet (e.g. MONTH END CALCULATION)
@@ -127,6 +138,26 @@ class WorkbookImporter
                 }
                 $rows[] = $parsed;
             }
+        }
+
+        $expected = 'Expected headers: Invoice No, Boe No, Customer Name, Reference, Vehicle No, Customs Fees (CDR), Other Gov.Fees, Profit, VAT, Total Amount, Commission, Grand Total, Credit Amount, Payment.';
+
+        if (empty($sheets)) {
+            $found = $firstSheetHeaders
+                ? '"'.implode('", "', array_slice($firstSheetHeaders, 0, 15)).'"'
+                : '(no readable rows were found in the file)';
+
+            throw new WorkbookFormatException(
+                'Wrong file format: no data table was detected. The importer needs a header row that contains at least a "Customer" column and an "Invoice" column. '
+                ."Columns found in the first sheet: {$found}. {$expected}"
+            );
+        }
+
+        if (empty($rows)) {
+            throw new WorkbookFormatException(
+                "Wrong file format: the header row was found on sheet '".$sheets[0]."', but no valid data rows could be read. "
+                .'Each row needs a Customer name and at least one numeric money value (Customs Fees, Other Gov.Fees or Profit). '.$expected
+            );
         }
 
         return compact('rows', 'errors', 'newCustomers', 'newReferences', 'newVehicles', 'sheets', 'duplicateCount');

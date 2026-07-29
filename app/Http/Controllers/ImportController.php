@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\WorkbookFormatException;
 use App\Services\WorkbookImporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,12 @@ class ImportController extends Controller
 
         try {
             $preview = $importer->parse($absolute);
+        } catch (WorkbookFormatException $e) {
+            Storage::disk('local')->delete($path);
+            Log::warning('Excel import wrong format', ['error' => $e->getMessage()]);
+
+            // Show the exact, user-facing format error verbatim.
+            throw ValidationException::withMessages(['file' => $e->getMessage()]);
         } catch (\Throwable $e) {
             Storage::disk('local')->delete($path);
             Log::warning('Excel import preview failed', ['error' => $e->getMessage()]);
@@ -63,6 +70,10 @@ class ImportController extends Controller
 
         try {
             $result = $importer->commit($importer->parse($absolute), $request->user()->id);
+        } catch (WorkbookFormatException $e) {
+            Log::warning('Excel import wrong format', ['error' => $e->getMessage()]);
+
+            return back()->with('error', 'Import failed — nothing was saved. '.$e->getMessage());
         } catch (\Throwable $e) {
             Log::error('Excel import commit failed', ['error' => $e->getMessage()]);
 
