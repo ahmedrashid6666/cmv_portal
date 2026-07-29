@@ -78,6 +78,10 @@ Route::middleware(['auth'])->group(function () {
     // Bank accounts — per-bank balances (customs/gov disbursements) + statement
     Route::get('bank-accounts', [BankAccountController::class, 'index'])->name('bank-accounts.index');
     Route::get('bank-accounts/{bank}/statement', [BankAccountController::class, 'statement'])->name('bank-accounts.statement');
+    Route::middleware('role:super_admin,admin,accountant')->group(function () {
+        Route::post('bank-accounts/{bank}/entries', [BankAccountController::class, 'storeEntry'])->name('bank-accounts.entries.store');
+        Route::delete('bank-accounts/entries/{entry}', [BankAccountController::class, 'destroyEntry'])->name('bank-accounts.entries.destroy');
+    });
 
     // Invoices (generated from transactions)
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');

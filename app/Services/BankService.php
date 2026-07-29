@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Bank;
+use App\Models\BankEntry;
 use App\Models\Setting;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
@@ -48,10 +49,29 @@ class BankService
             ->groupBy('gov_bank_id')
             ->pluck('total', 'gov_bank_id');
 
-        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank) {
+        // Manual in/out movements, newest first, grouped per bank for the dialog.
+        $entriesByBank = BankEntry::query()
+            ->orderByDesc('entry_date')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('bank_id');
+
+        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank, $entriesByBank) {
             $customs = $bank->id === $customsBankId ? $totalCustoms : 0.0;
             $gov = (float) ($govByBank[$bank->id] ?? 0);
             $opening = (float) $bank->opening_balance;
+
+            $entries = ($entriesByBank[$bank->id] ?? collect())->map(fn ($e) => [
+                'id' => $e->id,
+                'date' => $e->entry_date->format('Y-m-d'),
+                'item' => $e->item,
+                'description' => $e->description,
+                'direction' => $e->direction,
+                'amount' => (float) $e->amount,
+            ])->values();
+
+            $totalIn = (float) $entries->where('direction', 'in')->sum('amount');
+            $totalOut = (float) $entries->where('direction', 'out')->sum('amount');
 
             return [
                 'id' => $bank->id,
@@ -61,7 +81,10 @@ class BankService
                 'opening' => round($opening, 2),
                 'customs_paid' => round($customs, 2),
                 'gov_paid' => round($gov, 2),
-                'balance' => round($opening - $customs - $gov, 2),
+                'total_in' => round($totalIn, 2),
+                'total_out' => round($totalOut, 2),
+                'balance' => round($opening + $totalIn - $totalOut - $customs - $gov, 2),
+                'entries' => $entries,
             ];
         })->all();
     }
@@ -98,6 +121,17 @@ class BankService
                 $events[] = $this->event($t->transaction_date, 'Government fee — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->gov_fees);
             });
 
+        // Manual in/out movements: an "in" is a debit (adds), an "out" a credit (subtracts).
+        $bank->entries()->get()->each(function ($e) use (&$events) {
+            $events[] = [
+                'date' => $e->entry_date->format('Y-m-d'),
+                'description' => $e->item.($e->description ? ' — '.$e->description : ''),
+                'ref' => null,
+                'debit' => $e->direction === 'in' ? (float) $e->amount : 0.0,
+                'credit' => $e->direction === 'out' ? (float) $e->amount : 0.0,
+            ];
+        });
+
         usort($events, fn ($a, $b) => [$a['date'], $a['description']] <=> [$b['date'], $b['description']]);
 
         $from = $filters['from'] ?? null;
@@ -108,12 +142,13 @@ class BankService
         $windowOpening = $opening;
         foreach ($events as $e) {
             if ($from && $e['date'] < $from) {
-                $windowOpening = round($windowOpening - $e['credit'], 2);
+                $windowOpening = round($windowOpening + $e['debit'] - $e['credit'], 2);
             }
         }
 
         $balance = $windowOpening;
         $rows = [];
+        $totalIn = 0.0;
         $totalOut = 0.0;
         foreach ($events as $e) {
             if ($from && $e['date'] < $from) {
@@ -122,7 +157,8 @@ class BankService
             if ($to && $e['date'] > $to) {
                 continue;
             }
-            $balance = round($balance - $e['credit'], 2);
+            $balance = round($balance + $e['debit'] - $e['credit'], 2);
+            $totalIn = round($totalIn + $e['debit'], 2);
             $totalOut = round($totalOut + $e['credit'], 2);
             $rows[] = $e + ['balance' => $balance];
         }
@@ -131,6 +167,7 @@ class BankService
             'bank' => ['id' => $bank->id, 'name' => $bank->name, 'account_no' => $bank->account_no],
             'opening' => round($windowOpening, 2),
             'rows' => $rows,
+            'total_in' => $totalIn,
             'total_out' => $totalOut,
             'closing' => round($balance, 2),
         ];

@@ -17,4 +17,9 @@ class Bank extends Model
     {
         return ['opening_balance' => 'decimal:2'];
     }
+
+    public function entries()
+    {
+        return $this->hasMany(BankEntry::class);
+    }
 }

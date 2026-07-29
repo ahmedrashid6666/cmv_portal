@@ -38,7 +38,8 @@ export default function BankStatement({ statement, filters }) {
             <Card>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span className="text-slate-500">Opening Balance: <span className="font-semibold text-navy-900">{money(statement.opening, 'AED')}</span></span>
-                    <span className="text-slate-500">Total Paid Out: <span className="font-semibold text-accent-red">{money(statement.total_out, 'AED')}</span></span>
+                    {statement.total_in > 0 && <span className="text-slate-500">Total In: <span className="font-semibold text-emerald-700">{money(statement.total_in, 'AED')}</span></span>}
+                    <span className="text-slate-500">Total Out: <span className="font-semibold text-accent-red">{money(statement.total_out, 'AED')}</span></span>
                     <span className="text-slate-500">Closing Balance: <span className={'font-semibold ' + (statement.closing < 0 ? 'text-accent-red' : 'text-emerald-700')}>{money(statement.closing, 'AED')}</span></span>
                 </div>
                 <div className="overflow-x-auto">
@@ -48,22 +49,24 @@ export default function BankStatement({ statement, filters }) {
                                 <th className="py-2 pr-4">Date</th>
                                 <th className="py-2 pr-4">Description</th>
                                 <th className="py-2 pr-4">Invoice</th>
-                                <th className="py-2 pr-4 text-right">Paid Out</th>
+                                <th className="py-2 pr-4 text-right">In</th>
+                                <th className="py-2 pr-4 text-right">Out</th>
                                 <th className="py-2 pr-4 text-right">Balance</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr className="border-b bg-slate-50 text-slate-500">
-                                <td className="py-2 pr-4" colSpan="4">Opening balance</td>
+                                <td className="py-2 pr-4" colSpan="5">Opening balance</td>
                                 <td className="py-2 pr-4 text-right font-semibold">{money(statement.opening, 'AED')}</td>
                             </tr>
-                            {statement.rows.length === 0 && <tr><td colSpan="5" className="py-8 text-center text-slate-400">No disbursements in this period.</td></tr>}
+                            {statement.rows.length === 0 && <tr><td colSpan="6" className="py-8 text-center text-slate-400">No activity in this period.</td></tr>}
                             {statement.rows.map((r, i) => (
                                 <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
                                     <td className="py-2 pr-4 whitespace-nowrap">{fmtDate(r.date)}</td>
                                     <td className="py-2 pr-4">{r.description}</td>
                                     <td className="py-2 pr-4 text-slate-500">{r.ref || '—'}</td>
-                                    <td className="py-2 pr-4 text-right tabular-nums text-accent-red">−{money(r.credit, 'AED')}</td>
+                                    <td className="py-2 pr-4 text-right tabular-nums text-emerald-700">{r.debit > 0 ? money(r.debit, 'AED') : '—'}</td>
+                                    <td className="py-2 pr-4 text-right tabular-nums text-accent-red">{r.credit > 0 ? '−' + money(r.credit, 'AED') : '—'}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums font-medium">{money(r.balance, 'AED')}</td>
                                 </tr>
                             ))}

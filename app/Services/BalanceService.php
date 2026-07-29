@@ -51,6 +51,10 @@ class BalanceService
         $balance = bcadd($balance, $repayments, 2);
         $balance = bcsub($balance, $this->officeExpensesByBucket('bank'), 2);
 
+        // Manual in/out movements recorded against a bank account.
+        $balance = bcadd($balance, $this->d((string) (\App\Models\BankEntry::where('direction', 'in')->sum('amount') ?: '0')), 2);
+        $balance = bcsub($balance, $this->d((string) (\App\Models\BankEntry::where('direction', 'out')->sum('amount') ?: '0')), 2);
+
         // Customs fees drain the CDR bank; government fees drain the bank chosen
         // on each shipment. Both reduce the overall bank balance.
         $balance = bcsub($balance, $this->totalCustomsPaid(), 2);
