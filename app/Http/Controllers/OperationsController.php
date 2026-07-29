@@ -27,6 +27,9 @@ class OperationsController extends Controller
         'office-expenses' => 'Office Expenses',
     ];
 
+    /** Rows per page for the list; bumped high for a full export. */
+    private int $perPage = 50;
+
     public function index(Request $request)
     {
         $type = array_key_exists($request->string('type')->value(), self::TABS)
@@ -56,6 +59,87 @@ class OperationsController extends Controller
             'isLedger' => in_array($type, ['daily-credit', 'borrowed'], true),
             'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name']),
         ]));
+    }
+
+    /**
+     * Export the current tab (respecting search / date / status / sort filters)
+     * to Excel or PDF. Reuses the exact columns and row formatting of the list.
+     */
+    public function export(Request $request, string $format)
+    {
+        abort_unless(in_array($format, ['xlsx', 'pdf'], true), 404);
+
+        $type = array_key_exists($request->string('type')->value(), self::TABS)
+            ? $request->string('type')->value()
+            : 'transactions';
+
+        $from = $request->input('from') ?: null;
+        $to = $request->input('to') ?: null;
+        $search = $request->string('search')->trim()->value();
+        $status = $request->string('status')->value();
+        $sort = $request->string('sort')->value();
+        $dir = $request->string('dir')->value() === 'asc' ? 'asc' : 'desc';
+
+        $this->perPage = 100000; // one page = the whole filtered set
+
+        $payload = match ($type) {
+            'invoices' => $this->invoices($from, $to, $search, $sort, $dir),
+            'credits' => $this->credits($from, $to, $search, $sort, $dir),
+            'daily-credit', 'borrowed' => $this->ledger($type, $from, $to, $search, $status, $sort, $dir),
+            'office-expenses' => $this->officeExpenses($from, $to, $search, $sort, $dir),
+            default => $this->transactions($from, $to, $search, $sort, $dir),
+        };
+
+        $columns = $payload['columns'];
+        $align = $payload['align'] ?? [];
+        $rows = collect($payload['rows']->items())->map(fn ($r) => array_values($r['cells']))->all();
+
+        $hasTotals = false;
+        if (! empty($payload['totals'])) {
+            $totals = array_values($payload['totals']);
+            $totals[0] = 'TOTAL';
+            $rows[] = $totals;
+            $hasTotals = true;
+        }
+
+        $title = self::TABS[$type];
+        $range = ($from || $to) ? (($from ?: '…').' to '.($to ?: '…')) : '';
+        $file = $type.'-'.now()->format('Y-m-d');
+
+        if ($format === 'xlsx') {
+            return $this->exportXlsx($title, $columns, $rows, $file);
+        }
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.table', compact('title', 'columns', 'rows', 'align', 'hasTotals', 'range'))
+            ->setPaper('a4', 'landscape')
+            ->download($file.'.pdf');
+    }
+
+    /**
+     * @param  array<int, string>  $columns
+     * @param  array<int, array<int, string>>  $rows
+     */
+    private function exportXlsx(string $title, array $columns, array $rows, string $file): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $ss->getActiveSheet();
+        $sheet->setCellValue('A1', $title);
+        $sheet->setCellValue('A2', 'Generated '.now()->format('d-m-Y h:i A'));
+        foreach ($columns as $i => $col) {
+            $sheet->setCellValue([$i + 1, 4], $col);
+        }
+        foreach ($rows as $r => $row) {
+            foreach (array_values($row) as $c => $val) {
+                $sheet->setCellValueExplicit([$c + 1, $r + 5], (string) $val, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            }
+        }
+        foreach (range(1, max(1, count($columns))) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+
+        return response()->streamDownload(function () use ($ss) {
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save('php://output');
+        }, $file.'.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
     public function bulkDestroy(Request $request)
@@ -175,7 +259,7 @@ class OperationsController extends Controller
             'grand_total' => 'grand_total', 'net_profit' => 'net_profit',
         ], 'transaction_date');
 
-        $rows = $query->paginate(50)->withQueryString()->through(function ($t) {
+        $rows = $query->paginate($this->perPage)->withQueryString()->through(function ($t) {
             $cur = $t->currency ?: 'AED';
             $money = fn ($v) => $cur.' '.number_format((float) $v, 2);
 
@@ -227,7 +311,7 @@ class OperationsController extends Controller
             'customer' => $this->customerSub(), 'grand_total' => 'grand_total',
         ], 'transaction_date');
 
-        $rows = $query->paginate(50)->withQueryString()->through(fn ($t) => [
+        $rows = $query->paginate($this->perPage)->withQueryString()->through(fn ($t) => [
             'id' => $t->id, 'status' => $t->invoiceStatus(), 'action_url' => route('invoices.show', $t->id),
             'cells' => [
                 $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->customer?->name,
@@ -255,7 +339,7 @@ class OperationsController extends Controller
             'customer' => $this->customerSub(), 'credit_amount' => 'credit_amount',
         ], 'transaction_date');
 
-        $rows = $query->paginate(50)->withQueryString()->through(function ($t) {
+        $rows = $query->paginate($this->perPage)->withQueryString()->through(function ($t) {
             $out = (float) $t->creditOutstanding();
 
             return [
@@ -292,7 +376,7 @@ class OperationsController extends Controller
             'amount' => 'amount',
         ], 'expense_date');
 
-        $rows = $query->paginate(50)->withQueryString()->through(fn ($e) => [
+        $rows = $query->paginate($this->perPage)->withQueryString()->through(fn ($e) => [
             'id' => $e->id, 'status' => null, 'action_url' => null,
             'cells' => [
                 $e->expense_date->format('d-m-Y'),
@@ -326,7 +410,7 @@ class OperationsController extends Controller
             'paid_amount' => 'paid_amount', 'balance_amount' => 'balance_amount',
         ], 'entry_date');
 
-        $rows = $query->paginate(50)->withQueryString()->through(fn ($e) => [
+        $rows = $query->paginate($this->perPage)->withQueryString()->through(fn ($e) => [
             'id' => $e->id, 'status' => $e->status, 'action_url' => route('ledger.index', $type),
             'settle' => ['kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name, 'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount, 'currency' => $e->currency ?: 'AED'],
             'cells' => [

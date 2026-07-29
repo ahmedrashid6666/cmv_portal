@@ -39,6 +39,14 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
         return <span className="text-primary-600">{sort.dir === 'asc' ? '↑' : '↓'}</span>;
     };
     const switchTab = (key) => { setSelected([]); router.get(route('operations.index'), { type: key }, { preserveState: true }); };
+    const exportUrl = (format) => route('operations.export', {
+        format, type,
+        ...(filters.search ? { search: filters.search } : {}),
+        ...(filters.from ? { from: filters.from } : {}),
+        ...(filters.to ? { to: filters.to } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(sort?.by ? { sort: sort.by, dir: sort.dir } : {}),
+    });
     const applyFilters = (e) => { e?.preventDefault(); go(f); };
     const reset = () => { setF({ from: '', to: '', search: '', status: '' }); router.get(route('operations.index'), { type }); };
     const preset = (kind) => {
@@ -101,7 +109,11 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         </button>
                     ))}
                 </div>
-                {canWrite && <Link href={route('entry.create')} className="ml-auto rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700">+ Add Entry</Link>}
+                <div className="ml-auto flex items-center gap-2">
+                    <a href={exportUrl('xlsx')} className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">⬇ Excel</a>
+                    <a href={exportUrl('pdf')} className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-accent-red-dark hover:bg-red-100">⬇ PDF</a>
+                    {canWrite && <Link href={route('entry.create')} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700">+ Add Entry</Link>}
+                </div>
             </div>
 
             {/* Filters */}

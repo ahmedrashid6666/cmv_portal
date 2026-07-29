@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 /**
  * Parses and imports the CMV "ACCOUNT WORKBOOK" (.xlsx/.xlsm/.csv).
@@ -26,6 +27,7 @@ class WorkbookImporter
     /** Header keyword => internal field. */
     private const HEADER_MAP = [
         'invoice' => 'invoice_no',
+        'date' => 'row_date',
         'boe' => 'boe_no',
         'customer' => 'customer',
         'reference' => 'reference',
@@ -339,8 +341,10 @@ class WorkbookImporter
             return null;
         }
 
+        // The real date lives in the row's "Date" column when present; fall back
+        // to the per-day sheet title, then to today only as a last resort.
         return [
-            'transaction_date' => $sheetDate ?? Carbon::today()->toDateString(),
+            'transaction_date' => $this->rowDate($get('row_date')) ?? $sheetDate ?? Carbon::today()->toDateString(),
             'invoice_no' => $this->str($get('invoice_no')),
             'boe_no' => $this->cleanBoe($get('boe_no')),
             'customer' => $customer,
@@ -392,6 +396,43 @@ class WorkbookImporter
         }
 
         return PaymentMethod::whereRaw('LOWER(name) = ?', [mb_strtolower(trim($name))])->first();
+    }
+
+    /**
+     * Parse a cell from the "Date" column into a Y-m-d string.
+     *
+     * With formatData off the reader returns Excel dates as serial numbers, so
+     * numeric values are converted via the Excel epoch; textual dates are parsed
+     * with the day-first formats these workbooks use.
+     */
+    private function rowDate(mixed $v): ?string
+    {
+        if ($v === null || $v === '') {
+            return null;
+        }
+
+        if (is_numeric($v)) {
+            try {
+                return Date::excelToDateTimeObject((float) $v)->format('Y-m-d');
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        $s = trim((string) $v);
+        foreach (['d-m-Y', 'd/m/Y', 'Y-m-d', 'd-m-y', 'd.m.Y', 'd M Y', 'd-M-Y'] as $fmt) {
+            try {
+                return Carbon::createFromFormat($fmt, $s)->toDateString();
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        try {
+            return Carbon::parse($s)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function sheetDate(string $title): ?string

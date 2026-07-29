@@ -10,6 +10,7 @@ use App\Services\WorkbookImporter;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -82,6 +83,38 @@ it('imports when a customer/reference/vehicle was previously soft-deleted', func
         ->and(Vehicle::where('number', '3512RA')->exists())->toBeTrue()
         ->and(Customer::where('name', 'ESQUBE INDUSTRIES LLC')->exists())->toBeTrue()
         ->and(Reference::where('name', 'JRY')->exists())->toBeTrue();
+});
+
+it('reads the transaction date from the Date column, not the import day', function () {
+    $admin = User::factory()->role(Role::ADMIN)->create();
+
+    // Workbook with a real Date column (Excel serial) and a non-date sheet title,
+    // mirroring the customer's FINAL.xlsx (sheet "280720", Date = 28-07-2026).
+    $ss = new Spreadsheet;
+    $sheet = $ss->getActiveSheet();
+    $sheet->setTitle('280720');
+    $headers = ['Sl No.', 'Invoice No', 'Date', 'Boe No.', 'Customer Name', 'Reference',
+        'Vehicle No.', 'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT 0%', 'Total Amount', 'Payment Mode'];
+    foreach ($headers as $i => $h) {
+        $sheet->setCellValue([$i + 1, 1], $h);
+    }
+    $serial = Date::PHPToExcel(new DateTime('2026-07-28'));
+    $row = [1, '57484', $serial, '2010034251326', 'ASSA ABLOY', 'ROW-NOOH', '15901DXB', 295, 0, 50, 0, 345, 'Cash'];
+    foreach ($row as $ci => $val) {
+        $sheet->setCellValue([$ci + 1, 2], $val);
+    }
+    $path = tempnam(sys_get_temp_dir(), 'wb').'.xlsx';
+    (new Xlsx($ss))->save($path);
+    $file = new UploadedFile($path, 'FINAL.xlsx', null, null, true);
+
+    $before = Storage::disk('local')->files('imports');
+    $this->actingAs($admin)->post(route('import.preview'), ['file' => $file])->assertOk();
+    $token = array_values(array_diff(Storage::disk('local')->files('imports'), $before))[0];
+
+    $this->actingAs($admin)->post(route('import.commit'), ['token' => $token])
+        ->assertRedirect(route('operations.index', ['type' => 'transactions']));
+
+    expect(Transaction::first()->transaction_date->format('Y-m-d'))->toBe('2026-07-28');
 });
 
 it('forbids an accountant from importing', function () {
