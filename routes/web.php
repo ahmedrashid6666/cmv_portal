@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Unified Operations workspace (list all types by filter + bulk delete)
     Route::get('/operations', [OperationsController::class, 'index'])->name('operations.index');
+    Route::get('/operations/export/{format}', [OperationsController::class, 'export'])->name('operations.export');
     Route::post('/operations/bulk-delete', [OperationsController::class, 'bulkDestroy'])
         ->middleware('role:super_admin,admin')->name('operations.bulk-delete');
 
@@ -68,6 +69,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('books/cash', [BookController::class, 'cashBook'])->name('books.cash'); // export/deep-link
     Route::get('books/bank', [BookController::class, 'bankBook'])->name('books.bank'); // export/deep-link
     Route::get('books/ledger', [BookController::class, 'ledger'])->name('books.ledger');
+    Route::put('books/cash-opening', [BookController::class, 'updateCashOpening'])
+        ->middleware('role:super_admin')->name('books.cash-opening');
 
     // Final Calculation — the daily reconciliation worksheet (dated snapshots)
     Route::get('books/final-calculation', [FinalCalculationController::class, 'index'])->name('final-calc.index');

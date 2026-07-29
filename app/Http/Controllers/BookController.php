@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Setting;
 use App\Services\LedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -29,7 +31,17 @@ class BookController extends Controller
             'show' => $show,
             'cash' => in_array('cash', $show, true) ? $ledger->cashBook($filters) : null,
             'bank' => in_array('bank', $show, true) ? $ledger->bankBook($filters) : null,
+            'cashOpening' => (float) Setting::get('cash_opening_balance', 0),
         ]);
+    }
+
+    /** Set the cash book's opening balance (the same setting as Settings). */
+    public function updateCashOpening(Request $request)
+    {
+        $data = $request->validate(['cash_opening_balance' => ['required', 'numeric']]);
+        Setting::put('cash_opening_balance', $data['cash_opening_balance']);
+
+        return back()->with('success', 'Cash opening balance updated.');
     }
 
     public function cashBook(Request $request, LedgerService $ledger)
@@ -74,7 +86,7 @@ class BookController extends Controller
     {
         $columns = ['Date', 'Description', 'Ref', 'Debit (In)', 'Credit (Out)', 'Balance'];
         $rows = array_map(fn ($r) => [
-            \Illuminate\Support\Carbon::parse($r['date'])->format('d-m-Y'), $r['description'], $r['ref'] ?? '',
+            Carbon::parse($r['date'])->format('d-m-Y'), $r['description'], $r['ref'] ?? '',
             number_format($r['debit'], 2), number_format($r['credit'], 2), number_format($r['balance'], 2),
         ], $book['rows']);
 
@@ -98,7 +110,7 @@ class BookController extends Controller
 
     private function xlsx(array $report): StreamedResponse
     {
-        $ss = new Spreadsheet();
+        $ss = new Spreadsheet;
         $sheet = $ss->getActiveSheet();
         $sheet->setCellValue('A1', $report['title']);
         foreach ($report['columns'] as $i => $col) {
