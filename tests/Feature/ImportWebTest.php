@@ -1,15 +1,21 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\Customer;
+use App\Models\Reference;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Vehicle;
+use App\Services\WorkbookImporter;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 function uploadedWorkbook(): UploadedFile
 {
-    $ss = new Spreadsheet();
+    $ss = new Spreadsheet;
     $sheet = $ss->getActiveSheet();
     $sheet->setTitle('01-07-2026');
     $headers = ['Sl No.', 'Invoice No', 'Boe No.', 'Customer Name', 'Reference', 'Vehicle No.',
@@ -39,7 +45,7 @@ it('previews an uploaded workbook and then commits it', function () {
         ->assertOk();
 
     // grab the stored token from the newest import file and commit
-    $files = \Illuminate\Support\Facades\Storage::disk('local')->files('imports');
+    $files = Storage::disk('local')->files('imports');
     expect($files)->not->toBeEmpty();
 
     $this->actingAs($admin)
@@ -50,6 +56,34 @@ it('previews an uploaded workbook and then commits it', function () {
         ->and((float) Transaction::first()->total_amount)->toBe(280.0);
 });
 
+it('imports when a customer/reference/vehicle was previously soft-deleted', function () {
+    $admin = User::factory()->role(Role::ADMIN)->create();
+
+    // These masters were created then deleted. Soft-delete keeps their row (and
+    // its still-unique key) in the table; a naive firstOrCreate would try to
+    // re-insert and hit the unique constraint, aborting the whole import.
+    Customer::create(['name' => 'ESQUBE INDUSTRIES LLC'])->delete();
+    Reference::create(['name' => 'JRY'])->delete();
+    Vehicle::create(['number' => '3512RA'])->delete();
+
+    $this->actingAs($admin)
+        ->post(route('import.preview'), ['file' => uploadedWorkbook()])
+        ->assertOk();
+
+    $files = Storage::disk('local')->files('imports');
+
+    $this->actingAs($admin)
+        ->post(route('import.commit'), ['token' => $files[0]])
+        ->assertRedirect(route('operations.index', ['type' => 'transactions']));
+
+    // Import succeeded and reused the soft-deleted masters (no duplicates, restored).
+    expect(Transaction::count())->toBe(1)
+        ->and(Vehicle::withTrashed()->where('number', '3512RA')->count())->toBe(1)
+        ->and(Vehicle::where('number', '3512RA')->exists())->toBeTrue()
+        ->and(Customer::where('name', 'ESQUBE INDUSTRIES LLC')->exists())->toBeTrue()
+        ->and(Reference::where('name', 'JRY')->exists())->toBeTrue();
+});
+
 it('forbids an accountant from importing', function () {
     $this->actingAs(User::factory()->role(Role::ACCOUNTANT)->create())
         ->post(route('import.preview'), ['file' => uploadedWorkbook()])
@@ -57,8 +91,8 @@ it('forbids an accountant from importing', function () {
 });
 
 it('shows a validation error (not a 500) when the workbook cannot be read', function () {
-    $this->mock(\App\Services\WorkbookImporter::class)
-        ->shouldReceive('parse')->andThrow(new \RuntimeException('Could not open file for reading'));
+    $this->mock(WorkbookImporter::class)
+        ->shouldReceive('parse')->andThrow(new RuntimeException('Could not open file for reading'));
 
     $this->actingAs(User::factory()->role(Role::ADMIN)->create())
         ->from(route('import.index'))
@@ -68,14 +102,14 @@ it('shows a validation error (not a 500) when the workbook cannot be read', func
 });
 
 it('flashes an error (not a 500) when a commit fails', function () {
-    $mock = $this->mock(\App\Services\WorkbookImporter::class);
+    $mock = $this->mock(WorkbookImporter::class);
     $mock->shouldReceive('parse')->andReturn(['rows' => []]);
-    $mock->shouldReceive('commit')->andThrow(new \Illuminate\Database\QueryException(
-        'mysql', 'insert', [], new \Exception("SQLSTATE[42S22]: Unknown column 'currency'")
+    $mock->shouldReceive('commit')->andThrow(new QueryException(
+        'mysql', 'insert', [], new Exception("SQLSTATE[42S22]: Unknown column 'currency'")
     ));
 
     $admin = User::factory()->role(Role::ADMIN)->create();
-    \Illuminate\Support\Facades\Storage::disk('local')->put('imports/x.xlsx', 'data');
+    Storage::disk('local')->put('imports/x.xlsx', 'data');
 
     $this->actingAs($admin)
         ->from(route('import.index'))

@@ -6,7 +6,9 @@ use App\Exceptions\WorkbookFormatException;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Reference;
+use App\Models\Transaction;
 use App\Models\Vehicle;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -57,13 +59,15 @@ class WorkbookImporter
         $newVehicles = [];
         $sheets = [];
 
-        $existingCustomers = Customer::pluck('name')->map(fn ($n) => mb_strtolower(trim($n)))->all();
-        $existingReferences = Reference::pluck('name')->map(fn ($n) => mb_strtolower(trim($n)))->all();
-        $existingVehicles = Vehicle::pluck('number')->map(fn ($n) => mb_strtolower(trim($n)))->all();
+        // withTrashed: soft-deleted masters still hold their unique key and are
+        // reused on commit, so they must not be counted as "new" in the preview.
+        $existingCustomers = Customer::withTrashed()->pluck('name')->map(fn ($n) => mb_strtolower(trim($n)))->all();
+        $existingReferences = Reference::withTrashed()->pluck('name')->map(fn ($n) => mb_strtolower(trim($n)))->all();
+        $existingVehicles = Vehicle::withTrashed()->pluck('number')->map(fn ($n) => mb_strtolower(trim($n)))->all();
 
         // Preload existing (invoice_no + date) so we can flag duplicates in the preview.
         $existingInvoiceKeys = [];
-        \App\Models\Transaction::query()
+        Transaction::query()
             ->whereNotNull('invoice_no')
             ->get(['invoice_no', 'transaction_date'])
             ->each(function ($t) use (&$existingInvoiceKeys) {
@@ -188,29 +192,20 @@ class WorkbookImporter
                     continue;
                 }
 
-                $customer = Customer::firstOrCreate(['name' => trim($row['customer'])]);
-                if ($customer->wasRecentlyCreated) {
-                    $customers++;
-                }
+                $customer = $this->resolveMaster(Customer::class, 'name', trim($row['customer']), $customers);
 
                 $reference = null;
                 if ($row['reference']) {
-                    $reference = Reference::firstOrCreate(['name' => trim($row['reference'])]);
-                    if ($reference->wasRecentlyCreated) {
-                        $references++;
-                    }
+                    $reference = $this->resolveMaster(Reference::class, 'name', trim($row['reference']), $references);
                 }
 
                 $vehicle = null;
                 if ($row['vehicle']) {
-                    $vehicle = Vehicle::firstOrCreate(['number' => trim($row['vehicle'])]);
-                    if ($vehicle->wasRecentlyCreated) {
-                        $vehicles++;
-                    }
+                    $vehicle = $this->resolveMaster(Vehicle::class, 'number', trim($row['vehicle']), $vehicles);
                 }
 
                 // idempotency: skip if same invoice+date already imported
-                $exists = \App\Models\Transaction::query()
+                $exists = Transaction::query()
                     ->where('transaction_date', $row['transaction_date'])
                     ->when($row['invoice_no'], fn ($q) => $q->where('invoice_no', $row['invoice_no']))
                     ->when(! $row['invoice_no'], fn ($q) => $q->whereNull('invoice_no')->where('customer_id', $customer->id)->where('boe_no', $row['boe_no']))
@@ -278,7 +273,7 @@ class WorkbookImporter
 
     /**
      * @param  array<int, mixed>  $headerCells
-     * @return array<string, int>  field => column index
+     * @return array<string, int> field => column index
      */
     private function mapColumns(array $headerCells): array
     {
@@ -364,6 +359,30 @@ class WorkbookImporter
             'commission_1' => is_numeric($get('commission_1')) ? $get('commission_1') : 0,
             'commission_2' => is_numeric($get('commission_2')) ? $get('commission_2') : 0,
         ];
+    }
+
+    /**
+     * Resolve (or create) a soft-deleting master by its unique column.
+     *
+     * These masters (customers/references/vehicles) use soft-deletes, so a
+     * deleted row still occupies its unique key in the table. A plain
+     * firstOrCreate ignores soft-deleted rows and would try to re-insert the
+     * key — hitting the unique constraint and aborting the import. Searching
+     * withTrashed reuses the existing row, restoring it when it was deleted.
+     *
+     * @param  class-string<Model>  $model
+     */
+    private function resolveMaster(string $model, string $column, string $value, int &$created)
+    {
+        $record = $model::withTrashed()->firstOrCreate([$column => $value]);
+
+        if ($record->wasRecentlyCreated) {
+            $created++;
+        } elseif ($record->trashed()) {
+            $record->restore(); // deleted master reused by a new import
+        }
+
+        return $record;
     }
 
     private function resolveMethod(?string $name): ?PaymentMethod

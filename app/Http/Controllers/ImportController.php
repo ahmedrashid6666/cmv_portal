@@ -7,6 +7,7 @@ use App\Services\WorkbookImporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -73,11 +74,13 @@ class ImportController extends Controller
         } catch (WorkbookFormatException $e) {
             Log::warning('Excel import wrong format', ['error' => $e->getMessage()]);
 
-            return back()->with('error', 'Import failed — nothing was saved. '.$e->getMessage());
+            // Redirect to a GET page, not back() — the preview page is POST-only,
+            // so back() there yields a confusing 405 instead of the real error.
+            return redirect()->route('import.index')->with('error', 'Import failed — nothing was saved. '.$e->getMessage());
         } catch (\Throwable $e) {
             Log::error('Excel import commit failed', ['error' => $e->getMessage()]);
 
-            return back()->with('error', 'Import failed — nothing was saved. '.$this->friendly($e));
+            return redirect()->route('import.index')->with('error', 'Import failed — nothing was saved. '.$this->friendly($e));
         }
 
         Storage::disk('local')->delete($path);
@@ -103,6 +106,6 @@ class ImportController extends Controller
             return 'the file appears to be corrupt or is not a valid .xlsx/.xlsm/.csv workbook.';
         }
 
-        return \Illuminate\Support\Str::limit($msg, 200);
+        return Str::limit($msg, 200);
     }
 }
