@@ -119,6 +119,30 @@ class OperationsController extends Controller
         ];
     }
 
+    /**
+     * Sum commissions across a set of transactions, split into Com-1 (the first
+     * commission per transaction) and Com-2 (everything after it).
+     *
+     * @return array{0: float, 1: float}  [com1Total, com2Total]
+     */
+    private function splitCommissionTotals($transactionIdsQuery): array
+    {
+        $com1 = 0.0;
+        $com2 = 0.0;
+
+        \App\Models\TransactionCommission::query()
+            ->whereIn('transaction_id', $transactionIdsQuery)
+            ->orderBy('transaction_id')->orderBy('id')
+            ->get(['transaction_id', 'amount'])
+            ->groupBy('transaction_id')
+            ->each(function ($rows) use (&$com1, &$com2) {
+                $com1 += (float) $rows->first()->amount;
+                $com2 += (float) $rows->slice(1)->sum('amount');
+            });
+
+        return [$com1, $com2];
+    }
+
     private function transactions(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
     {
         $query = Transaction::query()
@@ -132,13 +156,17 @@ class OperationsController extends Controller
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
         $agg = (clone $totalsSource)->selectRaw('SUM(customs_fees) customs, SUM(gov_fees) gov, SUM(profit) profit, SUM(vat_amount) vat, SUM(total_amount) total_amount, SUM(grand_total) grand_total, SUM(credit_amount) credit_amount')->first();
-        $commTotal = \App\Models\TransactionCommission::whereIn('transaction_id', (clone $totalsSource)->select('id'))->sum('amount');
+
+        // Commissions split: the first per transaction is Com-1, the rest fold
+        // into Com-2 (so Com-1 + Com-2 always reconciles with the grand total).
+        [$com1Total, $com2Total] = $this->splitCommissionTotals((clone $totalsSource)->select('id'));
+
         $currencies = (clone $totalsSource)->distinct()->pluck('currency')->map(fn ($c) => $c ?: 'AED')->unique();
         $tPrefix = $currencies->count() === 1 ? $currencies->first().' ' : '';
         $t = fn ($v) => $tPrefix.number_format((float) $v, 2);
-        $totals = ['', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($commTotal), $t($agg->grand_total), $t($agg->credit_amount), ''];
+        $totals = ['', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
 
-        $query->withSum('commissions', 'amount');
+        $query->with(['commissions' => fn ($q) => $q->orderBy('id')]);
 
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
@@ -150,6 +178,9 @@ class OperationsController extends Controller
         $rows = $query->paginate(50)->withQueryString()->through(function ($t) {
             $cur = $t->currency ?: 'AED';
             $money = fn ($v) => $cur.' '.number_format((float) $v, 2);
+
+            $com1 = (float) ($t->commissions->first()->amount ?? 0);
+            $com2 = (float) $t->commissions->slice(1)->sum('amount');
 
             return [
                 'id' => $t->id, 'status' => $t->invoiceStatus(),
@@ -166,7 +197,8 @@ class OperationsController extends Controller
                     $money($t->profit),
                     $money($t->vat_amount),
                     $money($t->total_amount),
-                    $money($t->commissions_sum_amount),
+                    $money($com1),
+                    $money($com2),
                     $money($t->grand_total),
                     $money($t->credit_amount),
                     $t->paymentMethod?->name ?? '—',
@@ -174,9 +206,9 @@ class OperationsController extends Controller
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT', 'Total Amount', 'Commissions', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
-            'align' => [false, false, false, false, false, false, true, true, true, true, true, true, true, true, false],
+        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
+            'align' => [false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, false],
             'totals' => $totals,
             'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
     }

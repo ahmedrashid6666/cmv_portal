@@ -87,3 +87,40 @@ it('forbids bulk delete for accountants', function () {
         ->post(route('operations.bulk-delete'), ['type' => 'transactions', 'ids' => [$a->id]])
         ->assertForbidden();
 });
+
+it('splits commissions into Com-1 and Com-2 columns and totals', function () {
+    $tx = opTx(today()->toDateString());
+    $tx->commissions()->createMany([
+        ['label' => 'Com-1', 'amount' => 30, 'type' => 'charged_to_customer'],
+        ['label' => 'Com-2', 'amount' => 20, 'type' => 'charged_to_customer'],
+    ]);
+
+    $this->actingAs($this->admin)->get(route('operations.index'))
+        ->assertInertia(fn ($p) => $p
+            ->where('columns.11', 'Com-1')
+            ->where('columns.12', 'Com-2')
+            // cells: idx 11 = Com-1, idx 12 = Com-2 (AED-prefixed money strings)
+            ->where('rows.data.0.cells.11', 'AED 30.00')
+            ->where('rows.data.0.cells.12', 'AED 20.00')
+            // totals row mirrors the split
+            ->where('totals.11', 'AED 30.00')
+            ->where('totals.12', 'AED 20.00')
+            ->etc());
+});
+
+it('folds a third commission into the Com-2 total so it reconciles', function () {
+    $tx = opTx(today()->toDateString());
+    $tx->commissions()->createMany([
+        ['label' => 'Com-1', 'amount' => 30, 'type' => 'charged_to_customer'],
+        ['label' => 'Com-2', 'amount' => 20, 'type' => 'charged_to_customer'],
+        ['label' => 'Com-3', 'amount' => 5, 'type' => 'charged_to_customer'],
+    ]);
+
+    $this->actingAs($this->admin)->get(route('operations.index'))
+        ->assertInertia(fn ($p) => $p
+            ->where('rows.data.0.cells.11', 'AED 30.00')
+            ->where('rows.data.0.cells.12', 'AED 25.00') // 20 + 5
+            ->where('totals.11', 'AED 30.00')
+            ->where('totals.12', 'AED 25.00')
+            ->etc());
+});
