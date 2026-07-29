@@ -3,6 +3,10 @@ import { Card } from '@/Components/ui/Card';
 import { fmtDate } from '@/lib/format';
 import { Head, router, useForm } from '@inertiajs/react';
 
+const num = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v)))
+    ? '—'
+    : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function ImportIndex({ preview }) {
     const { setData, post, processing, errors } = useForm({ file: null });
 
@@ -79,33 +83,47 @@ export default function ImportIndex({ preview }) {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-xs uppercase text-slate-500">
-                                        <th className="py-2 pr-4">Status</th>
-                                        <th className="py-2 pr-4">Date</th>
-                                        <th className="py-2 pr-4">Invoice</th>
-                                        <th className="py-2 pr-4">Customer</th>
-                                        <th className="py-2 pr-4">Reference</th>
-                                        <th className="py-2 pr-4">Vehicle</th>
-                                        <th className="py-2 pr-4 text-right">Customs</th>
-                                        <th className="py-2 pr-4 text-right">Profit</th>
-                                        <th className="py-2 pr-4 text-right">Credit</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Status</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Date</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Invoice No</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Boe No</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Customer Name</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Reference</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Vehicle No</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">Customs Fees (CDR)</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">Other Gov.Fees</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">Profit</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">VAT</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">Total Amount</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">Commissions</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">Grand Total</th>
+                                        <th className="whitespace-nowrap py-2 pr-4 text-right">Credit Amount</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Method</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {preview.sample.map((r, i) => (
                                         <tr key={i} className={'border-b last:border-0 ' + (r._duplicate ? 'bg-amber-50 text-slate-400' : '')}>
-                                            <td className="py-2 pr-4">
+                                            <td className="whitespace-nowrap py-2 pr-4">
                                                 {r._duplicate
                                                     ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Duplicate</span>
                                                     : <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">New</span>}
                                             </td>
-                                            <td className="py-2 pr-4 whitespace-nowrap">{fmtDate(r.transaction_date)}</td>
-                                            <td className="py-2 pr-4">{r.invoice_no || '—'}</td>
-                                            <td className="py-2 pr-4">{r.customer}</td>
-                                            <td className="py-2 pr-4">{r.reference || '—'}</td>
-                                            <td className="py-2 pr-4">{r.vehicle || '—'}</td>
-                                            <td className="py-2 pr-4 text-right">{r.customs_fees}</td>
-                                            <td className="py-2 pr-4 text-right">{r.profit}</td>
-                                            <td className="py-2 pr-4 text-right">{r.credit_amount}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{fmtDate(r.transaction_date)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{r.invoice_no || '—'}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{r.boe_no || '—'}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{r.customer}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{r.reference || '—'}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{r.vehicle || '—'}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.customs_fees)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.gov_fees)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.profit)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.vat)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.total_amount)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num((Number(r.commission_1) || 0) + (Number(r.commission_2) || 0))}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.grand_total)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.credit_amount)}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{r.payment_mode || '—'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
