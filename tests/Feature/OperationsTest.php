@@ -100,11 +100,11 @@ it('splits commissions into Com-1 and Com-2 columns and totals', function () {
             ->where('columns.11', 'Com-1')
             ->where('columns.12', 'Com-2')
             // cells: idx 11 = Com-1, idx 12 = Com-2 (AED-prefixed money strings)
-            ->where('rows.data.0.cells.11', 'AED 30.00')
-            ->where('rows.data.0.cells.12', 'AED 20.00')
+            ->where('rows.data.0.cells.11', '30')
+            ->where('rows.data.0.cells.12', '20')
             // totals row mirrors the split
-            ->where('totals.11', 'AED 30.00')
-            ->where('totals.12', 'AED 20.00')
+            ->where('totals.11', '30')
+            ->where('totals.12', '20')
             ->etc());
 });
 
@@ -118,9 +118,9 @@ it('folds a third commission into the Com-2 total so it reconciles', function ()
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('rows.data.0.cells.11', 'AED 30.00')
-            ->where('rows.data.0.cells.12', 'AED 25.00') // 20 + 5
-            ->where('totals.11', 'AED 30.00')
-            ->where('totals.12', 'AED 25.00')
+            ->where('rows.data.0.cells.11', '30')
+            ->where('rows.data.0.cells.12', '25') // 20 + 5
+            ->where('totals.11', '30')
+            ->where('totals.12', '25')
             ->etc());
 });

@@ -246,8 +246,8 @@ class OperationsController extends Controller
         [$com1Total, $com2Total] = $this->splitCommissionTotals((clone $totalsSource)->select('id'));
 
         $currencies = (clone $totalsSource)->distinct()->pluck('currency')->map(fn ($c) => $c ?: 'AED')->unique();
-        $tPrefix = $currencies->count() === 1 ? $currencies->first().' ' : '';
-        $t = fn ($v) => $tPrefix.number_format((float) $v, 2);
+        $tCur = $currencies->count() === 1 ? $currencies->first() : 'AED';
+        $t = fn ($v) => \App\Support\Money::display($v, $tCur);
         $totals = ['', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
 
         $query->with(['commissions' => fn ($q) => $q->orderBy('id')]);
@@ -261,7 +261,7 @@ class OperationsController extends Controller
 
         $rows = $query->paginate($this->perPage)->withQueryString()->through(function ($t) {
             $cur = $t->currency ?: 'AED';
-            $money = fn ($v) => $cur.' '.number_format((float) $v, 2);
+            $money = fn ($v) => \App\Support\Money::display($v, $cur);
 
             $com1 = (float) ($t->commissions->first()->amount ?? 0);
             $com2 = (float) $t->commissions->slice(1)->sum('amount');
@@ -315,8 +315,8 @@ class OperationsController extends Controller
             'id' => $t->id, 'status' => $t->invoiceStatus(), 'action_url' => route('invoices.show', $t->id),
             'cells' => [
                 $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->customer?->name,
-                ($t->currency ?: 'AED').' '.number_format((float) $t->grand_total, 2),
-                ($t->currency ?: 'AED').' '.number_format((float) $t->creditOutstanding(), 2),
+                \App\Support\Money::display($t->grand_total, $t->currency),
+                \App\Support\Money::display($t->creditOutstanding(), $t->currency),
             ],
         ]);
 
@@ -348,8 +348,8 @@ class OperationsController extends Controller
                 'action_url' => route('credits.index'), 'settle' => $this->creditSettle($t),
                 'cells' => [
                     $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->customer?->name,
-                    ($t->currency ?: 'AED').' '.number_format((float) $t->credit_amount, 2),
-                    ($t->currency ?: 'AED').' '.number_format($out, 2),
+                    \App\Support\Money::display($t->credit_amount, $t->currency),
+                    \App\Support\Money::display($out, $t->currency),
                 ],
             ];
         });
@@ -383,7 +383,7 @@ class OperationsController extends Controller
                 $e->category?->name ?? '—',
                 $e->description ?: '—',
                 $e->paymentMethod?->name ?? '—',
-                ($e->currency ?: 'AED').' '.number_format((float) $e->amount, 2),
+                \App\Support\Money::display($e->amount, $e->currency),
             ],
         ]);
 
@@ -415,9 +415,9 @@ class OperationsController extends Controller
             'settle' => ['kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name, 'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount, 'currency' => $e->currency ?: 'AED'],
             'cells' => [
                 $e->entry_date->format('d-m-Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
-                ($e->currency ?: 'AED').' '.number_format((float) $e->total_amount, 2),
-                ($e->currency ?: 'AED').' '.number_format((float) $e->paid_amount, 2),
-                ($e->currency ?: 'AED').' '.number_format((float) $e->balance_amount, 2),
+                \App\Support\Money::display($e->total_amount, $e->currency),
+                \App\Support\Money::display($e->paid_amount, $e->currency),
+                \App\Support\Money::display($e->balance_amount, $e->currency),
             ],
         ]);
 
