@@ -10,6 +10,7 @@ use App\Http\Controllers\CreditPaymentController;
 use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EntryController;
+use App\Http\Controllers\FinalCalculationController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LedgerEntryController;
@@ -67,6 +68,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('books/cash', [BookController::class, 'cashBook'])->name('books.cash'); // export/deep-link
     Route::get('books/bank', [BookController::class, 'bankBook'])->name('books.bank'); // export/deep-link
     Route::get('books/ledger', [BookController::class, 'ledger'])->name('books.ledger');
+
+    // Final Calculation — the daily reconciliation worksheet (dated snapshots)
+    Route::get('books/final-calculation', [FinalCalculationController::class, 'index'])->name('final-calc.index');
+    Route::get('books/final-calculation/{finalCalculation}/pdf', [FinalCalculationController::class, 'pdf'])->name('final-calc.pdf');
+    Route::post('books/final-calculation', [FinalCalculationController::class, 'store'])
+        ->middleware('role:super_admin,admin,accountant')->name('final-calc.store');
 
     // Bank accounts — per-bank balances (customs/gov disbursements) + statement
     Route::get('bank-accounts', [BankAccountController::class, 'index'])->name('bank-accounts.index');

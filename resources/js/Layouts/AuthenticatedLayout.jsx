@@ -93,6 +93,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 { label: 'Cash & Bank Book', href: route('books.cashbank'), icon: '₵', active: current('books.cashbank') },
                 { label: 'Bank Accounts', href: route('bank-accounts.index'), icon: '⛁', active: current('bank-accounts.*') },
                 { label: 'Customer Ledger', href: route('books.ledger'), icon: '≣', active: current('books.ledger') },
+                { label: 'Final Calculation', href: route('final-calc.index'), icon: '∑', active: current('final-calc.*') },
                 { label: 'Daily Cash Count', href: route('cash-count.index'), icon: '🧮', active: current('cash-count.*') },
             ],
         },

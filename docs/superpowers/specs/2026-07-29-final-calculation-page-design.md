@@ -80,38 +80,37 @@ Worked example (matches the sheet exactly):
 | `created_by` | fk users | |
 | timestamps | | |
 
-`data` JSON shape (frozen point-in-time values):
+`data` JSON shape (frozen point-in-time values). The worksheet is a **flat list of
+rows**, each mirroring the four Excel columns — this is the faithful, flexible model
+(any row can carry any column, rows can be added), and every column total is just a
+sum down that column:
 
 ```json
 {
-  "dws_bal": 14345,
-  "borrowed": 71955,
-  "daily_credit_debt": 39329,
-  "daily_credit_cash": 15375,
-  "banks": [
-    {"key": "rak", "name": "RAK BANK ACCOUNT", "balance": 7602, "currency": "AED", "month_exp": 0},
-    {"key": "adcb", "name": "ADCB BANK ACCOUNT", "balance": 12061, "currency": "AED", "month_exp": 0},
-    {"key": "fab", "name": "FAB BANK ACCOUNT", "balance": 2476, "currency": "AED"},
-    {"key": "dib", "name": "DIB BANK ACCOUNT", "balance": 1398, "currency": "AED"},
-    {"key": "cdr", "name": "CDR ACCOUNT (1050697)", "balance": 3612, "currency": "OMR", "is_customs": true}
-  ],
-  "salary_deposit": 2000,
-  "extra_rows": [],
-  "cash_lines": [
-    {"label": "Daily Credit", "aed": 15375, "omr": 0},
-    {"label": "RAK A/C Exp", "aed": 0, "omr": 250}
-  ],
   "omr_rate": 9.5238,
-  "remarks": null
+  "remarks": null,
+  "rows": [
+    {"key": "dws_bal", "label": "DAILY WORK SHEET BAL", "group": "top", "amount": 14345, "auto_field": "amount", "manual": false},
+    {"key": "borrowed", "label": "BORROWED CASH", "group": "top", "amount": 71955, "auto_field": "amount", "manual": false},
+    {"key": "daily_credit", "label": "DAILY CREDIT TOTAL", "group": "top", "debt_exp": 39329, "cash_aed": 15375, "auto_field": "debt_exp", "manual": false},
+    {"key": "bank_1", "label": "RAK BANK ACCOUNT", "group": "banks", "ac_balance": 7602, "currency": "AED", "auto_field": "ac_balance"},
+    {"key": "bank_5", "label": "CDR ACCOUNT (1050697)", "group": "banks", "ac_balance": 3612, "currency": "OMR", "auto_field": "ac_balance"},
+    {"key": "m_170...", "label": "RAK A/C EXP THIS MONTH", "group": "other", "debt_exp": 0, "cash_omr": 250, "manual": true},
+    {"key": "m_170...", "label": "SUHAIL SALARY DEPOSIT", "group": "other", "ac_balance": 2000, "manual": true}
+  ]
 }
 ```
 
-- `banks[].month_exp` feeds the **DEBT/EXP** column only (RAK/ADCB monthly expense = 0).
-- The **CASH** column is modeled solely by `cash_lines` (each with optional `aed` and
-  `omr`; OMR converts at `omr_rate`). This is the single source for the cash total —
-  there is no separate per-bank cash field, to avoid double-counting.
-- `extra_rows`: optional user-added manual rows `{label, amount, ac_balance, debt_exp}`
-  for anything not covered by the fixed rows (folded into the relevant column totals).
+Row fields: `key` (stable id), `label`, `group` (`top` | `banks` | `other`, drives
+layout sections), the four value cells `amount` / `ac_balance` / `debt_exp` and the
+cash pair `cash_aed` / `cash_omr`, a `currency` display tag, `manual` (true = user-added,
+carried forward from the latest snapshot into a new date), and `auto_field` (which cell
+the service auto-fills, so "Recompute from live" knows what to refresh).
+
+- Column totals = sum of that cell down every row.
+- **CASH** total = Σ(`cash_aed` + `cash_omr` × `omr_rate`) — the only place OMR is converted.
+- The CDR row's `ac_balance` is summed **raw** into the A/C total (replicating the workbook).
+- Manual rows cover anything not in the auto set (monthly bank expenses, salary, cash lines).
 
 `Model`: `App\Models\FinalCalculation` (fillable + casts, `Auditable`, `auditLabel`).
 
