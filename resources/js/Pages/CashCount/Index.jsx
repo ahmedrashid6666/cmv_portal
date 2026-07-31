@@ -15,15 +15,15 @@ export default function CashCount({ date, denominations, count, expectedAed, his
     });
 
     const setQty = (cur, denom, qty) => setData('lines', { ...data.lines, [cur]: { ...data.lines[cur], [denom]: qty } });
-    const setExtra = (cur, i, k, v) => {
-        const extras = data.extras[cur] || [];
-        const newExtras = [...extras];
-        if (!newExtras[i]) newExtras[i] = { label: '', amount: '' };
-        newExtras[i][k] = v;
-        setData('extras', { ...data.extras, [cur]: newExtras });
+
+    const updateExtra = (cur, idx, key, value) => {
+        const extras = [...(data.extras[cur] || [])];
+        while (extras.length <= idx) extras.push({ label: '', amount: '' });
+        extras[idx][key] = value;
+        setData('extras', { ...data.extras, [cur]: extras });
     };
-    const addExtra = (cur) => setData('extras', { ...data.extras, [cur]: [...data.extras[cur], { label: '', amount: '' }] });
-    const removeExtra = (cur, i) => setData('extras', { ...data.extras, [cur]: data.extras[cur].filter((_, idx) => idx !== i) });
+
+    const addExtra = (cur) => setData('extras', { ...data.extras, [cur]: [...(data.extras[cur] || []), { label: '', amount: '' }] });
 
     const totals = useMemo(() => {
         const t = {};
@@ -116,52 +116,31 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                     <tbody>
                                         {(() => {
                                             const extras = data.extras[cur] || [];
-                                            const inItems = extras.filter((_, i) => i % 2 === 0);
-                                            const outItems = extras.filter((_, i) => i % 2 === 1);
-                                            const maxRows = Math.max(inItems.length + 1, outItems.length + 1, 5);
+                                            const maxRows = Math.max(Math.ceil(extras.length / 2), 5);
 
-                                            return Array.from({ length: maxRows }).map((_, row) => (
-                                                <tr key={row}>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        <input
-                                                            type="text"
-                                                            className={input + ' text-xs'}
-                                                            placeholder="Details"
-                                                            value={inItems[row]?.label || ''}
-                                                            onChange={(e) => setExtra(cur, row * 2, 'label', e.target.value)}
-                                                        />
-                                                    </td>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            className={input + ' text-xs text-right'}
-                                                            placeholder="0.00"
-                                                            value={inItems[row]?.amount || ''}
-                                                            onChange={(e) => setExtra(cur, row * 2, 'amount', e.target.value)}
-                                                        />
-                                                    </td>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        <input
-                                                            type="text"
-                                                            className={input + ' text-xs'}
-                                                            placeholder="Details"
-                                                            value={outItems[row]?.label || ''}
-                                                            onChange={(e) => setExtra(cur, row * 2 + 1, 'label', e.target.value)}
-                                                        />
-                                                    </td>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            className={input + ' text-xs text-right'}
-                                                            placeholder="0.00"
-                                                            value={outItems[row]?.amount || ''}
-                                                            onChange={(e) => setExtra(cur, row * 2 + 1, 'amount', e.target.value)}
-                                                        />
-                                                    </td>
-                                                </tr>
-                                            ));
+                                            return Array.from({ length: maxRows }).map((_, row) => {
+                                                const inIdx = row * 2;
+                                                const outIdx = row * 2 + 1;
+                                                const inItem = extras[inIdx] || { label: '', amount: '' };
+                                                const outItem = extras[outIdx] || { label: '', amount: '' };
+
+                                                return (
+                                                    <tr key={row}>
+                                                        <td className="border border-slate-300 py-2 px-2">
+                                                            <input type="text" className={input + ' text-xs'} placeholder="Details" value={inItem.label} onChange={(e) => updateExtra(cur, inIdx, 'label', e.target.value)} />
+                                                        </td>
+                                                        <td className="border border-slate-300 py-2 px-2">
+                                                            <input type="number" step="0.01" className={input + ' text-xs text-right'} placeholder="0.00" value={inItem.amount} onChange={(e) => updateExtra(cur, inIdx, 'amount', e.target.value)} />
+                                                        </td>
+                                                        <td className="border border-slate-300 py-2 px-2">
+                                                            <input type="text" className={input + ' text-xs'} placeholder="Details" value={outItem.label} onChange={(e) => updateExtra(cur, outIdx, 'label', e.target.value)} />
+                                                        </td>
+                                                        <td className="border border-slate-300 py-2 px-2">
+                                                            <input type="number" step="0.01" className={input + ' text-xs text-right'} placeholder="0.00" value={outItem.amount} onChange={(e) => updateExtra(cur, outIdx, 'amount', e.target.value)} />
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            });
                                         })()}
                                         <tr className="border-t-2 border-navy-800 bg-slate-100 font-bold">
                                             <td className="border border-slate-400 py-2 px-2 text-right">Total</td>
