@@ -124,3 +124,21 @@ it('folds a third commission into the Com-2 total so it reconciles', function ()
             ->where('totals.12', '25')
             ->etc());
 });
+
+it('searches transactions by reference and vehicle, not just customer/invoice', function () {
+    $ref = App\Models\Reference::create(['name' => 'ZEBRA-REF']);
+    $veh = App\Models\Vehicle::create(['number' => 'XYZ-999']);
+    $match = opTx(today()->toDateString());
+    $match->update(['reference_id' => $ref->id, 'vehicle_id' => $veh->id]);
+    opTx(today()->toDateString()); // a non-matching row
+
+    // by reference name
+    $this->actingAs($this->admin)->get(route('operations.index', ['search' => 'ZEBRA']))
+        ->assertInertia(fn ($p) => $p->where('rows.data', fn ($rows) => count($rows) === 1
+            && $rows[0]['id'] === $match->id));
+
+    // by vehicle number
+    $this->actingAs($this->admin)->get(route('operations.index', ['search' => 'XYZ-999']))
+        ->assertInertia(fn ($p) => $p->where('rows.data', fn ($rows) => count($rows) === 1
+            && $rows[0]['id'] === $match->id));
+});

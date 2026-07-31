@@ -235,7 +235,9 @@ class OperationsController extends Controller
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
                 ->orWhere('boe_no', 'like', "%{$search}%")
-                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('vehicle', fn ($c) => $c->where('number', 'like', "%{$search}%"))));
 
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
