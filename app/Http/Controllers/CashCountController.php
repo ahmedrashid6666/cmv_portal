@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashCount;
-use App\Services\BalanceService;
+use App\Services\FinalCalculationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -11,7 +11,7 @@ use Inertia\Inertia;
 
 class CashCountController extends Controller
 {
-    public function index(Request $request, BalanceService $balances)
+    public function index(Request $request, FinalCalculationService $finalCalc)
     {
         $date = $request->date('date')?->toDateString() ?? Carbon::today()->toDateString();
         $count = CashCount::whereDate('count_date', $date)->first();
@@ -24,7 +24,7 @@ class CashCountController extends Controller
                 'extras' => $count->extras ?? ['AED' => [], 'OMR' => []],
                 'remarks' => $count->remarks,
             ] : null,
-            'expectedAed' => (float) $balances->cashBalance(),
+            'expectedAed' => $finalCalc->liquidCashFor($date),
             'history' => CashCount::latest('count_date')->limit(15)->get(['id', 'count_date', 'total_aed', 'total_omr', 'expected_aed'])
                 ->map(fn ($c) => [
                     'id' => $c->id,
@@ -36,7 +36,7 @@ class CashCountController extends Controller
         ]);
     }
 
-    public function store(Request $request, BalanceService $balances)
+    public function store(Request $request, FinalCalculationService $finalCalc)
     {
         $data = $request->validate([
             'count_date' => ['required', 'date'],
@@ -55,7 +55,7 @@ class CashCountController extends Controller
                 'extras' => $extras,
                 'total_aed' => CashCount::totalFor('AED', $lines, $extras),
                 'total_omr' => CashCount::totalFor('OMR', $lines, $extras),
-                'expected_aed' => (float) $balances->cashBalance(),
+                'expected_aed' => $finalCalc->liquidCashFor($data['count_date']),
                 'remarks' => $data['remarks'] ?? null,
                 'created_by' => $request->user()->id,
             ],

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CashCount;
 use App\Models\FinalCalculation;
 use App\Models\LedgerEntry;
 use App\Models\Setting;
@@ -61,6 +62,20 @@ class FinalCalculationService
     }
 
     /**
+     * The Total Liquid Cash in CMV figure for a date — the saved snapshot's
+     * total if one exists, otherwise the live-computed default. Used as the
+     * "Expected Cash" baseline on the Daily Cash Count page, so both screens
+     * reconcile against the same number.
+     */
+    public function liquidCashFor(string $date): float
+    {
+        $snapshot = FinalCalculation::whereDate('calc_date', $date)->first();
+        $data = $snapshot ? $snapshot->data : $this->defaults($date);
+
+        return $this->compute($data)['liquid_cash'];
+    }
+
+    /**
      * Auto-filled worksheet for a date: the live core rows, plus the manual
      * rows carried forward (labels + values) from the most recent snapshot.
      *
@@ -73,6 +88,8 @@ class FinalCalculationService
         foreach ($this->carriedManualRows($date) as $row) {
             $rows[] = $row;
         }
+
+        $rows = $this->withDwsCashDefault($rows, $date);
 
         return [
             'rows' => $rows,
@@ -106,6 +123,43 @@ class FinalCalculationService
         }
 
         return $rows;
+    }
+
+    /**
+     * The Daily Work Sheet Bal row's Cash (AED)/(OMR) cells default to that
+     * date's actual Daily Cash Count total when one has been saved; otherwise
+     * they default to Total Liquid Cash in CMV, so the sheet reads as
+     * "balanced" until the real count overrides it.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function withDwsCashDefault(array $rows, string $date): array
+    {
+        $count = CashCount::whereDate('count_date', $date)->first();
+
+        return array_map(function ($row) use ($rows, $count) {
+            if (($row['key'] ?? null) !== 'dws_bal') {
+                return $row;
+            }
+
+            if ($count) {
+                $row['cash_aed'] = (float) $count->total_aed;
+                $row['cash_omr'] = (float) $count->total_omr;
+
+                return $row;
+            }
+
+            $sum = fn (string $col) => array_reduce(
+                $rows,
+                fn ($carry, $r) => $carry + (float) ($r[$col] ?? 0),
+                0.0,
+            );
+            $liquidCash = $sum('amount') - ($sum('ac_balance') + $sum('debt_exp'));
+            $row['cash_aed'] = round($liquidCash, 2);
+
+            return $row;
+        }, $rows);
     }
 
     /** Manual rows from the latest saved snapshot, carried into a new date. */
