@@ -118,7 +118,7 @@ class BalanceService
     {
         $date ??= Carbon::today();
 
-        return $this->d((string) Transaction::whereDate('transaction_date', $date)->sum('grand_total'));
+        return $this->d((string) Transaction::whereDate('transaction_date', $date)->sum('total_amount'));
     }
 
     public function todaysExpenses(?Carbon $date = null): string
@@ -135,7 +135,7 @@ class BalanceService
     {
         return $this->d((string) Transaction::whereYear('transaction_date', $year)
             ->whereMonth('transaction_date', $month)
-            ->sum('grand_total'));
+            ->sum('total_amount'));
     }
 
     public function monthlyExpenses(int $year, int $month): string

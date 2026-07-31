@@ -83,7 +83,7 @@ class ReportBuilder
         $byDay = $txns->groupBy(fn ($t) => $t->transaction_date->format('Y-m-d'))
             ->map(fn ($group, $day) => [
                 'day' => $day,
-                'income' => (float) $group->sum('grand_total'),
+                'income' => (float) $group->sum('total_amount'),
                 'profit' => (float) $group->sum('net_profit'),
             ])->values();
 
@@ -109,7 +109,7 @@ class ReportBuilder
             ->map(fn ($group, $name) => [
                 'name' => $name,
                 'count' => $group->count(),
-                'income' => (float) $group->sum('grand_total'),
+                'income' => (float) $group->sum('total_amount'),
                 'profit' => (float) $group->sum('net_profit'),
             ])->sortByDesc('income')->values();
 
@@ -190,7 +190,7 @@ class ReportBuilder
             return [
                 'label' => Carbon::create(null, $m)->format('M'),
                 'count' => $group->count(),
-                'income' => (float) $group->sum('grand_total'),
+                'income' => (float) $group->sum('total_amount'),
                 'profit' => (float) $group->sum('net_profit'),
             ];
         });
@@ -211,7 +211,7 @@ class ReportBuilder
         $groups = $txns->groupBy($keyFn)->map(fn ($group, $name) => [
             'name' => (string) $name,
             'count' => $group->count(),
-            'income' => (float) $group->sum('grand_total'),
+            'income' => (float) $group->sum('total_amount'),
             'profit' => (float) $group->sum('net_profit'),
         ])->sortByDesc('income')->values();
 
@@ -298,7 +298,7 @@ class ReportBuilder
     private function incomeOrProfit(string $type, array $filters): array
     {
         $txns = $this->baseQuery($filters)->get();
-        $metric = $type === 'income' ? 'grand_total' : 'net_profit';
+        $metric = $type === 'income' ? 'total_amount' : 'net_profit';
         $byDay = $txns->groupBy(fn ($t) => $t->transaction_date->format('Y-m-d'))
             ->map(fn ($group, $day) => ['day' => $day, 'value' => (float) $group->sum($metric)])
             ->sortKeys()->values();
@@ -330,7 +330,7 @@ class ReportBuilder
     private function totals($txns): array
     {
         return [
-            'Income' => round((float) $txns->sum('grand_total'), 2),
+            'Income' => round((float) $txns->sum('total_amount'), 2),
             'Total Amount' => round((float) $txns->sum('total_amount'), 2),
             'Net Profit' => round((float) $txns->sum('net_profit'), 2),
         ];
