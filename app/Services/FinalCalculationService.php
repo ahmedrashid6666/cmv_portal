@@ -99,6 +99,23 @@ class FinalCalculationService
     }
 
     /**
+     * Overlay the Daily Work Sheet Bal row's Cash (AED)/(OMR) cells with the
+     * date's actual saved Daily Cash Count, whether $data came from a live
+     * default or an already-saved snapshot. Without this, saving a Final
+     * Calculation before the day's cash count is entered (or re-counted)
+     * freezes a stale/zero figure that a later Cash Count save never reaches.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function withLiveCashCount(array $data, string $date): array
+    {
+        $data['rows'] = $this->withDwsCashDefault($data['rows'] ?? [], $date);
+
+        return $data;
+    }
+
+    /**
      * The auto-computed rows every worksheet starts with.
      *
      * @return array<int, array<string, mixed>>

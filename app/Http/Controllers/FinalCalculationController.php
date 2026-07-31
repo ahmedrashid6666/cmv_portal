@@ -24,6 +24,11 @@ class FinalCalculationController extends Controller
             ? $snapshot->data
             : $this->service->defaults($date);
 
+        // The Daily Work Sheet Bal row's cash cells always reflect the date's
+        // actual Daily Cash Count, even for an already-saved snapshot — so a
+        // cash count entered/updated after saving still shows up here.
+        $data = $this->service->withLiveCashCount($data, $date);
+
         return Inertia::render('Books/FinalCalculation/Index', [
             'date' => $date,
             'data' => $data,
