@@ -42,6 +42,26 @@ it('builds a cash book with running balance', function () {
         ->and($book['totals']['credit'])->toBe(45.0);
 });
 
+it('lists the received portion of a partial credit sale in the cash book', function () {
+    // Credit-method sale: grand_total 330 (customs 245 + profit 35 + Com-1 50),
+    // of which 110 is on credit → 220 was received in cash and must show.
+    $t = ledgerTx(['payment_method_id' => $this->credit->id, 'customs_fees' => 245, 'profit' => 35, 'credit_amount' => 110]);
+    $t->commissions()->create(['label' => 'Com-1', 'amount' => 50, 'type' => 'charged_to_customer']);
+    $t->recomputeTotals();
+
+    $book = $this->svc->cashBook();
+
+    expect($book['rows'])->toHaveCount(1)
+        ->and($book['rows'][0]['debit'])->toBe(220.0)   // 330 − 110
+        ->and($book['closing'])->toBe(220.0);
+});
+
+it('excludes a fully-credit sale from the cash book', function () {
+    ledgerTx(['payment_method_id' => $this->credit->id, 'customs_fees' => 200, 'credit_amount' => 200]); // received 0
+
+    expect($this->svc->cashBook()['rows'])->toHaveCount(0);
+});
+
 it('builds a bank book from bank opening and bank sales', function () {
     Bank::create(['name' => 'ADCB', 'opening_balance' => 1000]);
     ledgerTx(['payment_method_id' => $this->bank->id, 'customs_fees' => 100, 'transaction_date' => '2026-07-02']); // +100

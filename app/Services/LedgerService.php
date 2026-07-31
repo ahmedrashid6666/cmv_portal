@@ -30,13 +30,20 @@ class LedgerService
         $opening = (float) Setting::get('cash_opening_balance', 0);
         $events = [];
 
-        // Cash sales (debit / money in)
+        // Sales — only the received (non-credit) portion is cash in hand.
+        // A "Credit" method sale can take a partial cash payment, so its received
+        // part (grand_total − credit_amount) lands in cash alongside cash sales.
+        // Mirrors BalanceService::saleReceiptsByBucket('cash').
         Transaction::query()
-            ->whereHas('paymentMethod', fn ($q) => $q->where('type', 'cash'))
+            ->whereHas('paymentMethod', fn ($q) => $q->whereIn('type', ['cash', 'credit']))
             ->with('customer:id,name')
             ->get()
             ->each(function ($t) use (&$events) {
-                $events[] = $this->event($t->transaction_date, 'Sale — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->grand_total, 0);
+                $received = (float) $t->grand_total - (float) $t->credit_amount;
+                if ($received <= 0) {
+                    return; // fully on credit — nothing received in cash
+                }
+                $events[] = $this->event($t->transaction_date, 'Sale — '.($t->customer?->name ?? ''), $t->invoice_no, $received, 0);
             });
 
         // Credit repayments received in cash (debit / money in)
@@ -67,12 +74,18 @@ class LedgerService
         $opening = (float) (Bank::sum('opening_balance') ?: 0);
         $events = [];
 
+        // Only the received (non-credit) portion is money in the bank, mirroring
+        // BalanceService::saleReceiptsByBucket('bank').
         Transaction::query()
             ->whereHas('paymentMethod', fn ($q) => $q->where('type', 'bank'))
             ->with('customer:id,name')
             ->get()
             ->each(function ($t) use (&$events) {
-                $events[] = $this->event($t->transaction_date, 'Sale — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->grand_total, 0);
+                $received = (float) $t->grand_total - (float) $t->credit_amount;
+                if ($received <= 0) {
+                    return;
+                }
+                $events[] = $this->event($t->transaction_date, 'Sale — '.($t->customer?->name ?? ''), $t->invoice_no, $received, 0);
             });
 
         $this->cashOrBankRepayments('bank')->each(function ($p) use (&$events) {
