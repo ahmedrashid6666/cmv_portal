@@ -30,12 +30,19 @@
                     @php $qty = (float)($count->lines[$cur][(string)$d] ?? 0); @endphp
                     <tr><td>{{ number_format($d, $d < 1 ? 2 : 0) }}</td><td class="r">{{ $qty ?: '' }}</td><td class="r">{{ $qty ? number_format($d*$qty, 2) : '' }}</td></tr>
                 @endforeach
-                @foreach(($count->extras[$cur] ?? []) as $x)
-                    <tr><td>{{ $x['label'] ?? '' }}</td><td></td><td class="r">{{ number_format((float)($x['amount'] ?? 0), 2) }}</td></tr>
-                @endforeach
                 <tr class="tot"><td colspan="2">TOTAL {{ $cur }}</td><td class="r">{{ number_format($cur==='OMR' ? $count->total_omr : $count->total_aed, $cur==='OMR'?3:2) }}</td></tr>
                 </tbody>
             </table>
+            @if(!empty($count->extras[$cur]))
+                <table class="den">
+                    <thead><tr><th colspan="2">{{ $cur }} Bundles / Slips (reference only)</th></tr></thead>
+                    <tbody>
+                    @foreach($count->extras[$cur] as $x)
+                        <tr><td>{{ $x['label'] ?? '' }}</td><td class="r">{{ number_format((float)($x['amount'] ?? 0), 2) }}</td></tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            @endif
         </td>
     @endforeach
     </tr></table>

@@ -30,11 +30,10 @@ export default function CashCount({ date, denominations, count, expectedAed, his
         for (const cur of Object.keys(denominations)) {
             let sum = 0;
             for (const d of denominations[cur]) sum += d * (parseFloat(data.lines[cur]?.[d]) || 0);
-            for (const r of data.extras[cur] || []) sum += parseFloat(r.amount) || 0;
             t[cur] = cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
         }
         return t;
-    }, [data.lines, data.extras, denominations]);
+    }, [data.lines, denominations]);
 
     const variance = Math.round((totals.AED - expectedAed) * 100) / 100;
 
