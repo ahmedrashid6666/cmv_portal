@@ -6,9 +6,14 @@ use App\Models\Bank;
 use App\Models\BankEntry;
 use App\Services\BalanceService;
 use App\Services\BankService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BankAccountController extends Controller
 {
@@ -35,6 +40,62 @@ class BankAccountController extends Controller
         return Inertia::render('Banks/Statement', [
             'statement' => $banks->statement($bank, $request->only(['from', 'to'])),
             'filters' => $request->only(['from', 'to']),
+        ]);
+    }
+
+    public function exportStatement(Request $request, Bank $bank, BankService $banks)
+    {
+        $statement = $banks->statement($bank, $request->only(['from', 'to']));
+        $format = $request->string('format')->value();
+
+        return $format === 'pdf'
+            ? $this->statementPdf($statement)
+            : $this->statementXlsx($statement);
+    }
+
+    private function statementPdf(array $statement)
+    {
+        $pdf = Pdf::loadView('bank-statement.pdf', ['statement' => $statement]);
+
+        return $pdf->download('bank-statement-'.Str::slug($statement['bank']['name']).'.pdf');
+    }
+
+    private function statementXlsx(array $statement): StreamedResponse
+    {
+        $ss = new Spreadsheet();
+        $sheet = $ss->getActiveSheet();
+        $sheet->setCellValue('A1', 'Bank Statement — '.$statement['bank']['name']);
+
+        $columns = ['Date', 'Description', 'Invoice', 'In', 'Out', 'Balance'];
+        foreach ($columns as $i => $col) {
+            $sheet->setCellValue([$i + 1, 3], $col);
+        }
+
+        $sheet->setCellValue([1, 4], 'Opening balance');
+        $sheet->setCellValue([6, 4], $statement['opening']);
+
+        foreach ($statement['rows'] as $r => $row) {
+            $rowNum = $r + 5;
+            $sheet->setCellValue([1, $rowNum], $row['date']);
+            $sheet->setCellValue([2, $rowNum], $row['description']);
+            $sheet->setCellValue([3, $rowNum], $row['ref'] ?? '—');
+            $sheet->setCellValue([4, $rowNum], $row['debit'] ?: null);
+            $sheet->setCellValue([5, $rowNum], $row['credit'] ?: null);
+            $sheet->setCellValue([6, $rowNum], $row['balance']);
+        }
+
+        $totalsRow = count($statement['rows']) + 6;
+        $sheet->setCellValue([1, $totalsRow], 'TOTALS');
+        $sheet->setCellValue([2, $totalsRow], 'Total In: '.number_format($statement['total_in'], 2));
+        $sheet->setCellValue([3, $totalsRow], 'Total Out: '.number_format($statement['total_out'], 2));
+        $sheet->setCellValue([4, $totalsRow], 'Closing: '.number_format($statement['closing'], 2));
+
+        $filename = 'bank-statement-'.Str::slug($statement['bank']['name']).'.xlsx';
+
+        return response()->streamDownload(function () use ($ss) {
+            (new Xlsx($ss))->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
     }
 
