@@ -255,7 +255,8 @@ class OperationsController extends Controller
                 ->orWhere('vehicle_number', 'like', "%{$search}%")
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
@@ -324,8 +325,13 @@ class OperationsController extends Controller
             ->with(['customer:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
-            ->when($search, fn ($q) => $q->where('invoice_no', 'like', "%{$search}%")
-                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")));
+            ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
+                ->orWhere('boe_no', 'like', "%{$search}%")
+                ->orWhere('vehicle_number', 'like', "%{$search}%")
+                ->orWhere('contact_numbers', 'like', "%{$search}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
@@ -355,7 +361,13 @@ class OperationsController extends Controller
             ->with(['customer:id,name', 'reference:id,name', 'creditPayments.paymentMethod:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
-            ->when($search, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")));
+            ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
+                ->orWhere('boe_no', 'like', "%{$search}%")
+                ->orWhere('vehicle_number', 'like', "%{$search}%")
+                ->orWhere('contact_numbers', 'like', "%{$search}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
@@ -392,7 +404,8 @@ class OperationsController extends Controller
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('description', 'like', "%{$search}%")
                 ->orWhere('remarks', 'like', "%{$search}%")
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
-                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         $this->sort($query, $sort, $dir, [
             'expense_date' => 'expense_date',
@@ -430,7 +443,8 @@ class OperationsController extends Controller
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('party_name', 'like', "%{$search}%")
                 ->orWhere('reference', 'like', "%{$search}%")
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
-                ->orWhere('vehicle_number', 'like', "%{$search}%")));
+                ->orWhere('vehicle_number', 'like', "%{$search}%")
+                ->orWhereHas('payments.paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         $this->sort($query, $sort, $dir, [
             'entry_date' => 'entry_date', 'party_name' => 'party_name', 'reference' => 'reference',
