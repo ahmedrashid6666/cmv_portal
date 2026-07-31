@@ -350,6 +350,7 @@ class OperationsController extends Controller
     {
         $query = Transaction::query()
             ->where('credit_amount', '>', 0)
+            ->select('id', 'transaction_date', 'invoice_no', 'boe_no', 'customer_id', 'reference_id', 'vehicle_number', 'credit_amount', 'currency')
             ->with(['customer:id,name', 'reference:id,name', 'creditPayments.paymentMethod:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
