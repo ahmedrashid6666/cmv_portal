@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { AED, money } from '@/lib/format';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const input = 'rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
@@ -26,8 +26,18 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const [selected, setSelected] = useState([]);
     const [payOpen, setPayOpen] = useState(false);
     const [settleRow, setSettleRow] = useState(null); // row.settle {kind:'credit'|'ledger', ...}
+    const debounceTimer = useRef(null);
 
-    const go = (params) => router.get(route('operations.index'), { type, ...filters, sort: sort?.by, dir: sort?.dir, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
+    const go = (params) => router.get(route('operations.index'), { type, ...f, sort: sort?.by, dir: sort?.dir, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
+
+    // Auto-search with debounce on filter changes
+    useEffect(() => {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => {
+            go();
+        }, 300);
+        return () => clearTimeout(debounceTimer.current);
+    }, [f]);
     const sortBy = (key) => {
         if (!key) return;
         const dir = sort?.by === key && sort?.dir === 'asc' ? 'desc' : 'asc';
@@ -140,7 +150,6 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                             </select>
                         </label>
                     )}
-                    <button className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800">Filter</button>
                     <button type="button" onClick={reset} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">Reset</button>
                 </form>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -173,19 +182,19 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b text-left text-xs uppercase text-slate-500">
+                            <tr className="border-b text-left text-xs uppercase text-slate-500 align-bottom">
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
-                                <th className="whitespace-nowrap py-2 pr-3">Sl No</th>
+                                <th className="py-2 pr-3 leading-tight">Sl No</th>
                                 {columns.map((c, i) => (
-                                    <th key={c} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right' : '')}>
+                                    <th key={c} className={'py-2 pr-3 leading-tight ' + (isRight(i) ? 'text-right' : '')}>
                                         {sortKeys[i] ? (
-                                            <button onClick={() => sortBy(sortKeys[i])} className="inline-flex items-center gap-1 uppercase hover:text-navy-700">
+                                            <button onClick={() => sortBy(sortKeys[i])} className={'inline-flex items-end gap-1 uppercase hover:text-navy-700 ' + (isRight(i) ? 'text-right' : 'text-left')}>
                                                 {c} {arrow(sortKeys[i])}
                                             </button>
                                         ) : c}
                                     </th>
                                 ))}
-                                <th className="py-2 pr-3">Status</th>
+                                <th className="py-2 pr-3 leading-tight">Status</th>
                                 {canWrite && <th className="py-2"></th>}
                             </tr>
                         </thead>

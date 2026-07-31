@@ -88,20 +88,153 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                             </tbody>
                         </table>
 
-                        {/* Bundles / slips */}
-                        <div className="mt-3 border-t pt-3">
-                            <div className="mb-1 flex items-center justify-between">
-                                <span className="text-xs font-semibold uppercase text-slate-400">Bundles / Slips</span>
-                                <button type="button" onClick={() => addExtra(cur)} className="text-xs font-semibold text-primary-600 hover:underline">+ Add</button>
+                        {/* Bundles / slips - IN/OUT table */}
+                        <div className="mt-4 border-t pt-4">
+                            <div className="mb-3 flex items-center justify-between">
+                                <span className="text-xs font-semibold uppercase text-slate-600">Bundles / Slips</span>
                             </div>
-                            <div className="space-y-2">
-                                {(data.extras[cur] || []).map((r, i) => (
-                                    <div key={i} className="grid grid-cols-12 gap-2">
-                                        <input className={input + ' col-span-7'} placeholder="Label (e.g. BDL-1, SLIP)" value={r.label} onChange={(e) => setExtra(cur, i, 'label', e.target.value)} />
-                                        <input type="number" step="0.001" className={input + ' col-span-4 text-right'} placeholder="Amount" value={r.amount} onChange={(e) => setExtra(cur, i, 'amount', e.target.value)} />
-                                        <button type="button" onClick={() => removeExtra(cur, i)} className="col-span-1 text-accent-red hover:text-accent-red-dark">✕</button>
-                                    </div>
-                                ))}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-100">
+                                            <th colSpan="2" className="border border-slate-400 py-2 text-center font-bold text-navy-800">IN</th>
+                                            <th colSpan="2" className="border border-slate-400 py-2 text-center font-bold text-navy-800">OUT</th>
+                                        </tr>
+                                        <tr className="bg-slate-50">
+                                            <th className="border border-slate-400 py-1.5 px-2 text-left text-slate-600">Details</th>
+                                            <th className="border border-slate-400 py-1.5 px-2 text-right text-slate-600">Amount</th>
+                                            <th className="border border-slate-400 py-1.5 px-2 text-left text-slate-600">Details</th>
+                                            <th className="border border-slate-400 py-1.5 px-2 text-right text-slate-600">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(() => {
+                                            const extras = data.extras[cur] || [];
+                                            const inItems = extras.filter((_, i) => i % 2 === 0);
+                                            const outItems = extras.filter((_, i) => i % 2 === 1);
+                                            const maxRows = Math.max(inItems.length + 1, outItems.length + 1, 5);
+
+                                            return Array.from({ length: maxRows }).map((_, row) => (
+                                                <tr key={row}>
+                                                    <td className="border border-slate-300 py-2 px-2">
+                                                        {inItems[row] ? (
+                                                            <input
+                                                                type="text"
+                                                                className={input + ' text-xs'}
+                                                                placeholder="Details"
+                                                                value={inItems[row].label}
+                                                                onChange={(e) => setExtra(cur, row * 2, 'label', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <input
+                                                                type="text"
+                                                                className={input + ' text-xs'}
+                                                                placeholder="Details"
+                                                                disabled
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="border border-slate-300 py-2 px-2">
+                                                        {inItems[row] ? (
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className={input + ' text-xs text-right'}
+                                                                placeholder="0.00"
+                                                                value={inItems[row].amount}
+                                                                onChange={(e) => setExtra(cur, row * 2, 'amount', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className={input + ' text-xs text-right'}
+                                                                placeholder="0.00"
+                                                                disabled
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="border border-slate-300 py-2 px-2">
+                                                        {outItems[row] ? (
+                                                            <input
+                                                                type="text"
+                                                                className={input + ' text-xs'}
+                                                                placeholder="Details"
+                                                                value={outItems[row].label}
+                                                                onChange={(e) => setExtra(cur, row * 2 + 1, 'label', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <input
+                                                                type="text"
+                                                                className={input + ' text-xs'}
+                                                                placeholder="Details"
+                                                                disabled
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="border border-slate-300 py-2 px-2">
+                                                        {outItems[row] ? (
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className={input + ' text-xs text-right'}
+                                                                placeholder="0.00"
+                                                                value={outItems[row].amount}
+                                                                onChange={(e) => setExtra(cur, row * 2 + 1, 'amount', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className={input + ' text-xs text-right'}
+                                                                placeholder="0.00"
+                                                                disabled
+                                                            />
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })()}
+                                        <tr className="border-t-2 border-navy-800 bg-slate-100 font-bold">
+                                            <td className="border border-slate-400 py-2 px-2 text-right">Total</td>
+                                            <td className="border border-slate-400 py-2 px-2 text-right tabular-nums">
+                                                {(() => {
+                                                    const inTotal = (data.extras[cur] || [])
+                                                        .filter((_, i) => i % 2 === 0)
+                                                        .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                                                    return num(inTotal);
+                                                })()}
+                                            </td>
+                                            <td className="border border-slate-400 py-2 px-2 text-right">Total</td>
+                                            <td className="border border-slate-400 py-2 px-2 text-right tabular-nums">
+                                                {(() => {
+                                                    const outTotal = (data.extras[cur] || [])
+                                                        .filter((_, i) => i % 2 === 1)
+                                                        .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                                                    return num(outTotal);
+                                                })()}
+                                            </td>
+                                        </tr>
+                                        <tr className="font-bold text-navy-800">
+                                            <td colSpan="2" className="border border-slate-400 py-2 px-2">Balance Amount</td>
+                                            <td colSpan="2" className="border border-slate-400 py-2 px-2 text-right tabular-nums">
+                                                {(() => {
+                                                    const inTotal = (data.extras[cur] || [])
+                                                        .filter((_, i) => i % 2 === 0)
+                                                        .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                                                    const outTotal = (data.extras[cur] || [])
+                                                        .filter((_, i) => i % 2 === 1)
+                                                        .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                                                    const balance = inTotal - outTotal;
+                                                    return num(balance);
+                                                })()}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                                <button type="button" onClick={() => addExtra(cur)} className="text-xs font-semibold text-primary-600 hover:underline">+ Add Row</button>
                             </div>
                         </div>
                     </Card>

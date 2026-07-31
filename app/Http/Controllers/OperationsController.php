@@ -176,6 +176,14 @@ class OperationsController extends Controller
         $query->orderBy($defaultCol, 'desc')->orderBy('id', 'desc');
     }
 
+    /** Join an entry's contact numbers into a single display cell. */
+    private function contactCell($model): string
+    {
+        $numbers = array_filter((array) ($model->contact_numbers ?? []));
+
+        return $numbers ? implode(', ', $numbers) : '—';
+    }
+
     private function customerSub(): \Closure
     {
         return fn ($q, $dir) => $q->orderBy(
@@ -204,8 +212,20 @@ class OperationsController extends Controller
     }
 
     /**
-     * Sum commissions across a set of transactions, split into Com-1 (the first
-     * commission per transaction) and Com-2 (everything after it).
+     * A "Com-1" commission is one whose label is Com-1 (or blank — the primary
+     * slot). Everything else (Com-2, Com-3, …) belongs in the Com-2 column, so a
+     * shipment whose only commission sat in the sheet's Com-2 column stays there.
+     */
+    private function isCom1(?string $label): bool
+    {
+        $n = strtolower(trim((string) $label));
+
+        return $n === '' || $n === 'com-1' || $n === 'com1';
+    }
+
+    /**
+     * Sum commissions across a set of transactions, split into Com-1 and Com-2
+     * by their label (not their order).
      *
      * @return array{0: float, 1: float}  [com1Total, com2Total]
      */
@@ -216,12 +236,9 @@ class OperationsController extends Controller
 
         \App\Models\TransactionCommission::query()
             ->whereIn('transaction_id', $transactionIdsQuery)
-            ->orderBy('transaction_id')->orderBy('id')
-            ->get(['transaction_id', 'amount'])
-            ->groupBy('transaction_id')
-            ->each(function ($rows) use (&$com1, &$com2) {
-                $com1 += (float) $rows->first()->amount;
-                $com2 += (float) $rows->slice(1)->sum('amount');
+            ->get(['label', 'amount'])
+            ->each(function ($c) use (&$com1, &$com2) {
+                $this->isCom1($c->label) ? $com1 += (float) $c->amount : $com2 += (float) $c->amount;
             });
 
         return [$com1, $com2];
@@ -230,14 +247,15 @@ class OperationsController extends Controller
     private function transactions(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
     {
         $query = Transaction::query()
-            ->with(['customer:id,name', 'reference:id,name', 'vehicle:id,number', 'paymentMethod:id,name', 'creditPayments.paymentMethod:id,name'])
+            ->with(['customer:id,name', 'reference:id,name', 'paymentMethod:id,name', 'creditPayments.paymentMethod:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
                 ->orWhere('boe_no', 'like', "%{$search}%")
+                ->orWhere('vehicle_number', 'like', "%{$search}%")
+                ->orWhere('contact_numbers', 'like', "%{$search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('vehicle', fn ($c) => $c->where('number', 'like', "%{$search}%"))));
+                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
@@ -250,7 +268,7 @@ class OperationsController extends Controller
         $currencies = (clone $totalsSource)->distinct()->pluck('currency')->map(fn ($c) => $c ?: 'AED')->unique();
         $tCur = $currencies->count() === 1 ? $currencies->first() : 'AED';
         $t = fn ($v) => \App\Support\Money::display($v, $tCur);
-        $totals = ['', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
+        $totals = ['', '', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
 
         $query->with(['commissions' => fn ($q) => $q->orderBy('id')]);
 
@@ -265,8 +283,8 @@ class OperationsController extends Controller
             $cur = $t->currency ?: 'AED';
             $money = fn ($v) => \App\Support\Money::display($v, $cur);
 
-            $com1 = (float) ($t->commissions->first()->amount ?? 0);
-            $com2 = (float) $t->commissions->slice(1)->sum('amount');
+            $com1 = (float) $t->commissions->filter(fn ($c) => $this->isCom1($c->label))->sum('amount');
+            $com2 = (float) $t->commissions->sum('amount') - $com1;
 
             return [
                 'id' => $t->id, 'status' => $t->invoiceStatus(),
@@ -276,8 +294,9 @@ class OperationsController extends Controller
                     $t->invoice_no ?? '—',
                     $t->boe_no ?? '—',
                     $t->customer?->name,
+                    $this->contactCell($t),
                     $t->reference?->name ?? '—',
-                    $t->vehicle?->number ?? '—',
+                    $t->vehicle_number ?? '—',
                     $money($t->customs_fees),
                     $money($t->gov_fees),
                     $money($t->profit),
@@ -292,9 +311,9 @@ class OperationsController extends Controller
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
-            'align' => [false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, false],
+        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Contact', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
+            'align' => [false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, false],
             'totals' => $totals,
             'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
     }
@@ -331,7 +350,7 @@ class OperationsController extends Controller
     {
         $query = Transaction::query()
             ->where('credit_amount', '>', 0)
-            ->with(['customer:id,name', 'creditPayments.paymentMethod:id,name'])
+            ->with(['customer:id,name', 'reference:id,name', 'creditPayments.paymentMethod:id,name'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")));
@@ -349,15 +368,16 @@ class OperationsController extends Controller
                 'status' => $out <= 0 ? 'paid' : ($out < (float) $t->credit_amount ? 'partial' : 'unpaid'),
                 'action_url' => route('credits.index'), 'settle' => $this->creditSettle($t),
                 'cells' => [
-                    $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->customer?->name,
+                    $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
                     \App\Support\Money::display($t->credit_amount, $t->currency),
                     \App\Support\Money::display($out, $t->currency),
                 ],
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice', 'Customer', 'Credit', 'Outstanding'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', 'customer', 'credit_amount', null],
+        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Reference', 'Vehicle No', 'Credit', 'Outstanding'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, 'credit_amount', null],
+            'align' => [false, false, false, false, false, false, true, true],
             'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false];
     }
 
@@ -369,6 +389,7 @@ class OperationsController extends Controller
             ->when($to, fn ($q) => $q->whereDate('expense_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('description', 'like', "%{$search}%")
                 ->orWhere('remarks', 'like', "%{$search}%")
+                ->orWhere('contact_numbers', 'like', "%{$search}%")
                 ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         $this->sort($query, $sort, $dir, [
@@ -379,19 +400,21 @@ class OperationsController extends Controller
         ], 'expense_date');
 
         $rows = $query->paginate($this->perPage)->withQueryString()->through(fn ($e) => [
-            'id' => $e->id, 'status' => null, 'action_url' => null,
+            'id' => $e->id, 'status' => null, 'action_url' => route('office-expenses.edit', $e->id),
             'cells' => [
                 $e->expense_date->format('d-m-Y'),
                 $e->category?->name ?? '—',
                 $e->description ?: '—',
+                $this->contactCell($e),
                 $e->paymentMethod?->name ?? '—',
                 \App\Support\Money::display($e->amount, $e->currency),
             ],
         ]);
 
-        return ['columns' => ['Date', 'Category', 'Description', 'Method', 'Amount'], 'rows' => $rows,
-            'sortKeys' => ['expense_date', 'category', null, 'method', 'amount'],
-            'statusOptions' => [], 'actionLabel' => null, 'bulkDeletable' => true];
+        return ['columns' => ['Date', 'Category', 'Description', 'Contact', 'Method', 'Amount'], 'rows' => $rows,
+            'sortKeys' => ['expense_date', 'category', null, null, 'method', 'amount'],
+            'align' => [false, false, false, false, false, true],
+            'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
     }
 
     private function ledger(string $type, ?string $from, ?string $to, string $search, string $status, ?string $sort, string $dir): array
@@ -404,6 +427,7 @@ class OperationsController extends Controller
             ->when($status, fn ($q) => $q->where('status', $status))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('party_name', 'like', "%{$search}%")
                 ->orWhere('reference', 'like', "%{$search}%")
+                ->orWhere('contact_numbers', 'like', "%{$search}%")
                 ->orWhere('vehicle_number', 'like', "%{$search}%")));
 
         $this->sort($query, $sort, $dir, [
@@ -416,7 +440,7 @@ class OperationsController extends Controller
             'id' => $e->id, 'status' => $e->status, 'action_url' => route('ledger.index', $type),
             'settle' => ['kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name, 'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount, 'currency' => $e->currency ?: 'AED'],
             'cells' => [
-                $e->entry_date->format('d-m-Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
+                $e->entry_date->format('d-m-Y'), $e->party_name, $this->contactCell($e), $e->reference ?? '—', $e->vehicle_number ?? '—',
                 \App\Support\Money::display($e->total_amount, $e->currency),
                 \App\Support\Money::display($e->paid_amount, $e->currency),
                 \App\Support\Money::display($e->balance_amount, $e->currency),
@@ -424,9 +448,10 @@ class OperationsController extends Controller
         ]);
 
         return [
-            'columns' => ['Date', $type === 'borrowed' ? 'Person' : 'Customer', 'Reference', 'Vehicle', 'Total', $type === 'borrowed' ? 'Returned' : 'Paid', 'Balance'],
+            'columns' => ['Date', $type === 'borrowed' ? 'Person' : 'Customer', 'Contact', 'Reference', 'Vehicle', 'Total', $type === 'borrowed' ? 'Returned' : 'Paid', 'Balance'],
             'rows' => $rows,
-            'sortKeys' => ['entry_date', 'party_name', 'reference', 'vehicle_number', 'total_amount', 'paid_amount', 'balance_amount'],
+            'sortKeys' => ['entry_date', 'party_name', null, 'reference', 'vehicle_number', 'total_amount', 'paid_amount', 'balance_amount'],
+            'align' => [false, false, false, false, false, true, true, true],
             'statusOptions' => ['pending' => 'Pending', 'partial' => $type === 'borrowed' ? 'Partially Returned' : 'Partially Paid', 'returned' => 'Returned'],
             'actionLabel' => 'Edit', 'bulkDeletable' => true,
         ];
