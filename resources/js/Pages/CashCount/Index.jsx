@@ -15,7 +15,13 @@ export default function CashCount({ date, denominations, count, expectedAed, his
     });
 
     const setQty = (cur, denom, qty) => setData('lines', { ...data.lines, [cur]: { ...data.lines[cur], [denom]: qty } });
-    const setExtra = (cur, i, k, v) => setData('extras', { ...data.extras, [cur]: data.extras[cur].map((r, idx) => (idx === i ? { ...r, [k]: v } : r)) });
+    const setExtra = (cur, i, k, v) => {
+        const extras = data.extras[cur] || [];
+        const newExtras = [...extras];
+        if (!newExtras[i]) newExtras[i] = { label: '', amount: '' };
+        newExtras[i][k] = v;
+        setData('extras', { ...data.extras, [cur]: newExtras });
+    };
     const addExtra = (cur) => setData('extras', { ...data.extras, [cur]: [...data.extras[cur], { label: '', amount: '' }] });
     const removeExtra = (cur, i) => setData('extras', { ...data.extras, [cur]: data.extras[cur].filter((_, idx) => idx !== i) });
 
