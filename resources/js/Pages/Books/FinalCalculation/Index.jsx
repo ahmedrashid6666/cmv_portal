@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { num } from '@/lib/format';
+import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 
@@ -65,6 +66,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
         <AuthenticatedLayout header="Final Calculation">
             <Head title="Final Calculation" />
 
+            <div onKeyDown={focusNextFieldOnEnter}>
             <div className="mb-4 flex flex-wrap items-end gap-3">
                 <label className="block">
                     <span className="mb-1 block text-xs font-medium text-slate-600">Date</span>
@@ -140,6 +142,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                         onChange={(e) => setData('data', { ...form.data, remarks: e.target.value })} />
                 </label>
             </Card>
+            </div>
 
             <Card title="Recent Snapshots" className="mt-4">
                 <div className="overflow-x-auto">

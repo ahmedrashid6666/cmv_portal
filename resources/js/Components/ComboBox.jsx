@@ -81,7 +81,7 @@ export default function ComboBox({ options = [], value, onChange, placeholder = 
                             autoFocus
                             value={query}
                             onChange={(e) => { setQuery(e.target.value); if (error) setError(''); }}
-                            onKeyDown={(e) => { if (e.key === 'Enter' && canCreate) { e.preventDefault(); create(); } }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (canCreate) create(); } }}
                             placeholder={createSlug ? 'Search or type to add…' : 'Search…'}
                             className="w-full rounded-md border-slate-300 text-sm focus:border-primary-500 focus:ring-primary-500"
                         />

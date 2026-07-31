@@ -1,6 +1,7 @@
 import AutocompleteInput from '@/Components/AutocompleteInput';
 import ContactNumbers from '@/Components/forms/ContactNumbers';
 import { money } from '@/lib/format';
+import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 
@@ -56,7 +57,7 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
     };
 
     return (
-        <form onSubmit={submit} className="space-y-3">
+        <form onSubmit={submit} onKeyDown={focusNextFieldOnEnter} className="space-y-3">
             <Field label="Date" error={errors.entry_date}>
                 <input type="date" className={input} value={data.entry_date} onChange={(e) => setData('entry_date', e.target.value)} />
             </Field>

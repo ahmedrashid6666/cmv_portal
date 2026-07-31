@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { money, num } from '@/lib/format';
+import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 
@@ -44,6 +45,7 @@ export default function CashCount({ date, denominations, count, expectedAed, his
         <AuthenticatedLayout header="Daily Cash Count">
             <Head title="Daily Cash Count" />
 
+            <div onKeyDown={focusNextFieldOnEnter}>
             <div className="mb-4 flex flex-wrap items-end gap-3">
                 <label className="block">
                     <span className="mb-1 block text-xs font-medium text-slate-600">Count Date</span>
@@ -193,6 +195,7 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                     <textarea rows="2" className={input} value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} />
                 </label>
             </Card>
+            </div>
 
             {/* History */}
             <Card title="Recent Counts" className="mt-4">

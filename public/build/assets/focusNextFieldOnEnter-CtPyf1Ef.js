@@ -1,0 +1,1 @@
+function e(e){if(e.key!==`Enter`||e.defaultPrevented)return;let t=e.target;if(t.tagName===`TEXTAREA`||t.tagName===`BUTTON`)return;let n=Array.from(e.currentTarget.querySelectorAll(`input, select, textarea, button, [tabindex]`)).filter(e=>!e.disabled&&e.tabIndex!==-1&&e.offsetParent!==null),r=n.indexOf(t);r!==-1&&(e.preventDefault(),n[r+1]?.focus())}export{e as t};

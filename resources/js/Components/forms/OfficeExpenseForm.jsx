@@ -1,5 +1,6 @@
 import ComboBox from '@/Components/ComboBox';
 import ContactNumbers from '@/Components/forms/ContactNumbers';
+import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { useForm } from '@inertiajs/react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
@@ -43,7 +44,7 @@ export default function OfficeExpenseForm({ officeExpense = null, expenseCategor
     };
 
     return (
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} onKeyDown={focusNextFieldOnEnter} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <Field label="Date" required error={errors.expense_date}>
                     <input type="date" className={input} value={data.expense_date} onChange={(e) => setData('expense_date', e.target.value)} />

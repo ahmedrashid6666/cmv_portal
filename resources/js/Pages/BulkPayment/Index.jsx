@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { AED, fmtDate } from '@/lib/format';
+import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -124,7 +125,7 @@ export default function BulkPayment({ meta, filters, entries, paymentMethods }) 
 
                     {/* Apply payment */}
                     <Card title={meta.actionLabel}>
-                        <form onSubmit={submit} className="space-y-3">
+                        <form onSubmit={submit} onKeyDown={focusNextFieldOnEnter} className="space-y-3">
                             <div className="rounded-lg bg-slate-50 p-3 text-sm">
                                 <div className="flex justify-between"><span className="text-slate-500">Selected</span><span className="font-semibold">{selectedEntries.length} entr(y/ies)</span></div>
                                 <div className="flex justify-between"><span className="text-slate-500">Their balance</span><span className="font-semibold text-accent-red">{AED(selectedBalance)}</span></div>
