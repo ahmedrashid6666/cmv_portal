@@ -55,6 +55,8 @@ Route::middleware(['auth'])->group(function () {
     // Office / overhead expenses (standalone cash-out entries)
     Route::middleware('role:super_admin,admin,accountant')->group(function () {
         Route::post('office-expenses', [OfficeExpenseController::class, 'store'])->name('office-expenses.store');
+        Route::get('office-expenses/{officeExpense}/edit', [OfficeExpenseController::class, 'edit'])->name('office-expenses.edit');
+        Route::put('office-expenses/{officeExpense}', [OfficeExpenseController::class, 'update'])->name('office-expenses.update');
         Route::delete('office-expenses/{officeExpense}', [OfficeExpenseController::class, 'destroy'])->name('office-expenses.destroy');
     });
 

@@ -37,6 +37,37 @@ it('reduces the cash balance when paid by a cash method, bank when paid by bank'
         ->and((float) $balances->bankBalance())->toBe(-500.0); // 500 bank out
 });
 
+it('edits an office expense and updates it', function () {
+    $cash = PaymentMethod::factory()->create(['type' => 'cash']);
+    $expense = OfficeExpense::factory()->create(['amount' => 100, 'description' => 'Old', 'payment_method_id' => $cash->id]);
+
+    // the edit page loads with the record
+    $this->actingAs($this->actor)->get(route('office-expenses.edit', $expense))
+        ->assertOk()
+        ->assertInertia(fn ($p) => $p->where('officeExpense.id', $expense->id)->where('officeExpense.description', 'Old'));
+
+    // update persists
+    $this->actingAs($this->actor)->put(route('office-expenses.update', $expense), [
+        'expense_date' => '2026-07-30',
+        'description' => 'New description',
+        'amount' => 275,
+        'currency' => 'AED',
+        'payment_method_id' => $cash->id,
+    ])->assertRedirect(route('operations.index', ['type' => 'office-expenses']));
+
+    $expense->refresh();
+    expect((float) $expense->amount)->toBe(275.0)
+        ->and($expense->description)->toBe('New description');
+});
+
+it('forbids read-only users from editing an expense', function () {
+    $expense = OfficeExpense::factory()->create();
+
+    $this->actingAs(User::factory()->role(Role::READ_ONLY)->create())
+        ->get(route('office-expenses.edit', $expense))
+        ->assertForbidden();
+});
+
 it('validates a required amount and payment method', function () {
     $this->actingAs($this->actor)->post(route('office-expenses.store'), [
         'expense_date' => '2026-07-28',

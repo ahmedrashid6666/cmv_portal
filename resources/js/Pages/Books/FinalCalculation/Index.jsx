@@ -175,6 +175,11 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
     );
 }
 
+// A value cell (Amount / A/C Balance / Debt-Exp) is shown for a manual row, or
+// for the one column an auto row represents. Everything else is left blank so
+// the grid stays aligned under its headers.
+const showVal = (r, col) => Boolean(r.manual) || r.auto_field === col;
+
 function RowGroup({ group, rows, setField, removeRow, addRow }) {
     const label = { top: 'Cash & Credit', banks: 'Bank Accounts', other: 'Expenses & Other' }[group];
     return (
@@ -193,11 +198,13 @@ function RowGroup({ group, rows, setField, removeRow, addRow }) {
                             </span>
                         )}
                     </td>
-                    <NumCell value={r.amount} onChange={(v) => setField(i, 'amount', v)} />
-                    <NumCell value={r.ac_balance} onChange={(v) => setField(i, 'ac_balance', v)} />
-                    <NumCell value={r.debt_exp} onChange={(v) => setField(i, 'debt_exp', v)} />
-                    <NumCell value={r.cash_aed} onChange={(v) => setField(i, 'cash_aed', v)} />
-                    <NumCell value={r.cash_omr} onChange={(v) => setField(i, 'cash_omr', v)} />
+                    {/* Auto rows expose only their own field; manual rows keep all three.
+                        Cash is counted in the Cash & Credit section only. */}
+                    {showVal(r, 'amount') ? <NumCell value={r.amount} onChange={(v) => setField(i, 'amount', v)} /> : <EmptyCell />}
+                    {showVal(r, 'ac_balance') ? <NumCell value={r.ac_balance} onChange={(v) => setField(i, 'ac_balance', v)} /> : <EmptyCell />}
+                    {showVal(r, 'debt_exp') ? <NumCell value={r.debt_exp} onChange={(v) => setField(i, 'debt_exp', v)} /> : <EmptyCell />}
+                    {r.group === 'top' ? <NumCell value={r.cash_aed} onChange={(v) => setField(i, 'cash_aed', v)} /> : <EmptyCell />}
+                    {r.group === 'top' ? <NumCell value={r.cash_omr} onChange={(v) => setField(i, 'cash_omr', v)} /> : <EmptyCell />}
                     <td className="px-2 text-center">
                         {r.manual && <button type="button" onClick={() => removeRow(i)} className="text-accent-red hover:text-accent-red-dark">✕</button>}
                     </td>
@@ -218,6 +225,11 @@ function NumCell({ value, onChange }) {
             <input type="number" step="0.01" className={cell} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
         </td>
     );
+}
+
+// A blank placeholder cell — keeps columns aligned where a field is hidden.
+function EmptyCell() {
+    return <td className="px-2 py-1" />;
 }
 
 function Stat({ label, value, accent, big }) {

@@ -31,7 +31,7 @@ class ReportBuilder
             'outstanding-credit' => $this->outstandingCredit($filters),
             'weekly', 'custom' => $this->periodList($type, $filters),
             'yearly' => $this->yearly($filters),
-            'vehicle' => $this->grouped('vehicle', 'Vehicle-wise Report', 'Vehicle', fn ($t) => $t->vehicle?->number ?? '—', $filters, ['vehicle']),
+            'vehicle' => $this->grouped('vehicle', 'Vehicle-wise Report', 'Vehicle', fn ($t) => $t->vehicle_number ?: '—', $filters, []),
             'reference' => $this->grouped('reference', 'Reference-wise Report', 'Reference', fn ($t) => $t->reference?->name ?? '—', $filters, ['reference']),
             'payment-method' => $this->grouped('payment-method', 'Payment Method Report', 'Method', fn ($t) => $t->paymentMethod?->name ?? '—', $filters, ['paymentMethod']),
             'commission' => $this->commission($filters),

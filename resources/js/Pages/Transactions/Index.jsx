@@ -82,8 +82,11 @@ export default function TransactionsIndex({ transactions, filters, customers, pa
                                     <td className="py-2 pr-4 whitespace-nowrap">{fmtDate(t.transaction_date)}</td>
                                     <td className="py-2 pr-4">{t.invoice_no || '—'}</td>
                                     <td className="py-2 pr-4">{t.boe_no || '—'}</td>
-                                    <td className="py-2 pr-4">{t.customer?.name}</td>
-                                    <td className="py-2 pr-4">{t.vehicle?.number || '—'}</td>
+                                    <td className="py-2 pr-4">
+                                        <div>{t.customer?.name}</div>
+                                        {t.contact_numbers?.length > 0 && <div className="text-xs text-slate-500">{t.contact_numbers.join(', ')}</div>}
+                                    </td>
+                                    <td className="py-2 pr-4">{t.vehicle_number || '—'}</td>
                                     <td className="py-2 pr-4">{t.payment_method?.name}</td>
                                     <td className="py-2 pr-4 text-right">{AED(t.total_amount)}</td>
                                     <td className="py-2 pr-4 text-right font-semibold text-navy-800">{AED(t.grand_total)}</td>

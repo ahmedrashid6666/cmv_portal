@@ -15,8 +15,14 @@ class MasterController extends Controller
 
         $query = $model::query();
         if ($search = $request->string('search')->trim()->value()) {
-            $first = array_key_first($config['columns']);
-            $query->where($first, 'like', "%{$search}%");
+            // Search across every text column (skip numeric ones like balances).
+            $numberFields = collect($config['fields'])->where('type', 'number')->pluck('name')->all();
+            $searchable = array_diff(array_keys($config['columns']), $numberFields);
+            $query->where(function ($q) use ($searchable, $search) {
+                foreach ($searchable as $col) {
+                    $q->orWhere($col, 'like', "%{$search}%");
+                }
+            });
         }
 
         return Inertia::render('Masters/Index', [

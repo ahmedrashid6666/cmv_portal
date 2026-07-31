@@ -13,6 +13,11 @@ export default function MastersIndex({ master, label, singular, columns, fields,
     const blank = Object.fromEntries(fields.map((f) => [f.name, f.default ?? '']));
     const { data, setData, post, put, processing, errors, reset } = useForm(blank);
 
+    // Search
+    const [search, setSearch] = useState(filters?.search ?? '');
+    const runSearch = (e) => { e?.preventDefault(); router.get(route('masters.index', master), { search }, { preserveState: true, replace: true }); };
+    const clearSearch = () => { setSearch(''); router.get(route('masters.index', master), {}, { preserveState: true, replace: true }); };
+
     const openNew = () => { setEditing(null); reset(); setData(blank); };
     const openEdit = (row) => { setEditing(row.id); setData(Object.fromEntries(fields.map((f) => [f.name, row[f.name] ?? '']))); };
 
@@ -45,6 +50,19 @@ export default function MastersIndex({ master, label, singular, columns, fields,
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <Card title={label} className="lg:col-span-2">
+                    <form onSubmit={runSearch} className="mb-3 flex items-center gap-2">
+                        <input
+                            className={input + ' max-w-xs'}
+                            placeholder={`Search ${label.toLowerCase()}…`}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                        <button className="rounded-lg bg-navy-700 px-3 py-2 text-sm font-semibold text-white hover:bg-navy-800">Search</button>
+                        {filters?.search && (
+                            <button type="button" onClick={clearSearch} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">Clear</button>
+                        )}
+                        {filters?.search && <span className="text-xs text-slate-400">Showing results for “{filters.search}”</span>}
+                    </form>
                     {canWrite && selected.length > 0 && (
                         <div className="mb-3 flex items-center gap-3 rounded-lg bg-navy-800 px-4 py-2 text-sm text-white">
                             <span>{selected.length} selected</span>
@@ -63,7 +81,7 @@ export default function MastersIndex({ master, label, singular, columns, fields,
                             </thead>
                             <tbody>
                                 {rows.data.length === 0 && (
-                                    <tr><td colSpan="9" className="py-8 text-center text-slate-400">No records yet.</td></tr>
+                                    <tr><td colSpan="9" className="py-8 text-center text-slate-400">{filters?.search ? 'No records match your search.' : 'No records yet.'}</td></tr>
                                 )}
                                 {rows.data.map((row) => (
                                     <tr key={row.id} className={'border-b last:border-0 hover:bg-slate-50 ' + (selected.includes(row.id) ? 'bg-primary-50' : '')}>

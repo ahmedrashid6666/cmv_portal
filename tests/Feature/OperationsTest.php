@@ -97,14 +97,12 @@ it('splits commissions into Com-1 and Com-2 columns and totals', function () {
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('columns.11', 'Com-1')
-            ->where('columns.12', 'Com-2')
-            // cells: idx 11 = Com-1, idx 12 = Com-2 (AED-prefixed money strings)
-            ->where('rows.data.0.cells.11', '30')
-            ->where('rows.data.0.cells.12', '20')
-            // totals row mirrors the split
-            ->where('totals.11', '30')
-            ->where('totals.12', '20')
+            ->where('columns.12', 'Com-1')
+            ->where('columns.13', 'Com-2')
+            ->where('rows.data.0.cells.12', '30') // Com-1
+            ->where('rows.data.0.cells.13', '20') // Com-2
+            ->where('totals.12', '30')
+            ->where('totals.13', '20')
             ->etc());
 });
 
@@ -118,27 +116,51 @@ it('folds a third commission into the Com-2 total so it reconciles', function ()
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('rows.data.0.cells.11', '30')
-            ->where('rows.data.0.cells.12', '25') // 20 + 5
-            ->where('totals.11', '30')
-            ->where('totals.12', '25')
+            ->where('rows.data.0.cells.12', '30') // Com-1
+            ->where('rows.data.0.cells.13', '25') // Com-2 = 20 + 5
+            ->where('totals.12', '30')
+            ->where('totals.13', '25')
             ->etc());
 });
 
-it('searches transactions by reference and vehicle, not just customer/invoice', function () {
+it('searches transactions by reference, not just customer/invoice', function () {
     $ref = App\Models\Reference::create(['name' => 'ZEBRA-REF']);
-    $veh = App\Models\Vehicle::create(['number' => 'XYZ-999']);
     $match = opTx(today()->toDateString());
-    $match->update(['reference_id' => $ref->id, 'vehicle_id' => $veh->id]);
+    $match->update(['reference_id' => $ref->id]);
     opTx(today()->toDateString()); // a non-matching row
 
-    // by reference name
     $this->actingAs($this->admin)->get(route('operations.index', ['search' => 'ZEBRA']))
         ->assertInertia(fn ($p) => $p->where('rows.data', fn ($rows) => count($rows) === 1
             && $rows[0]['id'] === $match->id));
+});
 
-    // by vehicle number
-    $this->actingAs($this->admin)->get(route('operations.index', ['search' => 'XYZ-999']))
-        ->assertInertia(fn ($p) => $p->where('rows.data', fn ($rows) => count($rows) === 1
-            && $rows[0]['id'] === $match->id));
+it('places commissions by their Com-1/Com-2 label, not by order', function () {
+    // Excel had Com-1 empty and Com-2 = 25 → importer stores a single 'Com-2' row.
+    $tx = opTx(today()->toDateString());
+    $tx->commissions()->create(['label' => 'Com-2', 'amount' => 25, 'type' => 'charged_to_customer']);
+
+    $this->actingAs($this->admin)->get(route('operations.index'))
+        ->assertInertia(fn ($p) => $p
+            ->where('rows.data.0.cells.12', '0')   // Com-1 stays empty
+            ->where('rows.data.0.cells.13', '25')  // Com-2 keeps its value
+            ->where('totals.12', '0')
+            ->where('totals.13', '25')
+            ->etc());
+});
+
+it('shows contact numbers on the invoices and credits tabs', function () {
+    $tx = opTx(today()->toDateString());
+    $tx->update(['contact_numbers' => ['050-111', '050-222'], 'credit_amount' => 50]);
+
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'invoices']))
+        ->assertInertia(fn ($p) => $p
+            ->where('columns.3', 'Contact')
+            ->where('rows.data.0.cells.3', '050-111, 050-222')
+            ->etc());
+
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
+        ->assertInertia(fn ($p) => $p
+            ->where('columns.4', 'Contact')
+            ->where('rows.data.0.cells.4', '050-111, 050-222')
+            ->etc());
 });

@@ -237,7 +237,7 @@ class WorkbookImporter
                     'boe_no' => $row['boe_no'],
                     'customer_id' => $customer->id,
                     'reference_id' => $reference?->id,
-                    'vehicle_id' => $vehicle?->id,
+                    'vehicle_number' => $vehicle?->number,
                     'customs_fees' => (float) $row['customs_fees'],
                     'gov_fees' => (float) $row['gov_fees'],
                     'profit' => (float) $row['profit'],

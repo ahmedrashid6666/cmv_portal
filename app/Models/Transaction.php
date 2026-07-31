@@ -18,10 +18,10 @@ class Transaction extends Model
 
     protected $fillable = [
         'transaction_date', 'invoice_no', 'boe_no',
-        'customer_id', 'reference_id', 'vehicle_id',
+        'customer_id', 'reference_id', 'vehicle_id', 'vehicle_number',
         'customs_fees', 'gov_fees', 'gov_bank_id', 'profit', 'vat_rate', 'currency', 'vat_amount', 'total_amount',
         'payment_method_id', 'credit_amount', 'remarks', 'attachment_path',
-        'grand_total', 'net_profit', 'created_by', 'custom_data',
+        'grand_total', 'net_profit', 'created_by', 'custom_data', 'contact_numbers',
     ];
 
     protected function casts(): array
@@ -38,6 +38,7 @@ class Transaction extends Model
             'grand_total' => 'decimal:2',
             'net_profit' => 'decimal:2',
             'custom_data' => 'array',
+            'contact_numbers' => 'array',
         ];
     }
 

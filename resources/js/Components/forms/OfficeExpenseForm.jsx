@@ -1,4 +1,5 @@
 import ComboBox from '@/Components/ComboBox';
+import ContactNumbers from '@/Components/forms/ContactNumbers';
 import { useForm } from '@inertiajs/react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
@@ -19,20 +20,26 @@ function Field({ label, error, children, required }) {
  * Standalone office / overhead expense entry (rent, salary, utilities, …).
  * Not tied to a shipment — it is a direct cash/bank outflow.
  */
-export default function OfficeExpenseForm({ expenseCategories = [], paymentMethods = [], onDone }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        expense_date: new Date().toISOString().slice(0, 10),
-        expense_category_id: '',
-        description: '',
-        amount: '',
-        currency: 'AED',
-        payment_method_id: '',
-        remarks: '',
+export default function OfficeExpenseForm({ officeExpense = null, expenseCategories = [], paymentMethods = [], onDone }) {
+    const editing = !!officeExpense;
+    const { data, setData, post, put, processing, errors, reset } = useForm({
+        expense_date: officeExpense?.expense_date ?? new Date().toISOString().slice(0, 10),
+        expense_category_id: officeExpense?.expense_category_id ?? '',
+        description: officeExpense?.description ?? '',
+        amount: officeExpense?.amount ?? '',
+        currency: officeExpense?.currency ?? 'AED',
+        payment_method_id: officeExpense?.payment_method_id ?? '',
+        contact_numbers: officeExpense?.contact_numbers?.length ? officeExpense.contact_numbers : [''],
+        remarks: officeExpense?.remarks ?? '',
     });
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('office-expenses.store'), { onSuccess: () => { reset(); onDone?.(); } });
+        if (editing) {
+            put(route('office-expenses.update', officeExpense.id), { onSuccess: () => onDone?.() });
+        } else {
+            post(route('office-expenses.store'), { onSuccess: () => { reset(); onDone?.(); } });
+        }
     };
 
     return (
@@ -61,6 +68,8 @@ export default function OfficeExpenseForm({ expenseCategories = [], paymentMetho
                 <input className={input} placeholder="e.g. Office rent — July" value={data.description} onChange={(e) => setData('description', e.target.value)} />
             </Field>
 
+            <ContactNumbers value={data.contact_numbers} onChange={(v) => setData('contact_numbers', v)} error={errors.contact_numbers} />
+
             <div className="grid grid-cols-2 gap-4">
                 <Field label="Currency" error={errors.currency}>
                     <select className={input} value={data.currency} onChange={(e) => setData('currency', e.target.value)}>
@@ -81,7 +90,7 @@ export default function OfficeExpenseForm({ expenseCategories = [], paymentMetho
             </Field>
 
             <button type="submit" disabled={processing} className="w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">
-                Save Office Expense
+                {editing ? 'Update Office Expense' : 'Save Office Expense'}
             </button>
         </form>
     );

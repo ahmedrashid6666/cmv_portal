@@ -63,6 +63,8 @@ export default function Dashboard({
                 <StatCard label="Total Profit" value={stats.totalProfit} accent="primary" icon="★" />
                 <StatCard label="Monthly Income" value={stats.monthlyIncome} accent="navy" icon="▤" />
                 <StatCard label="Monthly Expenses" value={stats.monthlyExpenses} accent="red" icon="▤" />
+                <StatCard label="Monthly Documents" value={stats.monthlyDocuments} money={false} accent="navy" icon="▦" />
+                <StatCard label="Total Documents" value={stats.totalDocuments} money={false} accent="primary" icon="▦" />
                 <StatCard label="Total Customers" value={stats.totalCustomers} money={false} accent="primary" icon="◈" />
                 <StatCard label="Pending Credits" value={stats.pendingCredits} money={false} accent="red" icon="!" />
             </div>

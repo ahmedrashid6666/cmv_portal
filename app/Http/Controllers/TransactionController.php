@@ -8,7 +8,6 @@ use App\Models\ExpenseCategory;
 use App\Models\PaymentMethod;
 use App\Models\Reference;
 use App\Models\Transaction;
-use App\Models\Vehicle;
 use App\Services\TransactionWriter;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,11 +17,12 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $query = Transaction::query()
-            ->with(['customer:id,name', 'paymentMethod:id,name', 'vehicle:id,number', 'reference:id,name'])
+            ->with(['customer:id,name', 'paymentMethod:id,name', 'reference:id,name'])
             ->when($request->filled('search'), function ($q) use ($request) {
                 $s = $request->string('search')->trim()->value();
                 $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$s}%")
                     ->orWhere('boe_no', 'like', "%{$s}%")
+                    ->orWhere('vehicle_number', 'like', "%{$s}%")
                     ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$s}%")));
             })
             ->when($request->filled('from'), fn ($q) => $q->whereDate('transaction_date', '>=', $request->date('from')))
@@ -101,7 +101,6 @@ class TransactionController extends Controller
         return [
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'references' => Reference::orderBy('name')->get(['id', 'name', 'company']),
-            'vehicles' => Vehicle::orderBy('number')->get(['id', 'number']),
             'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name']),
             'expenseCategories' => ExpenseCategory::orderBy('name')->get(['id', 'name']),
             'banks' => \App\Models\Bank::orderBy('name')->get(['id', 'name']),

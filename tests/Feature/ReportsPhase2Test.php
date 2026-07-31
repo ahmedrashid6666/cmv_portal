@@ -6,7 +6,6 @@ use App\Models\Reference;
 use App\Models\Transaction;
 use App\Models\TransactionCommission;
 use App\Models\TransactionExpense;
-use App\Models\Vehicle;
 use App\Services\ReportBuilder;
 
 beforeEach(function () {
@@ -37,8 +36,7 @@ it('builds a yearly report grouped by month', function () {
 });
 
 it('builds a vehicle-wise report', function () {
-    $v = Vehicle::factory()->create(['number' => 'DXB-123']);
-    p2Tx(['vehicle_id' => $v->id, 'customs_fees' => 245, 'profit' => 35]);
+    p2Tx(['vehicle_number' => 'DXB-123', 'customs_fees' => 245, 'profit' => 35]);
 
     $report = $this->builder->build('vehicle', []);
     expect($report['rows'][0][0])->toBe('DXB-123')

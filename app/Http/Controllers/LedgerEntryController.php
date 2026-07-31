@@ -62,7 +62,6 @@ class LedgerEntryController extends Controller
             'filters' => $request->only(['search', 'status', 'from', 'to']),
             'customers' => \App\Models\Customer::orderBy('name')->get(['id', 'name']),
             'references' => \App\Models\Reference::orderBy('name')->get(['id', 'name', 'company']),
-            'vehicles' => \App\Models\Vehicle::orderBy('number')->get(['id', 'number']),
         ]);
     }
 
@@ -141,18 +140,40 @@ class LedgerEntryController extends Controller
      */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'entry_date' => ['required', 'date'],
             'party_name' => ['required', 'string', 'max:255'],
+            'contact_numbers' => ['nullable', 'array'],
+            'contact_numbers.*' => ['nullable', 'string', 'max:50'],
             'reference' => ['nullable', 'string', 'max:255'],
             'vehicle_number' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string'],
-            'total_amount' => ['required', 'numeric', 'min:0.01'],
+            'total_amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['nullable', Rule::in(['AED', 'OMR'])],
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'return_date' => ['nullable', 'date'],
             'status' => ['nullable', Rule::in(['pending', 'partial', 'returned'])],
         ]);
+
+        $data['contact_numbers'] = $this->cleanNumbers($data['contact_numbers'] ?? []);
+
+        return $data;
+    }
+
+    /**
+     * Trim entries and drop blanks; return null when nothing is left.
+     *
+     * @param  array<int, string|null>  $numbers
+     * @return array<int, string>|null
+     */
+    private function cleanNumbers(array $numbers): ?array
+    {
+        $clean = array_values(array_filter(
+            array_map(fn ($n) => trim((string) $n), $numbers),
+            fn ($n) => $n !== '',
+        ));
+
+        return $clean ?: null;
     }
 
     private function xlsx(array $report): StreamedResponse

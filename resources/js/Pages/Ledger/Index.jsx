@@ -18,7 +18,7 @@ const statusLabels = (t) => ({
     returned: 'Returned',
 });
 
-export default function LedgerIndex({ meta, summary, entries, filters, customers = [], references = [], vehicles = [] }) {
+export default function LedgerIndex({ meta, summary, entries, filters, customers = [], references = [] }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const labels = statusLabels(meta.type);
@@ -104,6 +104,7 @@ export default function LedgerIndex({ meta, summary, entries, filters, customers
                                             <td className="py-2 pr-3 whitespace-nowrap">{fmtDate(e.entry_date)}</td>
                                             <td className="py-2 pr-3">
                                                 <div className="font-medium text-navy-800">{e.party_name}</div>
+                                                {e.contact_numbers?.length > 0 && <div className="text-xs text-slate-500">{e.contact_numbers.join(', ')}</div>}
                                                 {e.reference && <div className="text-xs text-slate-400">{e.reference}</div>}
                                             </td>
                                             <td className="py-2 pr-3">{e.vehicle_number || '—'}</td>
@@ -147,7 +148,6 @@ export default function LedgerIndex({ meta, summary, entries, filters, customers
                             labels={labels}
                             customers={customers}
                             references={references}
-                            vehicles={vehicles}
                             onDone={() => setEditingEntry(null)}
                         />
                     </Card>

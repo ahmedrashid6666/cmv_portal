@@ -16,7 +16,7 @@ class TransactionResource extends JsonResource
             'customer' => $this->whenLoaded('customer', fn () => $this->customer?->name),
             'customer_id' => $this->customer_id,
             'reference_id' => $this->reference_id,
-            'vehicle_id' => $this->vehicle_id,
+            'vehicle_number' => $this->vehicle_number,
             'payment_method_id' => $this->payment_method_id,
             'customs_fees' => (float) $this->customs_fees,
             'gov_fees' => (float) $this->gov_fees,

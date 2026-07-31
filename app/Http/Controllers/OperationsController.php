@@ -336,13 +336,15 @@ class OperationsController extends Controller
             'id' => $t->id, 'status' => $t->invoiceStatus(), 'action_url' => route('invoices.show', $t->id),
             'cells' => [
                 $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->customer?->name,
+                $this->contactCell($t),
                 \App\Support\Money::display($t->grand_total, $t->currency),
                 \App\Support\Money::display($t->creditOutstanding(), $t->currency),
             ],
         ]);
 
-        return ['columns' => ['Date', 'Invoice', 'Customer', 'Grand Total', 'Outstanding'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', 'customer', 'grand_total', null],
+        return ['columns' => ['Date', 'Invoice', 'Customer', 'Contact', 'Grand Total', 'Outstanding'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', 'customer', null, 'grand_total', null],
+            'align' => [false, false, false, false, true, true],
             'statusOptions' => [], 'actionLabel' => 'View', 'bulkDeletable' => false];
     }
 
@@ -368,16 +370,16 @@ class OperationsController extends Controller
                 'status' => $out <= 0 ? 'paid' : ($out < (float) $t->credit_amount ? 'partial' : 'unpaid'),
                 'action_url' => route('credits.index'), 'settle' => $this->creditSettle($t),
                 'cells' => [
-                    $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
+                    $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $this->contactCell($t), $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
                     \App\Support\Money::display($t->credit_amount, $t->currency),
                     \App\Support\Money::display($out, $t->currency),
                 ],
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Reference', 'Vehicle No', 'Credit', 'Outstanding'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, 'credit_amount', null],
-            'align' => [false, false, false, false, false, false, true, true],
+        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Contact', 'Reference', 'Vehicle No', 'Credit', 'Outstanding'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null],
+            'align' => [false, false, false, false, false, false, false, true, true],
             'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false];
     }
 

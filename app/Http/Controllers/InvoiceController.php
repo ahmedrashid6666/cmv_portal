@@ -58,7 +58,7 @@ class InvoiceController extends Controller
      */
     private function build(Transaction $t): array
     {
-        $t->load(['customer', 'reference:id,name', 'vehicle:id,number', 'paymentMethod:id,name', 'commissions']);
+        $t->load(['customer', 'reference:id,name', 'paymentMethod:id,name', 'commissions']);
 
         $lines = [];
         $lines[] = ['label' => 'Customs Duty (CDR)', 'amount' => (float) $t->customs_fees];
@@ -84,7 +84,7 @@ class InvoiceController extends Controller
             'invoice_no' => $t->invoice_no ?? ('TXN-'.$t->id),
             'date' => $t->transaction_date->format('Y-m-d'),
             'boe_no' => $t->boe_no,
-            'vehicle' => $t->vehicle?->number,
+            'vehicle' => $t->vehicle_number,
             'reference' => $t->reference?->name,
             'payment_method' => $t->paymentMethod?->name,
             'customer' => [

@@ -19,7 +19,7 @@ class OfficeExpense extends Model
 
     protected $fillable = [
         'expense_date', 'expense_category_id', 'description', 'amount',
-        'currency', 'payment_method_id', 'remarks', 'created_by',
+        'currency', 'payment_method_id', 'contact_numbers', 'remarks', 'created_by',
     ];
 
     protected function casts(): array
@@ -27,6 +27,7 @@ class OfficeExpense extends Model
         return [
             'expense_date' => 'date:Y-m-d',
             'amount' => 'decimal:2',
+            'contact_numbers' => 'array',
         ];
     }
 

@@ -24,7 +24,7 @@ class TransactionRequest extends FormRequest
             'boe_no' => ['nullable', 'string', 'max:255'],
             'customer_id' => ['required', 'exists:customers,id'],
             'reference_id' => ['nullable', 'exists:references,id'],
-            'vehicle_id' => ['nullable', 'exists:vehicles,id'],
+            'vehicle_number' => ['nullable', 'string', 'max:255'],
 
             'customs_fees' => ['required', 'numeric', 'min:0'],
             'gov_fees' => ['required', 'numeric', 'min:0'],
@@ -35,6 +35,8 @@ class TransactionRequest extends FormRequest
 
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'credit_amount' => ['nullable', 'numeric', 'min:0'],
+            'contact_numbers' => ['nullable', 'array'],
+            'contact_numbers.*' => ['nullable', 'string', 'max:50'],
             'remarks' => ['nullable', 'string'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
 
@@ -66,6 +68,16 @@ class TransactionRequest extends FormRequest
             $allowed = CustomField::active()->pluck('key')->all();
             $this->merge([
                 'custom_data' => array_intersect_key($this->input('custom_data'), array_flip($allowed)),
+            ]);
+        }
+
+        // Drop blank contact numbers so an empty input row is never stored.
+        if (is_array($this->input('contact_numbers'))) {
+            $this->merge([
+                'contact_numbers' => array_values(array_filter(
+                    array_map(fn ($n) => trim((string) $n), $this->input('contact_numbers')),
+                    fn ($n) => $n !== '',
+                )),
             ]);
         }
     }

@@ -1,5 +1,6 @@
 import { Card } from '@/Components/ui/Card';
 import ComboBox from '@/Components/ComboBox';
+import ContactNumbers from '@/Components/forms/ContactNumbers';
 import { money } from '@/lib/format';
 import { computeTotals } from '@/lib/calc';
 import { Link, useForm } from '@inertiajs/react';
@@ -38,7 +39,6 @@ export default function TransactionEntryForm({
     transaction,
     customers,
     references,
-    vehicles,
     paymentMethods,
     expenseCategories,
     banks = [],
@@ -54,7 +54,7 @@ export default function TransactionEntryForm({
         boe_no: transaction?.boe_no ?? '',
         customer_id: transaction?.customer_id ?? '',
         reference_id: transaction?.reference_id ?? '',
-        vehicle_id: transaction?.vehicle_id ?? '',
+        vehicle_number: transaction?.vehicle_number ?? '',
         customs_fees: transaction?.customs_fees ?? 0,
         gov_fees: transaction?.gov_fees ?? 0,
         gov_bank_id: transaction?.gov_bank_id ?? '',
@@ -63,6 +63,7 @@ export default function TransactionEntryForm({
         currency: transaction?.currency ?? 'AED',
         payment_method_id: transaction?.payment_method_id ?? '',
         credit_amount: transaction?.credit_amount ?? 0,
+        contact_numbers: transaction?.contact_numbers?.length ? transaction.contact_numbers : [''],
         remarks: transaction?.remarks ?? '',
         // Office/overhead expenses now live in their own entry (Add Entry → Office
         // Expense). Any expenses already attached to a transaction (e.g. legacy
@@ -117,13 +118,12 @@ export default function TransactionEntryForm({
                                 placeholder="—" createSlug="references" createField="name"
                             />
                         </Field>
-                        <Field label="Vehicle" error={errors.vehicle_id}>
-                            <ComboBox
-                                options={vehicles.map((v) => ({ value: v.id, label: v.number }))}
-                                value={data.vehicle_id} onChange={(v) => setData('vehicle_id', v)}
-                                placeholder="—" createSlug="vehicles" createField="number"
-                            />
+                        <Field label="Vehicle No" error={errors.vehicle_number}>
+                            <input className={input} value={data.vehicle_number} onChange={(e) => setData('vehicle_number', e.target.value)} placeholder="—" />
                         </Field>
+                    </div>
+                    <div className="mt-4">
+                        <ContactNumbers value={data.contact_numbers} onChange={(v) => setData('contact_numbers', v)} error={errors.contact_numbers} />
                     </div>
                 </Card>
 

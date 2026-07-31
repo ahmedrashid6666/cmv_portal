@@ -25,13 +25,14 @@ class LedgerEntry extends Model
     public const TYPE_BORROWED = 'borrowed';
 
     protected $fillable = [
-        'type', 'entry_date', 'party_name', 'reference', 'vehicle_number', 'remarks',
+        'type', 'entry_date', 'party_name', 'contact_numbers', 'reference', 'vehicle_number', 'remarks',
         'total_amount', 'currency', 'paid_amount', 'balance_amount', 'status', 'return_date', 'created_by',
     ];
 
     protected function casts(): array
     {
         return [
+            'contact_numbers' => 'array',
             'entry_date' => 'date:Y-m-d',
             'return_date' => 'date:Y-m-d',
             'total_amount' => 'decimal:2',

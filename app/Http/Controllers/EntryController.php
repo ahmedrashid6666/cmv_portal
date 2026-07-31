@@ -9,7 +9,6 @@ use App\Models\ExpenseCategory;
 use App\Models\PaymentMethod;
 use App\Models\Reference;
 use App\Models\Setting;
-use App\Models\Vehicle;
 use App\Services\BankService;
 use Inertia\Inertia;
 
@@ -21,7 +20,6 @@ class EntryController extends Controller
             // Transaction form options
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'references' => Reference::orderBy('name')->get(['id', 'name', 'company']),
-            'vehicles' => Vehicle::orderBy('number')->get(['id', 'number']),
             'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name']),
             'expenseCategories' => ExpenseCategory::orderBy('name')->get(['id', 'name']),
             'banks' => Bank::orderBy('name')->get(['id', 'name']),
