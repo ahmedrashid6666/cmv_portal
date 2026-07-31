@@ -112,18 +112,11 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                             const extras = data.extras[cur] || [];
                                             const maxRows = Math.max(Math.ceil(extras.length / 2), 5);
 
-                                            const handleFieldChange = (idx, key, value) => {
-                                                const newExtras = [...extras];
-                                                if (!newExtras[idx]) newExtras[idx] = { label: '', amount: '' };
-                                                newExtras[idx][key] = value;
-                                                setData('extras', { ...data.extras, [cur]: newExtras });
-                                            };
-
                                             return Array.from({ length: maxRows }).map((_, row) => {
                                                 const inIdx = row * 2;
                                                 const outIdx = row * 2 + 1;
-                                                const inItem = extras[inIdx] || { label: '', amount: '' };
-                                                const outItem = extras[outIdx] || { label: '', amount: '' };
+                                                const inItem = extras[inIdx];
+                                                const outItem = extras[outIdx];
 
                                                 return (
                                                     <tr key={row}>
@@ -132,8 +125,13 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                                                 type="text"
                                                                 className={input + ' text-xs'}
                                                                 placeholder="Details"
-                                                                value={inItem.label}
-                                                                onChange={(e) => handleFieldChange(inIdx, 'label', e.target.value)}
+                                                                value={inItem?.label || ''}
+                                                                onChange={(e) => {
+                                                                    const newExtras = [...extras];
+                                                                    if (!newExtras[inIdx]) newExtras[inIdx] = { label: '', amount: '' };
+                                                                    newExtras[inIdx].label = e.target.value;
+                                                                    setData('extras', { ...data.extras, [cur]: newExtras });
+                                                                }}
                                                             />
                                                         </td>
                                                         <td className="border border-slate-300 py-2 px-2">
@@ -142,8 +140,13 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                                                 step="0.01"
                                                                 className={input + ' text-xs text-right'}
                                                                 placeholder="0.00"
-                                                                value={inItem.amount}
-                                                                onChange={(e) => handleFieldChange(inIdx, 'amount', e.target.value)}
+                                                                value={inItem?.amount || ''}
+                                                                onChange={(e) => {
+                                                                    const newExtras = [...extras];
+                                                                    if (!newExtras[inIdx]) newExtras[inIdx] = { label: '', amount: '' };
+                                                                    newExtras[inIdx].amount = e.target.value;
+                                                                    setData('extras', { ...data.extras, [cur]: newExtras });
+                                                                }}
                                                             />
                                                         </td>
                                                         <td className="border border-slate-300 py-2 px-2">
@@ -151,8 +154,13 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                                                 type="text"
                                                                 className={input + ' text-xs'}
                                                                 placeholder="Details"
-                                                                value={outItem.label}
-                                                                onChange={(e) => handleFieldChange(outIdx, 'label', e.target.value)}
+                                                                value={outItem?.label || ''}
+                                                                onChange={(e) => {
+                                                                    const newExtras = [...extras];
+                                                                    if (!newExtras[outIdx]) newExtras[outIdx] = { label: '', amount: '' };
+                                                                    newExtras[outIdx].label = e.target.value;
+                                                                    setData('extras', { ...data.extras, [cur]: newExtras });
+                                                                }}
                                                             />
                                                         </td>
                                                         <td className="border border-slate-300 py-2 px-2">
@@ -161,8 +169,13 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                                                 step="0.01"
                                                                 className={input + ' text-xs text-right'}
                                                                 placeholder="0.00"
-                                                                value={outItem.amount}
-                                                                onChange={(e) => handleFieldChange(outIdx, 'amount', e.target.value)}
+                                                                value={outItem?.amount || ''}
+                                                                onChange={(e) => {
+                                                                    const newExtras = [...extras];
+                                                                    if (!newExtras[outIdx]) newExtras[outIdx] = { label: '', amount: '' };
+                                                                    newExtras[outIdx].amount = e.target.value;
+                                                                    setData('extras', { ...data.extras, [cur]: newExtras });
+                                                                }}
                                                             />
                                                         </td>
                                                     </tr>
