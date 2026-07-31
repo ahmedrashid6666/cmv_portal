@@ -110,90 +110,64 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                     <tbody>
                                         {(() => {
                                             const extras = data.extras[cur] || [];
-                                            const inItems = extras.filter((_, i) => i % 2 === 0);
-                                            const outItems = extras.filter((_, i) => i % 2 === 1);
-                                            const maxRows = Math.max(inItems.length + 1, outItems.length + 1, 5);
+                                            const maxRows = Math.max(Math.ceil(extras.length / 2), 5);
 
-                                            return Array.from({ length: maxRows }).map((_, row) => (
-                                                <tr key={row}>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        {inItems[row] ? (
+                                            const handleFieldChange = (idx, key, value) => {
+                                                const newExtras = [...extras];
+                                                if (!newExtras[idx]) newExtras[idx] = { label: '', amount: '' };
+                                                newExtras[idx][key] = value;
+                                                setData('extras', { ...data.extras, [cur]: newExtras });
+                                            };
+
+                                            return Array.from({ length: maxRows }).map((_, row) => {
+                                                const inIdx = row * 2;
+                                                const outIdx = row * 2 + 1;
+                                                const inItem = extras[inIdx] || { label: '', amount: '' };
+                                                const outItem = extras[outIdx] || { label: '', amount: '' };
+
+                                                return (
+                                                    <tr key={row}>
+                                                        <td className="border border-slate-300 py-2 px-2">
                                                             <input
                                                                 type="text"
                                                                 className={input + ' text-xs'}
                                                                 placeholder="Details"
-                                                                value={inItems[row].label}
-                                                                onChange={(e) => setExtra(cur, row * 2, 'label', e.target.value)}
+                                                                value={inItem.label}
+                                                                onChange={(e) => handleFieldChange(inIdx, 'label', e.target.value)}
                                                             />
-                                                        ) : (
-                                                            <input
-                                                                type="text"
-                                                                className={input + ' text-xs'}
-                                                                placeholder="Details"
-                                                                disabled
-                                                            />
-                                                        )}
-                                                    </td>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        {inItems[row] ? (
+                                                        </td>
+                                                        <td className="border border-slate-300 py-2 px-2">
                                                             <input
                                                                 type="number"
                                                                 step="0.01"
                                                                 className={input + ' text-xs text-right'}
                                                                 placeholder="0.00"
-                                                                value={inItems[row].amount}
-                                                                onChange={(e) => setExtra(cur, row * 2, 'amount', e.target.value)}
+                                                                value={inItem.amount}
+                                                                onChange={(e) => handleFieldChange(inIdx, 'amount', e.target.value)}
                                                             />
-                                                        ) : (
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className={input + ' text-xs text-right'}
-                                                                placeholder="0.00"
-                                                                disabled
-                                                            />
-                                                        )}
-                                                    </td>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        {outItems[row] ? (
+                                                        </td>
+                                                        <td className="border border-slate-300 py-2 px-2">
                                                             <input
                                                                 type="text"
                                                                 className={input + ' text-xs'}
                                                                 placeholder="Details"
-                                                                value={outItems[row].label}
-                                                                onChange={(e) => setExtra(cur, row * 2 + 1, 'label', e.target.value)}
+                                                                value={outItem.label}
+                                                                onChange={(e) => handleFieldChange(outIdx, 'label', e.target.value)}
                                                             />
-                                                        ) : (
-                                                            <input
-                                                                type="text"
-                                                                className={input + ' text-xs'}
-                                                                placeholder="Details"
-                                                                disabled
-                                                            />
-                                                        )}
-                                                    </td>
-                                                    <td className="border border-slate-300 py-2 px-2">
-                                                        {outItems[row] ? (
+                                                        </td>
+                                                        <td className="border border-slate-300 py-2 px-2">
                                                             <input
                                                                 type="number"
                                                                 step="0.01"
                                                                 className={input + ' text-xs text-right'}
                                                                 placeholder="0.00"
-                                                                value={outItems[row].amount}
-                                                                onChange={(e) => setExtra(cur, row * 2 + 1, 'amount', e.target.value)}
+                                                                value={outItem.amount}
+                                                                onChange={(e) => handleFieldChange(outIdx, 'amount', e.target.value)}
                                                             />
-                                                        ) : (
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className={input + ' text-xs text-right'}
-                                                                placeholder="0.00"
-                                                                disabled
-                                                            />
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ));
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            });
                                         })()}
                                         <tr className="border-t-2 border-navy-800 bg-slate-100 font-bold">
                                             <td className="border border-slate-400 py-2 px-2 text-right">Total</td>
