@@ -34,7 +34,7 @@ class DashboardController extends Controller
 
         $byMethod = Transaction::query()
             ->join('payment_methods', 'transactions.payment_method_id', '=', 'payment_methods.id')
-            ->select('payment_methods.name', DB::raw('SUM(grand_total) as total'))
+            ->select('payment_methods.name', DB::raw('SUM(total_amount) as total'))
             ->groupBy('payment_methods.name')
             ->get()
             ->map(fn ($r) => ['name' => $r->name, 'value' => (float) $r->total]);
@@ -51,7 +51,7 @@ class DashboardController extends Controller
         // top customers by income
         $topCustomers = Transaction::query()
             ->join('customers', 'transactions.customer_id', '=', 'customers.id')
-            ->select('customers.name', DB::raw('SUM(grand_total) as total'))
+            ->select('customers.name', DB::raw('SUM(total_amount) as total'))
             ->groupBy('customers.name')
             ->orderByDesc('total')
             ->limit(8)
@@ -77,6 +77,9 @@ class DashboardController extends Controller
                 'totalProfit' => (float) $balances->totalProfit(),
                 'monthlyIncome' => (float) $balances->monthlyIncome($today->year, $today->month),
                 'monthlyExpenses' => (float) $balances->monthlyExpenses($today->year, $today->month),
+                'monthlyDocuments' => Transaction::whereYear('transaction_date', $today->year)
+                    ->whereMonth('transaction_date', $today->month)->count(),
+                'totalDocuments' => Transaction::count(),
                 'totalCustomers' => $balances->totalCustomers(),
                 'pendingCredits' => $balances->pendingCreditsCount(),
             ],
