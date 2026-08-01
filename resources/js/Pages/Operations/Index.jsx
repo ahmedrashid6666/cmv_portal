@@ -27,11 +27,13 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const [payOpen, setPayOpen] = useState(false);
     const [settleRow, setSettleRow] = useState(null); // row.settle {kind:'credit'|'ledger', ...}
     const debounceTimer = useRef(null);
+    const skipNextAutoSearch = useRef(true); // don't re-fire on mount (e.g. a pagination/sort click just navigated here)
 
     const go = (params) => router.get(route('operations.index'), { type, ...f, sort: sort?.by, dir: sort?.dir, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
 
-    // Auto-search with debounce on filter changes
+    // Auto-search with debounce on filter changes (search/date/status typing only).
     useEffect(() => {
+        if (skipNextAutoSearch.current) { skipNextAutoSearch.current = false; return; }
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(() => {
             go();
