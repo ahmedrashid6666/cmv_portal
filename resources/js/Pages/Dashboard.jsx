@@ -28,6 +28,10 @@ const alertStyles = {
     danger: 'border-red-200 bg-red-50 text-accent-red-dark',
 };
 
+// Local (not UTC) yyyy-mm-dd, so the "today"/"this month" links match the
+// date the user actually sees, regardless of UTC offset.
+const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export default function Dashboard({
     stats,
     alerts = [],
@@ -39,6 +43,25 @@ export default function Dashboard({
     expenseCategories,
     recent,
 }) {
+    const now = new Date();
+    const today = isoDate(now);
+    const monthStart = isoDate(new Date(now.getFullYear(), now.getMonth(), 1));
+
+    const links = {
+        todaysIncome: route('operations.index', { type: 'transactions', from: today, to: today }),
+        todaysExpenses: route('operations.index', { type: 'office-expenses', from: today, to: today }),
+        cashBalance: route('books.cashbank'),
+        bankBalance: route('bank-accounts.index'),
+        creditBalance: route('operations.index', { type: 'credits' }),
+        totalProfit: route('reports.show', 'profit'),
+        monthlyIncome: route('operations.index', { type: 'transactions', from: monthStart, to: today }),
+        monthlyExpenses: route('operations.index', { type: 'office-expenses', from: monthStart, to: today }),
+        monthlyDocuments: route('operations.index', { type: 'transactions', from: monthStart, to: today }),
+        totalDocuments: route('operations.index', { type: 'transactions' }),
+        totalCustomers: route('masters.index', 'customers'),
+        pendingCredits: route('operations.index', { type: 'credits' }),
+    };
+
     return (
         <AuthenticatedLayout header="Dashboard">
             <Head title="Dashboard" />
@@ -55,18 +78,18 @@ export default function Dashboard({
             )}
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <StatCard label="Today's Income" value={stats.todaysIncome} accent="primary" icon="↑" />
-                <StatCard label="Today's Expenses" value={stats.todaysExpenses} accent="red" icon="↓" />
-                <StatCard label="Cash Balance" value={stats.cashBalance} accent="green" icon="₵" />
-                <StatCard label="Bank Balance" value={stats.bankBalance} accent="navy" icon="⛁" />
-                <StatCard label="Credit Outstanding" value={stats.creditBalance} accent="red" icon="◔" />
-                <StatCard label="Total Profit" value={stats.totalProfit} accent="primary" icon="★" />
-                <StatCard label="Monthly Income" value={stats.monthlyIncome} accent="navy" icon="▤" />
-                <StatCard label="Monthly Expenses" value={stats.monthlyExpenses} accent="red" icon="▤" />
-                <StatCard label="Monthly Documents" value={stats.monthlyDocuments} money={false} accent="navy" icon="▦" />
-                <StatCard label="Total Documents" value={stats.totalDocuments} money={false} accent="primary" icon="▦" />
-                <StatCard label="Total Customers" value={stats.totalCustomers} money={false} accent="primary" icon="◈" />
-                <StatCard label="Pending Credits" value={stats.pendingCredits} money={false} accent="red" icon="!" />
+                <StatCard label="Today's Income" value={stats.todaysIncome} accent="primary" icon="↑" href={links.todaysIncome} />
+                <StatCard label="Today's Expenses" value={stats.todaysExpenses} accent="red" icon="↓" href={links.todaysExpenses} />
+                <StatCard label="Cash Balance" value={stats.cashBalance} accent="green" icon="₵" href={links.cashBalance} />
+                <StatCard label="Bank Balance" value={stats.bankBalance} accent="navy" icon="⛁" href={links.bankBalance} />
+                <StatCard label="Credit Outstanding" value={stats.creditBalance} accent="red" icon="◔" href={links.creditBalance} />
+                <StatCard label="Total Profit" value={stats.totalProfit} accent="primary" icon="★" href={links.totalProfit} />
+                <StatCard label="Monthly Income" value={stats.monthlyIncome} accent="navy" icon="▤" href={links.monthlyIncome} />
+                <StatCard label="Monthly Expenses" value={stats.monthlyExpenses} accent="red" icon="▤" href={links.monthlyExpenses} />
+                <StatCard label="Monthly Documents" value={stats.monthlyDocuments} money={false} accent="navy" icon="▦" href={links.monthlyDocuments} />
+                <StatCard label="Total Documents" value={stats.totalDocuments} money={false} accent="primary" icon="▦" href={links.totalDocuments} />
+                <StatCard label="Total Customers" value={stats.totalCustomers} money={false} accent="primary" icon="◈" href={links.totalCustomers} />
+                <StatCard label="Pending Credits" value={stats.pendingCredits} money={false} accent="red" icon="!" href={links.pendingCredits} />
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
