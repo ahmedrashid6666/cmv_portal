@@ -83,7 +83,7 @@ class FinalCalculationService
      */
     public function defaults(string $date): array
     {
-        $rows = $this->coreRows();
+        $rows = $this->coreRows($date);
 
         foreach ($this->carriedManualRows($date) as $row) {
             $rows[] = $row;
@@ -120,10 +120,10 @@ class FinalCalculationService
      *
      * @return array<int, array<string, mixed>>
      */
-    private function coreRows(): array
+    private function coreRows(string $date): array
     {
         $rows = [
-            $this->row('dws_bal', 'DAILY WORK SHEET BAL', 'top', ['amount' => (float) $this->balances->cashBalance()], 'amount'),
+            $this->row('dws_bal', 'DAILY WORK SHEET BAL', 'top', ['amount' => (float) $this->balances->dwsBalance($date)], 'amount'),
             $this->row('borrowed', 'BORROWED CASH', 'top', ['amount' => $this->ledgerOutstanding(LedgerEntry::TYPE_BORROWED)], 'amount'),
             $this->row('daily_credit', 'DAILY CREDIT TOTAL', 'top', ['debt_exp' => $this->ledgerOutstanding(LedgerEntry::TYPE_CREDIT)], 'debt_exp'),
         ];

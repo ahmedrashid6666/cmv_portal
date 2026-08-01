@@ -41,6 +41,51 @@ class BalanceService
         return bcsub($balance, $this->officeExpensesByBucket('cash'), 2);
     }
 
+    /**
+     * Daily Work Sheet Bal — the accountant's simplified profit-to-cash
+     * bridge, as of a given date (not a ledger reconstruction like
+     * cashBalance()): (opening balance + net profit earned) minus
+     * (outstanding credit + office expenses), everything dated on or
+     * before $date.
+     */
+    public function dwsBalance(string $date): string
+    {
+        $opening = (string) Setting::get('cash_opening_balance', '0');
+        $profit = (string) Transaction::whereDate('transaction_date', '<=', $date)->sum('net_profit');
+        $officeExpenses = (string) OfficeExpense::whereDate('expense_date', '<=', $date)->sum('amount');
+
+        $balance = bcadd($this->d($opening), $this->d($profit), 2);
+        $balance = bcsub($balance, $this->creditOutstandingAsOf($date), 2);
+
+        return bcsub($balance, $this->d($officeExpenses), 2);
+    }
+
+    /**
+     * Outstanding (unpaid) credit as it stood on a given date: credit sales
+     * dated on/before $date, less repayments dated on/before $date. Unlike
+     * creditOutstandingTotal(), this reconstructs a historical balance
+     * instead of the current one.
+     */
+    public function creditOutstandingAsOf(string $date): string
+    {
+        $total = '0.00';
+        Transaction::query()
+            ->where('credit_amount', '>', 0)
+            ->whereDate('transaction_date', '<=', $date)
+            ->with(['creditPayments' => fn ($q) => $q->whereDate('payment_date', '<=', $date)])
+            ->chunk(500, function ($chunk) use (&$total) {
+                foreach ($chunk as $t) {
+                    $paid = (string) $t->creditPayments->sum('amount');
+                    $out = bcsub($this->d((string) $t->credit_amount), $this->d($paid), 2);
+                    if (bccomp($out, '0', 2) === 1) {
+                        $total = bcadd($total, $out, 2);
+                    }
+                }
+            });
+
+        return $total;
+    }
+
     public function bankBalance(): string
     {
         $opening = (string) (Bank::sum('opening_balance') ?: '0');
