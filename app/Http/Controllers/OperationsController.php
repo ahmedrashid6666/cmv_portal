@@ -224,6 +224,30 @@ class OperationsController extends Controller
     }
 
     /**
+     * A money formatter for a totals row: single currency if every row in the
+     * filtered set shares one, otherwise AED (mirrors the per-row display).
+     */
+    private function moneyFormatter($query): \Closure
+    {
+        $currencies = (clone $query)->distinct()->pluck('currency')->map(fn ($c) => $c ?: 'AED')->unique();
+        $currency = $currencies->count() === 1 ? $currencies->first() : 'AED';
+
+        return fn ($v) => \App\Support\Money::display($v ?? 0, $currency);
+    }
+
+    /**
+     * Outstanding credit summed across a filtered set of transactions:
+     * SUM(credit_amount) minus every credit payment made against them.
+     */
+    private function creditOutstandingTotal($transactionsQuery): float
+    {
+        $credit = (float) (clone $transactionsQuery)->sum('credit_amount');
+        $paid = (float) \App\Models\CreditPayment::whereIn('transaction_id', (clone $transactionsQuery)->select('id'))->sum('amount');
+
+        return $credit - $paid;
+    }
+
+    /**
      * Sum commissions across a set of transactions, split into Com-1 and Com-2
      * by their label (not their order).
      *
@@ -333,6 +357,12 @@ class OperationsController extends Controller
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
+        // Totals across the whole filtered set (not just the current page).
+        $totalsSource = (clone $query)->setEagerLoads([]);
+        $agg = (clone $totalsSource)->selectRaw('SUM(grand_total) grand_total')->first();
+        $t = $this->moneyFormatter($totalsSource);
+        $totals = ['', '', '', '', $t($agg->grand_total), $t($this->creditOutstandingTotal($totalsSource))];
+
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
             'customer' => $this->customerSub(), 'grand_total' => 'grand_total',
@@ -351,6 +381,7 @@ class OperationsController extends Controller
         return ['columns' => ['Date', 'Invoice', 'Customer', 'Contact', 'Grand Total', 'Outstanding'], 'rows' => $rows,
             'sortKeys' => ['transaction_date', 'invoice_no', 'customer', null, 'grand_total', null],
             'align' => [false, false, false, false, true, true],
+            'totals' => $totals,
             'statusOptions' => [], 'actionLabel' => 'View', 'bulkDeletable' => false];
     }
 
@@ -368,6 +399,11 @@ class OperationsController extends Controller
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        // Totals across the whole filtered set (not just the current page).
+        $totalsSource = (clone $query)->setEagerLoads([]);
+        $t = $this->moneyFormatter($totalsSource);
+        $totals = ['', '', '', '', '', '', '', $t((clone $totalsSource)->sum('credit_amount')), $t($this->creditOutstandingTotal($totalsSource))];
 
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
@@ -392,6 +428,7 @@ class OperationsController extends Controller
         return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Contact', 'Reference', 'Vehicle No', 'Credit', 'Outstanding'], 'rows' => $rows,
             'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null],
             'align' => [false, false, false, false, false, false, false, true, true],
+            'totals' => $totals,
             'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false];
     }
 
@@ -406,6 +443,11 @@ class OperationsController extends Controller
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
                 ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        // Totals across the whole filtered set (not just the current page).
+        $totalsSource = (clone $query)->setEagerLoads([]);
+        $t = $this->moneyFormatter($totalsSource);
+        $totals = ['', '', '', '', '', $t((clone $totalsSource)->sum('amount'))];
 
         $this->sort($query, $sort, $dir, [
             'expense_date' => 'expense_date',
@@ -429,6 +471,7 @@ class OperationsController extends Controller
         return ['columns' => ['Date', 'Category', 'Description', 'Contact', 'Method', 'Amount'], 'rows' => $rows,
             'sortKeys' => ['expense_date', 'category', null, null, 'method', 'amount'],
             'align' => [false, false, false, false, false, true],
+            'totals' => $totals,
             'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
     }
 
@@ -445,6 +488,12 @@ class OperationsController extends Controller
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
                 ->orWhere('vehicle_number', 'like', "%{$search}%")
                 ->orWhereHas('payments.paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        // Totals across the whole filtered set (not just the current page).
+        $totalsSource = clone $query;
+        $agg = (clone $totalsSource)->selectRaw('SUM(total_amount) total_amount, SUM(paid_amount) paid_amount, SUM(balance_amount) balance_amount')->first();
+        $t = $this->moneyFormatter($totalsSource);
+        $totals = ['', '', '', '', '', $t($agg->total_amount), $t($agg->paid_amount), $t($agg->balance_amount)];
 
         $this->sort($query, $sort, $dir, [
             'entry_date' => 'entry_date', 'party_name' => 'party_name', 'reference' => 'reference',
@@ -468,6 +517,7 @@ class OperationsController extends Controller
             'rows' => $rows,
             'sortKeys' => ['entry_date', 'party_name', null, 'reference', 'vehicle_number', 'total_amount', 'paid_amount', 'balance_amount'],
             'align' => [false, false, false, false, false, true, true, true],
+            'totals' => $totals,
             'statusOptions' => ['pending' => 'Pending', 'partial' => $type === 'borrowed' ? 'Partially Returned' : 'Partially Paid', 'returned' => 'Returned'],
             'actionLabel' => 'Edit', 'bulkDeletable' => true,
         ];

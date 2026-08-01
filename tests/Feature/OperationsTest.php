@@ -2,10 +2,13 @@
 
 use App\Enums\Role;
 use App\Models\Customer;
+use App\Models\CreditPayment;
 use App\Models\LedgerEntry;
+use App\Models\OfficeExpense;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\Money;
 
 beforeEach(function () {
     $this->admin = User::factory()->role(Role::SUPER_ADMIN)->create();
@@ -162,5 +165,56 @@ it('shows contact numbers on the invoices and credits tabs', function () {
         ->assertInertia(fn ($p) => $p
             ->where('columns.4', 'Contact')
             ->where('rows.data.0.cells.4', '050-111, 050-222')
+            ->etc());
+});
+
+it('sums grand total and outstanding credit across the whole filtered set on the invoices tab', function () {
+    $a = opTx(today()->toDateString());
+    $b = opTx(today()->toDateString());
+    $a->update(['credit_amount' => 100]);
+    CreditPayment::create(['transaction_id' => $a->id, 'payment_date' => today(), 'amount' => 40, 'payment_method_id' => $this->cash->id]);
+
+    $expectedGrandTotal = Money::display((float) $a->fresh()->grand_total + (float) $b->fresh()->grand_total);
+    $expectedOutstanding = Money::display(100 - 40);
+
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'invoices']))
+        ->assertInertia(fn ($p) => $p
+            ->where('totals.4', $expectedGrandTotal)
+            ->where('totals.5', $expectedOutstanding)
+            ->etc());
+});
+
+it('sums credit and outstanding across the whole filtered set on the credits tab', function () {
+    $a = opTx(today()->toDateString());
+    $b = opTx(today()->toDateString());
+    $a->update(['credit_amount' => 100]);
+    $b->update(['credit_amount' => 50]);
+    CreditPayment::create(['transaction_id' => $a->id, 'payment_date' => today(), 'amount' => 40, 'payment_method_id' => $this->cash->id]);
+
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
+        ->assertInertia(fn ($p) => $p
+            ->where('totals.7', Money::display(150))     // 100 + 50
+            ->where('totals.8', Money::display(110))      // (100-40) + 50
+            ->etc());
+});
+
+it('sums the amount column on the office expenses tab', function () {
+    $category = App\Models\ExpenseCategory::create(['name' => 'Rent']);
+    OfficeExpense::create(['expense_date' => today(), 'expense_category_id' => $category->id, 'amount' => 300, 'currency' => 'AED', 'payment_method_id' => $this->cash->id]);
+    OfficeExpense::create(['expense_date' => today(), 'expense_category_id' => $category->id, 'amount' => 150, 'currency' => 'AED', 'payment_method_id' => $this->cash->id]);
+
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'office-expenses']))
+        ->assertInertia(fn ($p) => $p->where('totals.5', Money::display(450))->etc());
+});
+
+it('sums total, paid and balance across the whole filtered set on the daily-credit tab', function () {
+    LedgerEntry::factory()->create(['total_amount' => 1000, 'paid_amount' => 400]);
+    LedgerEntry::factory()->create(['total_amount' => 500, 'paid_amount' => 500]);
+
+    $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'daily-credit']))
+        ->assertInertia(fn ($p) => $p
+            ->where('totals.5', Money::display(1500))
+            ->where('totals.6', Money::display(900))
+            ->where('totals.7', Money::display(600))
             ->etc());
 });
