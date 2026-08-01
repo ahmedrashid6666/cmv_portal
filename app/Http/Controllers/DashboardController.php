@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Services\BalanceService;
+use App\Services\FinalCalculationService;
 use App\Services\NotificationService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function __invoke(BalanceService $balances, NotificationService $notifications)
+    public function __invoke(BalanceService $balances, NotificationService $notifications, FinalCalculationService $finalCalc)
     {
         $today = Carbon::today();
 
@@ -71,7 +72,10 @@ class DashboardController extends Controller
             'stats' => [
                 'todaysIncome' => (float) $balances->todaysIncome(),
                 'todaysExpenses' => (float) $balances->todaysExpenses(),
-                'cashBalance' => (float) $balances->cashBalance(),
+                // Matches "Total Liquid Cash in CMV" on Final Calculation — the
+                // reconciled figure (cash + borrowed − bank balances − credit
+                // outstanding), not the raw cash ledger balance.
+                'cashBalance' => (float) $finalCalc->liquidCashFor($today->toDateString()),
                 'bankBalance' => (float) $balances->bankBalance(),
                 'creditBalance' => (float) $balances->creditOutstandingTotal(),
                 'totalProfit' => (float) $balances->totalProfit(),
