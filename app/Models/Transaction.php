@@ -49,12 +49,14 @@ class Transaction extends Model
 
     /**
      * Derived fields are recomputed automatically — keep them out of history.
+     * custom_data is a free-form object (no-code custom fields); a raw diff
+     * of it renders unreadably, so it's excluded too.
      *
      * @return array<int, string>
      */
     public function auditExclude(): array
     {
-        return ['vat_amount', 'total_amount', 'grand_total', 'net_profit'];
+        return ['vat_amount', 'total_amount', 'grand_total', 'net_profit', 'custom_data'];
     }
 
     public function customer()

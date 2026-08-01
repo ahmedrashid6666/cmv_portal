@@ -6,6 +6,16 @@ import { useState } from 'react';
 
 const input = 'rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
+// Values on an activity diff are usually scalars, but an array-cast model
+// attribute can still slip through as an object/array — String() on those
+// renders "[object Object]", so format them as readable JSON instead.
+const fmtChange = (v) => {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v !== 'object') return String(v);
+
+    return Array.isArray(v) ? v.join(', ') : JSON.stringify(v);
+};
+
 const actionStyle = {
     created: 'bg-emerald-100 text-emerald-800',
     updated: 'bg-amber-100 text-amber-800',
@@ -74,8 +84,8 @@ export default function ActivityIndex({ logs, filters, users, models, actions })
                                                 {Object.entries(l.changes).map(([field, [oldV, newV]]) => (
                                                     <li key={field}>
                                                         <span className="text-slate-500">{field}:</span>{' '}
-                                                        <span className="text-accent-red line-through">{String(oldV ?? '—')}</span>{' → '}
-                                                        <span className="text-emerald-700">{String(newV ?? '—')}</span>
+                                                        <span className="text-accent-red line-through">{fmtChange(oldV)}</span>{' → '}
+                                                        <span className="text-emerald-700">{fmtChange(newV)}</span>
                                                     </li>
                                                 ))}
                                             </ul>

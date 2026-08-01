@@ -47,4 +47,16 @@ class CashCount extends Model
     {
         return 'Cash count '.$this->count_date?->format('Y-m-d');
     }
+
+    /**
+     * `lines`/`extras` hold every denomination count and bundle/slip row — a
+     * raw diff of them is unreadable. total_aed/total_omr/expected_aed are
+     * logged individually and already summarise what changed.
+     *
+     * @return array<int, string>
+     */
+    public function auditExclude(): array
+    {
+        return ['lines', 'extras'];
+    }
 }

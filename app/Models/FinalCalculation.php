@@ -45,4 +45,16 @@ class FinalCalculation extends Model
     {
         return 'Final Calculation '.$this->calc_date?->format('Y-m-d');
     }
+
+    /**
+     * `data` is the full worksheet (every row, re-saved on every edit) — a
+     * raw diff of it is unreadable. The six totals + remarks columns are
+     * logged individually and already summarise what changed.
+     *
+     * @return array<int, string>
+     */
+    public function auditExclude(): array
+    {
+        return ['data'];
+    }
 }
