@@ -1,1 +1,0 @@
-import{n as e,t}from"./app-Bi13Su7a.js";import{t as n}from"./AuthenticatedLayout-0kV-ooJZ.js";import{t as r}from"./TransactionEntryForm-BVLwYHBw.js";var i=t();function a(t){let a=!!t.transaction;return(0,i.jsxs)(n,{header:a?`Edit Transaction`:`New Transaction`,children:[(0,i.jsx)(e,{title:a?`Edit Transaction`:`New Transaction`}),(0,i.jsx)(r,{...t})]})}export{a as default};
