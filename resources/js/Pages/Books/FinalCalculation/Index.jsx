@@ -43,6 +43,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
     });
 
     const rows = form.data.rows;
+    const rate = n(form.data.omr_rate) || defaultOmrRate;
 
     const setRows = (next) => setData('data', { ...form.data, rows: next });
     const setField = (i, key, value) => setRows(rows.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)));
@@ -60,8 +61,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
         const liquid = totalAmount - (totalAc + totalDebt);
         const cashAedTotal = sum('cash_aed');
         const cashOmrTotal = sum('cash_omr');
-        // OMR is shown for reference only — it does not convert into or add to the AED total/reconciliation.
-        const cashCounted = cashAedTotal;
+        const cashCounted = cashAedTotal + cashOmrTotal * rate;
         return {
             total_amount: totalAmount,
             total_ac_balance: totalAc,
@@ -69,10 +69,11 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
             liquid_cash: liquid,
             cash_aed_total: cashAedTotal,
             cash_omr_total: cashOmrTotal,
+            cash_omr_as_aed: cashOmrTotal * rate,
             cash_counted: cashCounted,
             cash_extra: cashCounted - liquid,
         };
-    }, [rows]);
+    }, [rows, rate]);
 
     const extra = Math.round(t.cash_extra * 100) / 100;
 
@@ -140,9 +141,13 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                             <td className="px-3 py-2 text-right tabular-nums">{num(t.total_ac_balance)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{num(t.total_debt_exp)}</td>
                             <td className="px-3 py-2 text-right tabular-nums" colSpan={2}>
-                                <div>{num(t.cash_counted)} <span className="text-xs font-normal text-slate-400">(AED)</span></div>
-                                <div className="mt-1 flex justify-end text-xs font-normal text-slate-500">
-                                    <span>{num(t.cash_omr_total)} <Tag>OMR</Tag> <span className="text-slate-400">— not included in total</span></span>
+                                <div className="flex flex-wrap items-baseline justify-end gap-x-3 text-sm">
+                                    <span>{num(t.cash_aed_total)} <span className="text-xs font-normal text-slate-400">AED</span></span>
+                                    <span>OMR {num(t.cash_omr_total)} <span className="text-xs font-normal text-slate-400">(AED {num(t.cash_omr_as_aed)})</span></span>
+                                </div>
+                                <div className="mt-1 flex items-baseline justify-end gap-2 border-t border-navy-200 pt-1">
+                                    <span className="text-xs font-normal text-slate-500">TOTAL</span>
+                                    <span className="text-base">{num(t.cash_counted)} <span className="text-xs font-normal text-slate-400">AED</span></span>
                                 </div>
                             </td>
                             <td></td>
@@ -155,11 +160,14 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Stat label="Total Liquid Cash in CMV" value={num(t.liquid_cash)} accent="text-emerald-700" big />
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs uppercase text-slate-500">Cash Counted (AED)</p>
-                    <p className="mt-1 text-2xl font-bold text-navy-900">{num(t.cash_counted)}</p>
-                    <div className="mt-2 border-t border-slate-100 pt-2 text-sm font-semibold text-navy-700">
-                        <span>{num(t.cash_omr_total)} <Tag>OMR</Tag></span>
-                        <span className="ml-1 text-xs font-normal text-slate-400">(separate, not added to AED)</span>
+                    <p className="text-xs uppercase text-slate-500">Cash Counted</p>
+                    <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-lg font-bold text-navy-900">
+                        <span>{num(t.cash_aed_total)} <Tag>AED</Tag></span>
+                        <span>OMR {num(t.cash_omr_total)} <span className="text-xs font-normal text-slate-400">(AED {num(t.cash_omr_as_aed)})</span></span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2 border-t border-slate-100 pt-2">
+                        <span className="text-xs uppercase text-slate-500">Total</span>
+                        <span className="text-2xl font-bold text-navy-900">{num(t.cash_counted)} <Tag>AED</Tag></span>
                     </div>
                 </div>
                 <div className={'rounded-xl border p-4 shadow-sm ' + (extra === 0 ? 'border-emerald-200 bg-emerald-50' : extra > 0 ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50')}>

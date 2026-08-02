@@ -11,10 +11,7 @@ use App\Models\Setting;
  * Builds and evaluates the "Final Calculation" reconciliation worksheet.
  *
  * The worksheet is a grid of rows, each mirroring the four Excel columns:
- *   amount | ac_balance | debt_exp | cash (cash_aed, reconciled; cash_omr tracked separately)
- *
- * cash_omr is displayed for reference only — it is never converted into or
- * added to the AED total, so the OMR rate plays no part in reconciliation.
+ *   amount | ac_balance | debt_exp | cash (cash_aed + cash_omr × rate)
  *
  * compute() runs the exact workbook formulas (see the design spec); defaults()
  * pre-fills the auto rows for a date from the live balances. The same math is
@@ -35,6 +32,7 @@ class FinalCalculationService
     public function compute(array $data): array
     {
         $rows = $data['rows'] ?? [];
+        $rate = (float) ($data['omr_rate'] ?? self::DEFAULT_OMR_RATE);
 
         $sum = fn (string $col) => round(array_reduce(
             $rows,
@@ -47,15 +45,14 @@ class FinalCalculationService
         $totalDebtExp = $sum('debt_exp');
         $liquidCash = round($totalAmount - ($totalAcBalance + $totalDebtExp), 2);
 
-        // OMR is tracked for reference only — it is not converted or added into
-        // the AED total/reconciliation.
         $cashAedTotal = $sum('cash_aed');
         $cashOmrTotal = round(array_reduce(
             $rows,
             fn ($carry, $row) => $carry + (float) ($row['cash_omr'] ?? 0),
             0.0,
         ), 3);
-        $cashCounted = $cashAedTotal;
+        $cashOmrAsAed = round($cashOmrTotal * $rate, 2);
+        $cashCounted = round($cashAedTotal + $cashOmrAsAed, 2);
 
         return [
             'total_amount' => $totalAmount,
@@ -63,6 +60,7 @@ class FinalCalculationService
             'total_debt_exp' => $totalDebtExp,
             'liquid_cash' => $liquidCash,
             'cash_omr_total' => $cashOmrTotal,
+            'cash_omr_as_aed' => $cashOmrAsAed,
             'cash_counted' => $cashCounted,
             'cash_extra' => round($cashCounted - $liquidCash, 2),
         ];
@@ -80,6 +78,12 @@ class FinalCalculationService
         $data = $snapshot ? $snapshot->data : $this->defaults($date);
 
         return $this->compute($data)['liquid_cash'];
+    }
+
+    /** The app-wide OMR → AED rate, editable in Settings. */
+    public function omrRate(): float
+    {
+        return (float) Setting::get('omr_to_aed_rate', self::DEFAULT_OMR_RATE);
     }
 
     /**
@@ -100,7 +104,7 @@ class FinalCalculationService
 
         return [
             'rows' => $rows,
-            'omr_rate' => (float) Setting::get('omr_to_aed_rate', self::DEFAULT_OMR_RATE),
+            'omr_rate' => $this->omrRate(),
             'remarks' => null,
         ];
     }

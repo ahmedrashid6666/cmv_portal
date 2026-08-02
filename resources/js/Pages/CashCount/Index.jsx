@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
-export default function CashCount({ date, denominations, count, expectedAed, history }) {
+export default function CashCount({ date, denominations, count, expectedAed, omrRate, history }) {
     const { data, setData, post, processing } = useForm({
         count_date: date,
         lines: count?.lines ?? { AED: {}, OMR: {} },
@@ -39,16 +39,31 @@ export default function CashCount({ date, denominations, count, expectedAed, his
 
     const removeBundle = (cur, idx) => setData('bundles', { ...data.bundles, [cur]: (data.bundles[cur] || []).filter((_, i) => i !== idx) });
 
-    const totals = useMemo(() => {
+    // Denomination-only sum — shown on each currency's own card header.
+    const denomTotals = useMemo(() => {
         const t = {};
         for (const cur of Object.keys(denominations)) {
             let sum = 0;
             for (const d of denominations[cur]) sum += d * (parseFloat(data.lines[cur]?.[d]) || 0);
+            t[cur] = cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
+        }
+        return t;
+    }, [data.lines, denominations]);
+
+    // Denominations + bundles — the actual counted total used for reconciliation.
+    const totals = useMemo(() => {
+        const t = {};
+        for (const cur of Object.keys(denominations)) {
+            let sum = denomTotals[cur];
             for (const b of data.bundles[cur] || []) sum += parseFloat(b.amount) || 0;
             t[cur] = cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
         }
         return t;
-    }, [data.lines, data.bundles, denominations]);
+    }, [denomTotals, data.bundles, denominations]);
+
+    // OMR converted to AED at the app-wide rate, and the resulting grand total.
+    const cashOmrAsAed = Math.round(totals.OMR * omrRate * 100) / 100;
+    const grandTotalAed = Math.round((totals.AED + cashOmrAsAed) * 100) / 100;
 
     const variance = Math.round((totals.AED - expectedAed) * 100) / 100;
 
@@ -74,9 +89,13 @@ export default function CashCount({ date, denominations, count, expectedAed, his
             <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                     <p className="text-xs uppercase text-slate-500">Counted</p>
-                    <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                        <span className="text-2xl font-bold text-navy-900">{num(totals.AED)} <Tag>AED</Tag></span>
-                        <span className="text-2xl font-bold text-navy-900">{num(totals.OMR)} <Tag>OMR</Tag></span>
+                    <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-lg font-bold text-navy-900">
+                        <span>{num(totals.AED)} <Tag>AED</Tag></span>
+                        <span>OMR {num(totals.OMR)} <span className="text-xs font-normal text-slate-400">(AED {num(cashOmrAsAed)})</span></span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2 border-t border-slate-100 pt-2">
+                        <span className="text-xs uppercase text-slate-500">Total</span>
+                        <span className="text-2xl font-bold text-navy-900">{num(grandTotalAed)} <Tag>AED</Tag></span>
                     </div>
                 </div>
                 <Stat label="Expected Cash (AED)" value={money(expectedAed, 'AED')} accent="text-navy-900" />
@@ -90,7 +109,7 @@ export default function CashCount({ date, denominations, count, expectedAed, his
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {Object.keys(denominations).map((cur) => (
-                    <Card key={cur} title={`${cur} Cash Count`} action={<span className="text-sm font-bold text-primary-700">{money(totals[cur], cur)}</span>}>
+                    <Card key={cur} title={`${cur} Cash Count`} action={<span className="text-sm font-bold text-primary-700">{money(denomTotals[cur], cur)}</span>}>
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b text-left text-xs uppercase text-slate-500">
