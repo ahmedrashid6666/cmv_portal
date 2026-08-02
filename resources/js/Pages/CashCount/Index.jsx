@@ -2,12 +2,15 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { money, num } from '@/lib/format';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
 export default function CashCount({ date, denominations, count, expectedAed, omrRate, history }) {
+    const role = usePage().props.auth.user.role;
+    const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
+
     const { data, setData, post, processing } = useForm({
         count_date: date,
         lines: count?.lines ?? { AED: {}, OMR: {} },
@@ -69,6 +72,11 @@ export default function CashCount({ date, denominations, count, expectedAed, omr
 
     const changeDate = (d) => router.get(route('cash-count.index'), { date: d }, { preserveState: false });
     const save = (e) => { e.preventDefault(); post(route('cash-count.store'), { preserveScroll: true }); };
+    const deleteCount = (h) => {
+        if (confirm(`Delete the cash count for ${h.date}?`)) {
+            router.delete(route('cash-count.destroy', h.id), { preserveScroll: true });
+        }
+    };
 
     return (
         <AuthenticatedLayout header="Daily Cash Count">
@@ -286,9 +294,10 @@ export default function CashCount({ date, denominations, count, expectedAed, omr
                                     <td className={'py-2 pr-4 text-right font-semibold ' + (h.variance === 0 ? 'text-emerald-700' : h.variance > 0 ? 'text-amber-600' : 'text-accent-red')}>
                                         {h.variance === 0 ? 'Balanced' : `${h.variance > 0 ? '+' : ''}${num(h.variance)}`}
                                     </td>
-                                    <td className="py-2 text-right">
+                                    <td className="py-2 text-right whitespace-nowrap">
                                         <a href={route('cash-count.pdf', h.id)} target="_blank" className="text-primary-600 hover:underline">PDF</a>
-                                        <button onClick={() => changeDate(h.date)} className="ml-3 text-navy-600 hover:underline">Open</button>
+                                        <button onClick={() => changeDate(h.date)} className="ml-3 text-navy-600 hover:underline">Edit</button>
+                                        {canWrite && <button onClick={() => deleteCount(h)} className="ml-3 text-accent-red hover:underline">Delete</button>}
                                     </td>
                                 </tr>
                             ))}

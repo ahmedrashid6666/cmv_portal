@@ -69,6 +69,14 @@ class CashCountController extends Controller
         return back()->with('success', 'Cash count saved for '.$data['count_date'].'.');
     }
 
+    public function destroy(CashCount $cashCount)
+    {
+        $date = $cashCount->count_date->format('Y-m-d');
+        $cashCount->delete();
+
+        return back()->with('success', 'Cash count for '.$date.' deleted.');
+    }
+
     public function pdf(CashCount $cashCount)
     {
         return Pdf::loadView('cash-count.pdf', [

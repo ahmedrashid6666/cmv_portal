@@ -72,6 +72,14 @@ class FinalCalculationController extends Controller
         return back()->with('success', 'Final calculation saved for '.$validated['calc_date'].'.');
     }
 
+    public function destroy(FinalCalculation $finalCalculation)
+    {
+        $date = $finalCalculation->calc_date->format('Y-m-d');
+        $finalCalculation->delete();
+
+        return back()->with('success', 'Final calculation snapshot for '.$date.' deleted.');
+    }
+
     public function pdf(FinalCalculation $finalCalculation)
     {
         return Pdf::loadView('final-calculation.pdf', [

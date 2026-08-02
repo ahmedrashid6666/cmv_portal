@@ -134,6 +134,39 @@ class BankAccountController extends Controller
         return back()->with('success', 'Bank entry added.');
     }
 
+    /**
+     * Update a manual money movement. Same In/Out mutual-exclusivity rule as storeEntry.
+     */
+    public function updateEntry(Request $request, BankEntry $entry)
+    {
+        $data = $request->validate([
+            'entry_date' => ['required', 'date'],
+            'item' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'in' => ['nullable', 'numeric', 'min:0'],
+            'out' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $in = (float) ($data['in'] ?? 0);
+        $out = (float) ($data['out'] ?? 0);
+
+        if (($in > 0) === ($out > 0)) {
+            throw ValidationException::withMessages([
+                'amount' => 'Enter an amount in either In or Out — not both, and not zero.',
+            ]);
+        }
+
+        $entry->update([
+            'entry_date' => $data['entry_date'],
+            'item' => $data['item'],
+            'description' => $data['description'] ?? null,
+            'direction' => $in > 0 ? 'in' : 'out',
+            'amount' => $in > 0 ? $in : $out,
+        ]);
+
+        return back()->with('success', 'Bank entry updated.');
+    }
+
     public function destroyEntry(BankEntry $entry)
     {
         $entry->delete();

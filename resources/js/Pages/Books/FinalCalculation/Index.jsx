@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { num } from '@/lib/format';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 const EDIT_MODE_STORAGE_KEY = 'finalCalc.editable';
@@ -16,6 +16,9 @@ const groupTint = { top: 'bg-white', banks: 'bg-emerald-50/40', other: 'bg-amber
 const n = (v) => (v === '' || v === null || v === undefined ? 0 : parseFloat(v) || 0);
 
 export default function FinalCalculation({ date, data, totals, saved, savedId, defaultOmrRate, history }) {
+    const role = usePage().props.auth.user.role;
+    const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
+
     const [editable, setEditableState] = useState(() => {
         try {
             return localStorage.getItem(EDIT_MODE_STORAGE_KEY) === 'true';
@@ -83,6 +86,11 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
         e.preventDefault();
         setData('remarks', form.data.remarks);
         post(route('final-calc.store'), { preserveScroll: true });
+    };
+    const deleteSnapshot = (h) => {
+        if (confirm(`Delete the Final Calculation snapshot for ${h.date}?`)) {
+            router.delete(route('final-calc.destroy', h.id), { preserveScroll: true });
+        }
     };
 
     return (
@@ -207,9 +215,10 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                                     <td className={'py-2 pr-4 text-right font-semibold tabular-nums ' + (h.cash_extra === 0 ? 'text-emerald-700' : h.cash_extra > 0 ? 'text-amber-600' : 'text-accent-red')}>
                                         {h.cash_extra > 0 ? '+' : ''}{num(h.cash_extra)}
                                     </td>
-                                    <td className="py-2 text-right">
+                                    <td className="py-2 text-right whitespace-nowrap">
                                         <a href={route('final-calc.pdf', h.id)} target="_blank" className="text-primary-600 hover:underline">PDF</a>
-                                        <button onClick={() => changeDate(h.date)} className="ml-3 text-navy-600 hover:underline">Open</button>
+                                        <button onClick={() => changeDate(h.date)} className="ml-3 text-navy-600 hover:underline">Edit</button>
+                                        {canWrite && <button onClick={() => deleteSnapshot(h)} className="ml-3 text-accent-red hover:underline">Delete</button>}
                                     </td>
                                 </tr>
                             ))}

@@ -91,19 +91,48 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
 
 function InOutDialog({ bank, onClose }) {
     const entries = bank.entries || [];
+    const [editingEntry, setEditingEntry] = useState(null);
     const form = useForm({ entry_date: today(), item: '', description: '', in: '', out: '' });
+
+    const blankForm = { entry_date: today(), item: '', description: '', in: '', out: '' };
+
+    const startEdit = (e) => {
+        setEditingEntry(e);
+        form.setData({
+            entry_date: e.date,
+            item: e.item,
+            description: e.description || '',
+            in: e.direction === 'in' ? e.amount : '',
+            out: e.direction === 'out' ? e.amount : '',
+        });
+    };
+
+    const cancelEdit = () => {
+        setEditingEntry(null);
+        form.setData(blankForm);
+        form.clearErrors();
+    };
 
     const submit = (e) => {
         e.preventDefault();
-        form.post(route('bank-accounts.entries.store', bank.id), {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: () => form.setData({ entry_date: today(), item: '', description: '', in: '', out: '' }),
-        });
+        if (editingEntry) {
+            form.put(route('bank-accounts.entries.update', editingEntry.id), {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => { setEditingEntry(null); form.setData(blankForm); },
+            });
+        } else {
+            form.post(route('bank-accounts.entries.store', bank.id), {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => form.setData(blankForm),
+            });
+        }
     };
 
     const remove = (id) => {
         if (!confirm('Remove this entry?')) return;
+        if (editingEntry?.id === id) cancelEdit();
         router.delete(route('bank-accounts.entries.destroy', id), { preserveState: true, preserveScroll: true });
     };
 
@@ -118,8 +147,11 @@ function InOutDialog({ bank, onClose }) {
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
 
-                {/* Add form */}
-                <form onSubmit={submit} className="grid grid-cols-1 gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-12">
+                {/* Add / edit form */}
+                {editingEntry && (
+                    <p className="mb-2 text-xs font-semibold text-primary-700">Editing entry — {editingEntry.item}</p>
+                )}
+                <form onSubmit={submit} className={'grid grid-cols-1 gap-2 rounded-lg p-3 sm:grid-cols-12 ' + (editingEntry ? 'bg-primary-50' : 'bg-slate-50')}>
                     <label className="sm:col-span-2">
                         <span className="mb-1 block text-[11px] font-medium text-slate-500">Date</span>
                         <input type="date" className={input + ' w-full'} value={form.data.entry_date} onChange={(e) => form.setData('entry_date', e.target.value)} required />
@@ -140,8 +172,13 @@ function InOutDialog({ bank, onClose }) {
                         <span className="mb-1 block text-[11px] font-medium text-accent-red">Out</span>
                         <input type="number" step="0.01" min="0" className={input + ' w-full'} value={form.data.out} onChange={(e) => form.setData({ ...form.data, out: e.target.value, in: '' })} />
                     </label>
-                    <div className="flex items-end sm:col-span-12">
-                        <button disabled={form.processing} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">Add entry</button>
+                    <div className="flex items-end gap-3 sm:col-span-12">
+                        <button disabled={form.processing} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
+                            {editingEntry ? 'Update entry' : 'Add entry'}
+                        </button>
+                        {editingEntry && (
+                            <button type="button" onClick={cancelEdit} className="text-sm font-semibold text-slate-500 hover:underline">Cancel</button>
+                        )}
                         {form.errors.amount && <span className="ml-3 self-center text-xs text-accent-red">{form.errors.amount}</span>}
                         {form.errors.item && <span className="ml-3 self-center text-xs text-accent-red">{form.errors.item}</span>}
                     </div>
@@ -163,13 +200,16 @@ function InOutDialog({ bank, onClose }) {
                         <tbody>
                             {entries.length === 0 && <tr><td colSpan="6" className="py-6 text-center text-slate-400">No entries yet.</td></tr>}
                             {entries.map((e) => (
-                                <tr key={e.id} className="border-b last:border-0">
+                                <tr key={e.id} className={'border-b last:border-0 ' + (editingEntry?.id === e.id ? 'bg-primary-50' : '')}>
                                     <td className="py-2 pr-3 whitespace-nowrap text-slate-500">{e.date}</td>
                                     <td className="py-2 pr-3 font-medium text-navy-800">{e.item}</td>
                                     <td className="py-2 pr-3 text-slate-500">{e.description || '—'}</td>
                                     <td className="py-2 pr-3 text-right tabular-nums text-emerald-700">{e.direction === 'in' ? money(e.amount, 'AED') : '—'}</td>
                                     <td className="py-2 pr-3 text-right tabular-nums text-accent-red">{e.direction === 'out' ? money(e.amount, 'AED') : '—'}</td>
-                                    <td className="py-2 text-right"><button onClick={() => remove(e.id)} className="text-xs text-accent-red hover:underline">Delete</button></td>
+                                    <td className="py-2 text-right whitespace-nowrap">
+                                        <button onClick={() => startEdit(e)} className="mr-3 text-xs text-primary-600 hover:underline">Edit</button>
+                                        <button onClick={() => remove(e.id)} className="text-xs text-accent-red hover:underline">Delete</button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

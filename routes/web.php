@@ -65,6 +65,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('cash-count/{cashCount}/pdf', [CashCountController::class, 'pdf'])->name('cash-count.pdf');
     Route::post('cash-count', [CashCountController::class, 'store'])
         ->middleware('role:super_admin,admin,accountant')->name('cash-count.store');
+    Route::delete('cash-count/{cashCount}', [CashCountController::class, 'destroy'])
+        ->middleware('role:super_admin,admin,accountant')->name('cash-count.destroy');
 
     // Books (running-balance ledgers)
     Route::get('books/cash-bank', [BookController::class, 'cashBank'])->name('books.cashbank');
@@ -79,6 +81,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('books/final-calculation/{finalCalculation}/pdf', [FinalCalculationController::class, 'pdf'])->name('final-calc.pdf');
     Route::post('books/final-calculation', [FinalCalculationController::class, 'store'])
         ->middleware('role:super_admin,admin,accountant')->name('final-calc.store');
+    Route::delete('books/final-calculation/{finalCalculation}', [FinalCalculationController::class, 'destroy'])
+        ->middleware('role:super_admin,admin,accountant')->name('final-calc.destroy');
 
     // Bank accounts — per-bank balances (customs/gov disbursements) + statement
     Route::get('bank-accounts', [BankAccountController::class, 'index'])->name('bank-accounts.index');
@@ -86,6 +90,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('bank-accounts/{bank}/statement/export', [BankAccountController::class, 'exportStatement'])->name('bank-accounts.statement.export');
     Route::middleware('role:super_admin,admin,accountant')->group(function () {
         Route::post('bank-accounts/{bank}/entries', [BankAccountController::class, 'storeEntry'])->name('bank-accounts.entries.store');
+        Route::put('bank-accounts/entries/{entry}', [BankAccountController::class, 'updateEntry'])->name('bank-accounts.entries.update');
         Route::delete('bank-accounts/entries/{entry}', [BankAccountController::class, 'destroyEntry'])->name('bank-accounts.entries.destroy');
     });
 
