@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { AED, fmtDate } from '@/lib/format';
+import { todayLocalISO } from '@/lib/date';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -12,7 +13,7 @@ export default function CreditsIndex({ outstanding, paymentMethods }) {
     const [payFor, setPayFor] = useState(null);
     const { data, setData, post, processing, errors, reset } = useForm({
         transaction_id: null,
-        payment_date: new Date().toISOString().slice(0, 10),
+        payment_date: todayLocalISO(),
         amount: '',
         payment_method_id: '',
         note: '',

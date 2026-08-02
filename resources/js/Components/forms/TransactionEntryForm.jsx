@@ -3,6 +3,7 @@ import ComboBox from '@/Components/ComboBox';
 import ContactNumbers from '@/Components/forms/ContactNumbers';
 import { money } from '@/lib/format';
 import { computeTotals } from '@/lib/calc';
+import { todayLocalISO } from '@/lib/date';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Link, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
@@ -50,7 +51,7 @@ export default function TransactionEntryForm({
 }) {
     const editing = !!transaction;
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        transaction_date: transaction?.transaction_date ?? new Date().toISOString().slice(0, 10),
+        transaction_date: transaction?.transaction_date ?? todayLocalISO(),
         invoice_no: transaction?.invoice_no ?? '',
         boe_no: transaction?.boe_no ?? '',
         customer_id: transaction?.customer_id ?? '',

@@ -28,7 +28,9 @@ class SettingsController extends Controller
                 'company_phone' => Setting::get('company_phone', ''),
                 'company_email' => Setting::get('company_email', ''),
                 'invoice_footer' => Setting::get('invoice_footer', 'Thank you for your business.'),
+                'timezone' => Setting::get('timezone', config('app.timezone')),
             ],
+            'timezones' => \DateTimeZone::listIdentifiers(),
             'database' => [
                 'connection' => config('database.default'),
                 'host' => $db['host'] ?? '',
@@ -55,11 +57,15 @@ class SettingsController extends Controller
             'company_phone' => ['nullable', 'string', 'max:50'],
             'company_email' => ['nullable', 'string', 'max:100'],
             'invoice_footer' => ['nullable', 'string', 'max:500'],
+            'timezone' => ['required', 'string', 'timezone'],
         ]);
 
         foreach ($data as $key => $value) {
             Setting::put($key, $value);
         }
+
+        config(['app.timezone' => $data['timezone']]);
+        date_default_timezone_set($data['timezone']);
 
         return back()->with('success', 'Company settings saved.');
     }

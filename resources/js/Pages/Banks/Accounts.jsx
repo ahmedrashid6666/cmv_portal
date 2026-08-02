@@ -1,11 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { money } from '@/lib/format';
+import { todayLocalISO } from '@/lib/date';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const input = 'rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
-const today = () => new Date().toISOString().slice(0, 10);
+const today = todayLocalISO;
 
 export default function BankAccounts({ banks, totals, combinedBankBalance }) {
     const role = usePage().props.auth.user.role;

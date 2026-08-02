@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { AED, fmtDate } from '@/lib/format';
+import { todayLocalISO } from '@/lib/date';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -17,7 +18,7 @@ export default function BulkPayment({ meta, filters, entries, paymentMethods }) 
     const { data, setData, post, processing, errors } = useForm({
         mode: 'fifo',
         amount: '',
-        payment_date: new Date().toISOString().slice(0, 10),
+        payment_date: todayLocalISO(),
         payment_method_id: '',
         note: '',
         entry_ids: [],

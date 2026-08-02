@@ -1,6 +1,7 @@
 import AutocompleteInput from '@/Components/AutocompleteInput';
 import ContactNumbers from '@/Components/forms/ContactNumbers';
 import { money } from '@/lib/format';
+import { todayLocalISO } from '@/lib/date';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
@@ -34,7 +35,7 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
     const partySlug = isBorrowed ? 'references' : 'customers';
     const refOptions = references.map((r) => ({ value: r.name, label: r.name, sublabel: r.company }));
     const blank = {
-        entry_date: entry?.entry_date ?? new Date().toISOString().slice(0, 10),
+        entry_date: entry?.entry_date ?? todayLocalISO(),
         party_name: entry?.party_name ?? '',
         contact_numbers: entry?.contact_numbers?.length ? entry.contact_numbers : [''],
         reference: entry?.reference ?? '',

@@ -1,6 +1,7 @@
 import ComboBox from '@/Components/ComboBox';
 import ContactNumbers from '@/Components/forms/ContactNumbers';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
+import { todayLocalISO } from '@/lib/date';
 import { useForm } from '@inertiajs/react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
@@ -24,7 +25,7 @@ function Field({ label, error, children, required }) {
 export default function OfficeExpenseForm({ officeExpense = null, expenseCategories = [], paymentMethods = [], onDone }) {
     const editing = !!officeExpense;
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        expense_date: officeExpense?.expense_date ?? new Date().toISOString().slice(0, 10),
+        expense_date: officeExpense?.expense_date ?? todayLocalISO(),
         expense_category_id: officeExpense?.expense_category_id ?? '',
         description: officeExpense?.description ?? '',
         amount: officeExpense?.amount ?? '',

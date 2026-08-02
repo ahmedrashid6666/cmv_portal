@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import LedgerEntryForm from '@/Components/forms/LedgerEntryForm';
 import { AED, fmtDate } from '@/lib/format';
+import { toLocalISODate } from '@/lib/date';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -30,7 +31,7 @@ export default function LedgerIndex({ meta, summary, entries, filters, customers
     const applyFilters = (ev) => { ev?.preventDefault(); router.get(route('ledger.index', meta.slug), f, { preserveState: true, replace: true }); };
     const preset = (kind) => {
         const today = new Date();
-        const iso = (d) => d.toISOString().slice(0, 10);
+        const iso = toLocalISODate;
         let from = '';
         const to = iso(today);
         if (kind === 'today') from = iso(today);

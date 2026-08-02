@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { AED, money } from '@/lib/format';
+import { toLocalISODate, todayLocalISO } from '@/lib/date';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 
@@ -63,7 +64,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const reset = () => { setF({ from: '', to: '', search: '', status: '' }); router.get(route('operations.index'), { type }); };
     const preset = (kind) => {
         const today = new Date();
-        const iso = (d) => d.toISOString().slice(0, 10);
+        const iso = toLocalISODate;
         let from = '';
         const to = iso(today);
         if (kind === 'today') from = iso(today);
@@ -84,7 +85,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
         router.post(route('operations.bulk-delete'), { type, ids: selected }, { preserveScroll: true, onSuccess: () => setSelected([]) });
     };
 
-    const pay = useForm({ mode: 'fifo', amount: '', payment_date: new Date().toISOString().slice(0, 10), payment_method_id: '', note: '', entry_ids: [] });
+    const pay = useForm({ mode: 'fifo', amount: '', payment_date: todayLocalISO(), payment_method_id: '', note: '', entry_ids: [] });
     const submitPay = (e) => {
         e.preventDefault();
         router.post(route('bulk.store', type), { ...pay.data, entry_ids: selected }, {
@@ -94,11 +95,11 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     };
 
     // Settle dialog (click a status badge): collect a payment, or edit the paid amount.
-    const rcv = useForm({ transaction_id: null, amount: '', payment_date: new Date().toISOString().slice(0, 10), payment_method_id: '', note: '' });
+    const rcv = useForm({ transaction_id: null, amount: '', payment_date: todayLocalISO(), payment_method_id: '', note: '' });
     const led = useForm({ paid_amount: '' });
     const openSettle = (s) => {
         setSettleRow(s);
-        if (s.kind === 'credit') rcv.setData({ transaction_id: s.id, amount: s.outstanding > 0 ? s.outstanding : '', payment_date: new Date().toISOString().slice(0, 10), payment_method_id: '', note: '' });
+        if (s.kind === 'credit') rcv.setData({ transaction_id: s.id, amount: s.outstanding > 0 ? s.outstanding : '', payment_date: todayLocalISO(), payment_method_id: '', note: '' });
         else led.setData({ paid_amount: s.paid });
     };
     const closeSettle = () => setSettleRow(null);

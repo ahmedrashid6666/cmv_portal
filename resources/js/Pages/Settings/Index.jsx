@@ -4,7 +4,7 @@ import { Head, useForm } from '@inertiajs/react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
-export default function SettingsIndex({ company, database, flash }) {
+export default function SettingsIndex({ company, timezones, database, flash }) {
     const c = useForm({ ...company });
     const d = useForm({
         host: database.host, port: database.port, database: database.database,
@@ -34,6 +34,13 @@ export default function SettingsIndex({ company, database, flash }) {
                                 <input type="number" step="0.01" className={input} value={c.data.vat_rate} onChange={(e) => c.setData('vat_rate', e.target.value)} />
                             </Field>
                         </div>
+                        <Field label="Time Zone" error={c.errors.timezone}>
+                            <select className={input} value={c.data.timezone} onChange={(e) => c.setData('timezone', e.target.value)}>
+                                {timezones.map((tz) => (
+                                    <option key={tz} value={tz}>{tz}</option>
+                                ))}
+                            </select>
+                        </Field>
                         <Field label="Cash Opening Balance" error={c.errors.cash_opening_balance}>
                             <input type="number" step="0.01" className={input} value={c.data.cash_opening_balance} onChange={(e) => c.setData('cash_opening_balance', e.target.value)} />
                         </Field>
