@@ -12,6 +12,7 @@ export default function CashCount({ date, denominations, count, expectedAed, his
         count_date: date,
         lines: count?.lines ?? { AED: {}, OMR: {} },
         extras: count?.extras ?? { AED: [], OMR: [] },
+        bundles: count?.bundles ?? { AED: [], OMR: [] },
         remarks: count?.remarks ?? '',
     });
 
@@ -26,15 +27,28 @@ export default function CashCount({ date, denominations, count, expectedAed, his
 
     const addExtra = (cur) => setData('extras', { ...data.extras, [cur]: [...(data.extras[cur] || []), { label: '', amount: '' }] });
 
+    const updateBundle = (cur, idx, key, value) => {
+        const bundles = (data.bundles[cur] || []).map((b, i) => (i === idx ? { ...b, [key]: value } : b));
+        setData('bundles', { ...data.bundles, [cur]: bundles });
+    };
+
+    const addBundle = (cur) => {
+        const bundles = data.bundles[cur] || [];
+        setData('bundles', { ...data.bundles, [cur]: [...bundles, { label: `Bundle-${bundles.length + 1}`, amount: '' }] });
+    };
+
+    const removeBundle = (cur, idx) => setData('bundles', { ...data.bundles, [cur]: (data.bundles[cur] || []).filter((_, i) => i !== idx) });
+
     const totals = useMemo(() => {
         const t = {};
         for (const cur of Object.keys(denominations)) {
             let sum = 0;
             for (const d of denominations[cur]) sum += d * (parseFloat(data.lines[cur]?.[d]) || 0);
+            for (const b of data.bundles[cur] || []) sum += parseFloat(b.amount) || 0;
             t[cur] = cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
         }
         return t;
-    }, [data.lines, denominations]);
+    }, [data.lines, data.bundles, denominations]);
 
     const variance = Math.round((totals.AED - expectedAed) * 100) / 100;
 
@@ -58,7 +72,13 @@ export default function CashCount({ date, denominations, count, expectedAed, his
 
             {/* Reconciliation banner (AED) */}
             <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Stat label="Counted (AED)" value={money(totals.AED, 'AED')} accent="text-navy-900" />
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs uppercase text-slate-500">Counted</p>
+                    <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                        <span className="text-2xl font-bold text-navy-900">{num(totals.AED)} <Tag>AED</Tag></span>
+                        <span className="text-2xl font-bold text-navy-900">{num(totals.OMR)} <Tag>OMR</Tag></span>
+                    </div>
+                </div>
                 <Stat label="Expected Cash (AED)" value={money(expectedAed, 'AED')} accent="text-navy-900" />
                 <div className={'rounded-xl border p-4 shadow-sm ' + (variance === 0 ? 'border-emerald-200 bg-emerald-50' : variance > 0 ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50')}>
                     <p className="text-xs uppercase text-slate-500">Difference</p>
@@ -94,6 +114,33 @@ export default function CashCount({ date, denominations, count, expectedAed, his
                                 })}
                             </tbody>
                         </table>
+
+                        {/* Bundles - flat, counted toward the total */}
+                        <div className="mt-4 border-t pt-3">
+                            <div className="mb-2 flex items-center justify-between">
+                                <span className="text-xs font-semibold uppercase text-slate-600">Bundles</span>
+                                <button type="button" onClick={() => addBundle(cur)} className="text-xs font-semibold text-primary-600 hover:underline">+ Add Bundle</button>
+                            </div>
+                            {(data.bundles[cur] || []).length > 0 && (
+                                <table className="w-full text-sm">
+                                    <tbody>
+                                        {(data.bundles[cur] || []).map((b, idx) => (
+                                            <tr key={idx} className="border-b last:border-0">
+                                                <td className="py-1 pr-3">
+                                                    <input type="text" className={input} value={b.label} onChange={(e) => updateBundle(cur, idx, 'label', e.target.value)} />
+                                                </td>
+                                                <td className="py-1 pr-3 w-36">
+                                                    <input type="number" step="0.01" className={input + ' text-right'} placeholder="0.00" value={b.amount} onChange={(e) => updateBundle(cur, idx, 'amount', e.target.value)} />
+                                                </td>
+                                                <td className="py-1 pl-1 text-center w-6">
+                                                    <button type="button" onClick={() => removeBundle(cur, idx)} className="text-accent-red hover:text-accent-red-dark">✕</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
 
                         {/* Bundles / slips - IN/OUT table */}
                         <div className="mt-4 border-t pt-4">
@@ -232,6 +279,10 @@ export default function CashCount({ date, denominations, count, expectedAed, his
             </Card>
         </AuthenticatedLayout>
     );
+}
+
+function Tag({ children }) {
+    return <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{children}</span>;
 }
 
 function Stat({ label, value, accent }) {

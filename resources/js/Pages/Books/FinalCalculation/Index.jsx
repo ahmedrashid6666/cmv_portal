@@ -43,7 +43,6 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
     });
 
     const rows = form.data.rows;
-    const rate = n(form.data.omr_rate) || defaultOmrRate;
 
     const setRows = (next) => setData('data', { ...form.data, rows: next });
     const setField = (i, key, value) => setRows(rows.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)));
@@ -61,7 +60,8 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
         const liquid = totalAmount - (totalAc + totalDebt);
         const cashAedTotal = sum('cash_aed');
         const cashOmrTotal = sum('cash_omr');
-        const cashCounted = cashAedTotal + cashOmrTotal * rate;
+        // OMR is shown for reference only — it does not convert into or add to the AED total/reconciliation.
+        const cashCounted = cashAedTotal;
         return {
             total_amount: totalAmount,
             total_ac_balance: totalAc,
@@ -72,7 +72,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
             cash_counted: cashCounted,
             cash_extra: cashCounted - liquid,
         };
-    }, [rows, rate]);
+    }, [rows]);
 
     const extra = Math.round(t.cash_extra * 100) / 100;
 
@@ -140,10 +140,9 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                             <td className="px-3 py-2 text-right tabular-nums">{num(t.total_ac_balance)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{num(t.total_debt_exp)}</td>
                             <td className="px-3 py-2 text-right tabular-nums" colSpan={2}>
-                                <div>{num(t.cash_counted)} <span className="text-xs font-normal text-slate-400">(AED equiv.)</span></div>
-                                <div className="mt-1 flex justify-end gap-3 text-xs font-normal text-slate-500">
-                                    <span>{num(t.cash_aed_total)} <Tag>AED</Tag></span>
-                                    <span>{num(t.cash_omr_total)} <Tag>OMR</Tag></span>
+                                <div>{num(t.cash_counted)} <span className="text-xs font-normal text-slate-400">(AED)</span></div>
+                                <div className="mt-1 flex justify-end text-xs font-normal text-slate-500">
+                                    <span>{num(t.cash_omr_total)} <Tag>OMR</Tag> <span className="text-slate-400">— not included in total</span></span>
                                 </div>
                             </td>
                             <td></td>
@@ -156,11 +155,11 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Stat label="Total Liquid Cash in CMV" value={num(t.liquid_cash)} accent="text-emerald-700" big />
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs uppercase text-slate-500">Cash Counted</p>
+                    <p className="text-xs uppercase text-slate-500">Cash Counted (AED)</p>
                     <p className="mt-1 text-2xl font-bold text-navy-900">{num(t.cash_counted)}</p>
-                    <div className="mt-2 flex gap-4 border-t border-slate-100 pt-2 text-sm font-semibold text-navy-700">
-                        <span>{num(t.cash_aed_total)} <Tag>AED</Tag></span>
+                    <div className="mt-2 border-t border-slate-100 pt-2 text-sm font-semibold text-navy-700">
                         <span>{num(t.cash_omr_total)} <Tag>OMR</Tag></span>
+                        <span className="ml-1 text-xs font-normal text-slate-400">(separate, not added to AED)</span>
                     </div>
                 </div>
                 <div className={'rounded-xl border p-4 shadow-sm ' + (extra === 0 ? 'border-emerald-200 bg-emerald-50' : extra > 0 ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50')}>

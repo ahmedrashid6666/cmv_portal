@@ -16,7 +16,7 @@ class CashCount extends Model
     ];
 
     protected $fillable = [
-        'count_date', 'lines', 'extras', 'total_aed', 'total_omr', 'expected_aed', 'remarks', 'created_by',
+        'count_date', 'lines', 'extras', 'bundles', 'total_aed', 'total_omr', 'expected_aed', 'remarks', 'created_by',
     ];
 
     protected function casts(): array
@@ -25,19 +25,23 @@ class CashCount extends Model
             'count_date' => 'date:Y-m-d',
             'lines' => 'array',
             'extras' => 'array',
+            'bundles' => 'array',
             'total_aed' => 'decimal:2',
             'total_omr' => 'decimal:3',
             'expected_aed' => 'decimal:2',
         ];
     }
 
-    /** Total counted for a currency = Σ(denomination × qty). Bundles/slips are reference only. */
-    public static function totalFor(string $currency, array $lines, array $extras): float
+    /** Total counted for a currency = Σ(denomination × qty) + Σ(bundle amounts). Slips/extras are reference only. */
+    public static function totalFor(string $currency, array $lines, array $extras, array $bundles = []): float
     {
         $total = 0.0;
         foreach (self::DENOMINATIONS[$currency] ?? [] as $denom) {
             $qty = (float) ($lines[$currency][(string) $denom] ?? 0);
             $total += $denom * $qty;
+        }
+        foreach ($bundles[$currency] ?? [] as $bundle) {
+            $total += (float) ($bundle['amount'] ?? 0);
         }
 
         return round($total, $currency === 'OMR' ? 3 : 2);
@@ -49,14 +53,14 @@ class CashCount extends Model
     }
 
     /**
-     * `lines`/`extras` hold every denomination count and bundle/slip row — a
-     * raw diff of them is unreadable. total_aed/total_omr/expected_aed are
-     * logged individually and already summarise what changed.
+     * `lines`/`extras`/`bundles` hold every denomination count and bundle/slip
+     * row — a raw diff of them is unreadable. total_aed/total_omr/expected_aed
+     * are logged individually and already summarise what changed.
      *
      * @return array<int, string>
      */
     public function auditExclude(): array
     {
-        return ['lines', 'extras'];
+        return ['lines', 'extras', 'bundles'];
     }
 }

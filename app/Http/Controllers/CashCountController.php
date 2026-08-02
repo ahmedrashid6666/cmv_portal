@@ -22,6 +22,7 @@ class CashCountController extends Controller
             'count' => $count ? [
                 'lines' => $count->lines,
                 'extras' => $count->extras ?? ['AED' => [], 'OMR' => []],
+                'bundles' => $count->bundles ?? ['AED' => [], 'OMR' => []],
                 'remarks' => $count->remarks,
             ] : null,
             'expectedAed' => $finalCalc->liquidCashFor($date),
@@ -42,19 +43,22 @@ class CashCountController extends Controller
             'count_date' => ['required', 'date'],
             'lines' => ['required', 'array'],
             'extras' => ['nullable', 'array'],
+            'bundles' => ['nullable', 'array'],
             'remarks' => ['nullable', 'string'],
         ]);
 
         $lines = $data['lines'];
         $extras = $data['extras'] ?? ['AED' => [], 'OMR' => []];
+        $bundles = $data['bundles'] ?? ['AED' => [], 'OMR' => []];
 
         CashCount::updateOrCreate(
             ['count_date' => $data['count_date']],
             [
                 'lines' => $lines,
                 'extras' => $extras,
-                'total_aed' => CashCount::totalFor('AED', $lines, $extras),
-                'total_omr' => CashCount::totalFor('OMR', $lines, $extras),
+                'bundles' => $bundles,
+                'total_aed' => CashCount::totalFor('AED', $lines, $extras, $bundles),
+                'total_omr' => CashCount::totalFor('OMR', $lines, $extras, $bundles),
                 'expected_aed' => $finalCalc->liquidCashFor($data['count_date']),
                 'remarks' => $data['remarks'] ?? null,
                 'created_by' => $request->user()->id,

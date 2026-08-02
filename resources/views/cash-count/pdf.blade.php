@@ -33,6 +33,16 @@
                 <tr class="tot"><td colspan="2">TOTAL {{ $cur }}</td><td class="r">{{ number_format($cur==='OMR' ? $count->total_omr : $count->total_aed, $cur==='OMR'?3:2) }}</td></tr>
                 </tbody>
             </table>
+            @if(!empty($count->bundles[$cur]))
+                <table class="den">
+                    <thead><tr><th>{{ $cur }} Bundles</th><th class="r">Amount</th></tr></thead>
+                    <tbody>
+                    @foreach($count->bundles[$cur] as $b)
+                        <tr><td>{{ $b['label'] ?? '' }}</td><td class="r">{{ number_format((float)($b['amount'] ?? 0), 2) }}</td></tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            @endif
             @if(!empty($count->extras[$cur]))
                 <table class="den">
                     <thead><tr><th colspan="2">{{ $cur }} Bundles / Slips (reference only)</th></tr></thead>
