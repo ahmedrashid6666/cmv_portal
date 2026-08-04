@@ -70,7 +70,7 @@ export default function BankStatement({ statement, filters }) {
                             </tr>
                             {statement.rows.length === 0 && <tr><td colSpan="6" className="py-8 text-center text-slate-400">No activity in this period.</td></tr>}
                             {statement.rows.map((r, i) => (
-                                <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
+                                <tr key={i} className="border-b last:border-0 hover:bg-slate-100">
                                     <td className="py-2 pr-4 whitespace-nowrap">{fmtDate(r.date)}</td>
                                     <td className="py-2 pr-4">{r.description}</td>
                                     <td className="py-2 pr-4 text-slate-500">{r.ref || '—'}</td>

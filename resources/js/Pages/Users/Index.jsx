@@ -49,7 +49,7 @@ export default function UsersIndex({ users, roles }) {
                             </thead>
                             <tbody>
                                 {users.map((u) => (
-                                    <tr key={u.id} className="border-b last:border-0 hover:bg-slate-50">
+                                    <tr key={u.id} className="border-b last:border-0 hover:bg-slate-100">
                                         <td className="py-2 pr-4 font-medium text-navy-800">
                                             {u.name} {u.id === me.id && <span className="text-xs text-slate-400">(you)</span>}
                                         </td>

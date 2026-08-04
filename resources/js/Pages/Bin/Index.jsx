@@ -29,7 +29,7 @@ export default function BinIndex({ trashed }) {
                         <tbody>
                             {trashed.data.length === 0 && <tr><td colSpan="7" className="py-8 text-center text-slate-400">Recycle bin is empty.</td></tr>}
                             {trashed.data.map((t) => (
-                                <tr key={t.id} className="border-b last:border-0 hover:bg-slate-50">
+                                <tr key={t.id} className="border-b last:border-0 hover:bg-slate-100">
                                     <td className="py-2 pr-4 whitespace-nowrap text-slate-500">{fmtDate(t.deleted_at)}</td>
                                     <td className="py-2 pr-4">{fmtDate(t.transaction_date)}</td>
                                     <td className="py-2 pr-4">{t.invoice_no || '—'}</td>

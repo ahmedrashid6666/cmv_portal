@@ -47,12 +47,20 @@ class PettyCashController extends Controller
      */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'entry_date' => ['required', 'date'],
             'item' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'in_amount' => ['nullable', 'numeric', 'min:0'],
             'out_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        // A blank field arrives as null (ConvertEmptyStringsToNull) — the
+        // columns are NOT NULL with a 0 default, so an explicit null insert
+        // would violate that constraint.
+        $data['in_amount'] ??= 0;
+        $data['out_amount'] ??= 0;
+
+        return $data;
     }
 }

@@ -48,7 +48,7 @@ export default function CustomFieldsIndex({ fields }) {
                             <tbody>
                                 {fields.length === 0 && <tr><td colSpan="6" className="py-8 text-center text-slate-400">No custom fields yet.</td></tr>}
                                 {fields.map((f) => (
-                                    <tr key={f.id} className="border-b last:border-0 hover:bg-slate-50">
+                                    <tr key={f.id} className="border-b last:border-0 hover:bg-slate-100">
                                         <td className="py-2 pr-4 text-slate-400">{f.sort_order}</td>
                                         <td className="py-2 pr-4 font-medium text-navy-800">{f.label}</td>
                                         <td className="py-2 pr-4"><span className="rounded bg-slate-100 px-2 py-0.5 text-xs">{f.type}</span></td>

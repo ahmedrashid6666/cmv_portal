@@ -102,13 +102,17 @@ class LedgerEntryController extends Controller
     private function syncDetails(LedgerEntry $entry, array $details): void
     {
         foreach ($details as $detail) {
-            if (($detail['amount'] ?? null) === null && ($detail['description'] ?? null) === null) {
+            $amount = $detail['amount'] ?? null;
+            $returned = $detail['returned_amount'] ?? null;
+            $description = $detail['description'] ?? null;
+            if ($amount === null && $returned === null && $description === null) {
                 continue;
             }
             $entry->details()->create([
                 'detail_date' => $detail['detail_date'] ?? $entry->entry_date,
-                'description' => $detail['description'] ?? null,
-                'amount' => $detail['amount'] ?? 0,
+                'description' => $description,
+                'amount' => $amount ?? 0,
+                'returned_amount' => $returned ?? 0,
             ]);
         }
     }
@@ -184,15 +188,23 @@ class LedgerEntryController extends Controller
             'details' => ['nullable', 'array'],
             'details.*.detail_date' => ['required_with:details', 'date'],
             'details.*.description' => ['nullable', 'string', 'max:255'],
-            'details.*.amount' => ['required_with:details', 'numeric', 'min:0'],
+            'details.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'details.*.returned_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $data['contact_numbers'] = $this->cleanNumbers($data['contact_numbers'] ?? []);
 
-        // The detail rows, when present, are the source of truth for the total —
-        // never trust a client-computed sum.
-        if (! empty($data['details'])) {
-            $data['total_amount'] = round(array_sum(array_column($data['details'], 'amount')), 2);
+        // Each detail column, when any row has it filled in, is the source of
+        // truth for its matching total — never trust a client-computed sum.
+        $details = $data['details'] ?? [];
+        $amounts = array_filter(array_column($details, 'amount'), fn ($v) => $v !== null && $v !== '');
+        $returned = array_filter(array_column($details, 'returned_amount'), fn ($v) => $v !== null && $v !== '');
+
+        if ($amounts) {
+            $data['total_amount'] = round(array_sum($amounts), 2);
+        }
+        if ($returned) {
+            $data['paid_amount'] = round(array_sum($returned), 2);
         }
 
         return $data;

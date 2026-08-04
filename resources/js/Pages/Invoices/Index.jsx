@@ -54,7 +54,7 @@ export default function InvoicesIndex({ invoices, filters, customers }) {
                         <tbody>
                             {invoices.data.length === 0 && <tr><td colSpan="7" className="py-8 text-center text-slate-400">No invoices found.</td></tr>}
                             {invoices.data.map((inv) => (
-                                <tr key={inv.id} className="border-b last:border-0 hover:bg-slate-50">
+                                <tr key={inv.id} className="border-b last:border-0 hover:bg-slate-100">
                                     <td className="py-2 pr-4 font-medium text-navy-800">{inv.invoice_no || `TXN-${inv.id}`}</td>
                                     <td className="py-2 pr-4">{fmtDate(inv.date)}</td>
                                     <td className="py-2 pr-4">{inv.customer}</td>

@@ -9,13 +9,14 @@ class LedgerEntryDetail extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['ledger_entry_id', 'detail_date', 'description', 'amount'];
+    protected $fillable = ['ledger_entry_id', 'detail_date', 'description', 'amount', 'returned_amount'];
 
     protected function casts(): array
     {
         return [
             'detail_date' => 'date:Y-m-d',
             'amount' => 'decimal:2',
+            'returned_amount' => 'decimal:2',
         ];
     }
 

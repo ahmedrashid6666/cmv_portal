@@ -209,7 +209,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                         <tbody>
                             {history.length === 0 && <tr><td colSpan="4" className="py-6 text-center text-slate-400">No snapshots saved yet.</td></tr>}
                             {history.map((h) => (
-                                <tr key={h.id} className="border-b last:border-0 hover:bg-slate-50">
+                                <tr key={h.id} className="border-b last:border-0 hover:bg-slate-100">
                                     <td className="py-2 pr-4">{h.date}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums">{num(h.liquid_cash)}</td>
                                     <td className={'py-2 pr-4 text-right font-semibold tabular-nums ' + (h.cash_extra === 0 ? 'text-emerald-700' : h.cash_extra > 0 ? 'text-amber-600' : 'text-accent-red')}>

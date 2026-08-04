@@ -101,7 +101,7 @@ export default function LedgerIndex({ meta, summary, entries, filters, customers
                                 <tbody>
                                     {entries.data.length === 0 && <tr><td colSpan="8" className="py-8 text-center text-slate-400">No entries yet.</td></tr>}
                                     {entries.data.map((e) => (
-                                        <tr key={e.id} className="border-b last:border-0 hover:bg-slate-50">
+                                        <tr key={e.id} className="border-b last:border-0 hover:bg-slate-100">
                                             <td className="py-2 pr-3 whitespace-nowrap">{fmtDate(e.entry_date)}</td>
                                             <td className="py-2 pr-3">
                                                 <div className="font-medium text-navy-800">{e.party_name}</div>

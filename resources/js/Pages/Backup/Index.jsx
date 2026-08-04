@@ -36,7 +36,7 @@ export default function BackupIndex({ backups }) {
                         <tbody>
                             {backups.length === 0 && <tr><td colSpan="4" className="py-8 text-center text-slate-400">No backups yet.</td></tr>}
                             {backups.map((b) => (
-                                <tr key={b.name} className="border-b last:border-0 hover:bg-slate-50">
+                                <tr key={b.name} className="border-b last:border-0 hover:bg-slate-100">
                                     <td className="py-2 pr-4 font-mono text-xs text-navy-800">{b.name}</td>
                                     <td className="py-2 pr-4 text-slate-500">{b.at}</td>
                                     <td className="py-2 pr-4">{b.size}</td>

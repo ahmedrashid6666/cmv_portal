@@ -42,7 +42,7 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
                         <tbody>
                             {banks.length === 0 && <tr><td colSpan="7" className="py-8 text-center text-slate-400">No bank accounts yet. Add them under Master Data → Banks.</td></tr>}
                             {banks.map((b) => (
-                                <tr key={b.id} className="border-b last:border-0 hover:bg-slate-50">
+                                <tr key={b.id} className="border-b last:border-0 hover:bg-slate-100">
                                     <td className="py-2 pr-4 font-medium text-navy-800">
                                         {b.name}
                                         {b.is_customs && <span className="ml-2 rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-semibold text-primary-700">CUSTOMS / CDR</span>}

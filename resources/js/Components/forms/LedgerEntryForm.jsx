@@ -34,6 +34,9 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
     const partyOptions = (isBorrowed ? references : customers).map((x) => ({ value: x.name, label: x.name, sublabel: isBorrowed ? x.company : undefined }));
     const partySlug = isBorrowed ? 'references' : 'customers';
     const refOptions = references.map((r) => ({ value: r.name, label: r.name, sublabel: r.company }));
+    // Short column words derived from the full labels, e.g. "Borrowed Amount" → "Borrowed".
+    const creditWord = meta.totalLabel.replace(' Amount', '');
+    const paidWord = meta.paidLabel.replace(' Amount', '');
     const blank = {
         entry_date: entry?.entry_date ?? todayLocalISO(),
         party_name: entry?.party_name ?? '',
@@ -46,30 +49,37 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
         return_date: entry?.return_date ?? '',
         remarks: entry?.remarks ?? '',
         details: entry?.details?.length
-            ? entry.details.map((d) => ({ detail_date: d.detail_date, description: d.description ?? '', amount: d.amount ?? '' }))
+            ? entry.details.map((d) => ({ detail_date: d.detail_date, description: d.description ?? '', amount: d.amount ?? '', returned_amount: d.returned_amount ?? '' }))
             // A brand-new entry starts with one blank row; an existing entry saved
-            // before this feature existed keeps its manually-entered total instead.
-            : (entry ? [] : [{ detail_date: todayLocalISO(), description: '', amount: '' }]),
+            // before this feature existed keeps its manually-entered totals instead.
+            : (entry ? [] : [{ detail_date: todayLocalISO(), description: '', amount: '', returned_amount: '' }]),
     };
     const { data, setData, post, put, processing, errors, reset } = useForm(blank);
 
+    const filled = (v) => v !== '' && v !== null && v !== undefined;
     const detailsTotal = useMemo(() => data.details.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0), [data.details]);
-    // Only switch into computed-total mode once a row actually has an amount —
-    // a fresh, still-blank default row shouldn't lock Total Amount to 0.
-    const hasDetails = data.details.some((d) => d.amount !== '' && d.amount !== null && d.amount !== undefined);
-    const totalAmount = hasDetails ? detailsTotal : (parseFloat(data.total_amount) || 0);
+    const detailsReturnedTotal = useMemo(() => data.details.reduce((s, d) => s + (parseFloat(d.returned_amount) || 0), 0), [data.details]);
+    // Only switch a total into computed mode once a row actually has that column
+    // filled — a fresh, still-blank default row shouldn't lock either field to 0.
+    const hasAmountDetails = data.details.some((d) => filled(d.amount));
+    const hasReturnedDetails = data.details.some((d) => filled(d.returned_amount));
+    const totalAmount = hasAmountDetails ? detailsTotal : (parseFloat(data.total_amount) || 0);
+    const paidAmount = hasReturnedDetails ? detailsReturnedTotal : (parseFloat(data.paid_amount) || 0);
 
-    const addDetail = () => setData('details', [...data.details, { detail_date: todayLocalISO(), description: '', amount: '' }]);
+    const addDetail = () => setData('details', [...data.details, { detail_date: todayLocalISO(), description: '', amount: '', returned_amount: '' }]);
     const updateDetail = (i, key, value) => setData('details', data.details.map((row, idx) => (idx === i ? { ...row, [key]: value } : row)));
     const removeDetail = (i) => setData('details', data.details.filter((_, idx) => idx !== i));
 
-    const liveBalance = useMemo(() => Math.max(0, totalAmount - (parseFloat(data.paid_amount) || 0)), [totalAmount, data.paid_amount]);
-    const liveStatus = (parseFloat(data.paid_amount) || 0) <= 0 ? 'pending' : liveBalance <= 0 ? 'returned' : 'partial';
+    const liveBalance = useMemo(() => Math.max(0, totalAmount - paidAmount), [totalAmount, paidAmount]);
+    const liveStatus = paidAmount <= 0 ? 'pending' : liveBalance <= 0 ? 'returned' : 'partial';
 
-    // Detail rows are the source of truth for the total once any exist — keep the submitted value in sync.
+    // Detail rows are the source of truth for each total once any exist — keep the submitted values in sync.
     useEffect(() => {
-        if (hasDetails) setData('total_amount', String(detailsTotal));
-    }, [hasDetails, detailsTotal]);
+        if (hasAmountDetails) setData('total_amount', String(detailsTotal));
+    }, [hasAmountDetails, detailsTotal]);
+    useEffect(() => {
+        if (hasReturnedDetails) setData('paid_amount', String(detailsReturnedTotal));
+    }, [hasReturnedDetails, detailsReturnedTotal]);
 
     const submit = (ev) => {
         ev.preventDefault();
@@ -104,11 +114,19 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
                 <span className="mb-1 block text-xs font-medium text-slate-600">Details</span>
                 {data.details.length > 0 && (
                     <div className="space-y-2">
+                        <div className="grid grid-cols-12 gap-2 text-center text-[11px] font-semibold text-primary-700">
+                            <span className="col-span-2"></span>
+                            <span className="col-span-5"></span>
+                            <span className="col-span-2">{creditWord}</span>
+                            <span className="col-span-2">{paidWord}</span>
+                            <span className="col-span-1"></span>
+                        </div>
                         {data.details.map((row, i) => (
                             <div key={i} className="grid grid-cols-12 gap-2">
-                                <input type="date" className={input + ' col-span-3'} value={row.detail_date} onChange={(e) => updateDetail(i, 'detail_date', e.target.value)} />
-                                <input className={input + ' col-span-6'} placeholder="Description" value={row.description} onChange={(e) => updateDetail(i, 'description', e.target.value)} />
+                                <input type="date" className={input + ' col-span-2'} value={row.detail_date} onChange={(e) => updateDetail(i, 'detail_date', e.target.value)} />
+                                <input className={input + ' col-span-5'} placeholder="Description" value={row.description} onChange={(e) => updateDetail(i, 'description', e.target.value)} />
                                 <input type="number" step="0.01" className={input + ' col-span-2'} placeholder="0.00" value={row.amount} onChange={(e) => updateDetail(i, 'amount', e.target.value)} />
+                                <input type="number" step="0.01" className={input + ' col-span-2'} placeholder="0.00" value={row.returned_amount} onChange={(e) => updateDetail(i, 'returned_amount', e.target.value)} />
                                 <button type="button" onClick={() => removeDetail(i)} className="col-span-1 text-accent-red hover:text-accent-red-dark">✕</button>
                             </div>
                         ))}
@@ -117,14 +135,15 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
                 <button type="button" onClick={addDetail} className="mt-2 text-xs font-semibold text-primary-600 hover:underline">+ Add row</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
-                <Field label={meta.totalLabel} error={errors.total_amount} required>
-                    <input type="number" step="0.01" className={input + (hasDetails ? ' bg-slate-50 text-slate-500' : '')}
-                        value={hasDetails ? totalAmount : data.total_amount} disabled={hasDetails}
+                <Field label={`Total ${meta.totalLabel}`} error={errors.total_amount} required>
+                    <input type="number" step="0.01" className={input + (hasAmountDetails ? ' bg-slate-50 text-slate-500' : '')}
+                        value={hasAmountDetails ? totalAmount : data.total_amount} disabled={hasAmountDetails}
                         onChange={(e) => setData('total_amount', e.target.value)} />
-                    {hasDetails && <span className="mt-1 block text-[11px] text-slate-400">Sum of {data.details.length} detail row{data.details.length > 1 ? 's' : ''}</span>}
                 </Field>
-                <Field label={meta.paidLabel} error={errors.paid_amount}>
-                    <input type="number" step="0.01" className={input} value={data.paid_amount} onChange={(e) => setData('paid_amount', e.target.value)} />
+                <Field label={`Total ${meta.paidLabel}`} error={errors.paid_amount}>
+                    <input type="number" step="0.01" className={input + (hasReturnedDetails ? ' bg-slate-50 text-slate-500' : '')}
+                        value={hasReturnedDetails ? paidAmount : data.paid_amount} disabled={hasReturnedDetails}
+                        onChange={(e) => setData('paid_amount', e.target.value)} />
                 </Field>
             </div>
             <Field label="Remarks" error={errors.remarks}>
