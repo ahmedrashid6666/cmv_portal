@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\PettyCashEntry;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PettyCashController extends Controller
 {
@@ -17,6 +21,29 @@ class PettyCashController extends Controller
                 'out' => (float) PettyCashEntry::sum('out_amount'),
             ],
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $entries = PettyCashEntry::latest('entry_date')->latest('id')->get();
+
+        $report = [
+            'type' => 'petty-cash',
+            'title' => 'Petty Cash Report',
+            'columns' => ['Date', 'Item', 'Description', 'In', 'Out'],
+            'rows' => $entries->map(fn ($e) => [
+                $e->entry_date->format('d-m-Y'), $e->item, $e->description ?? '—',
+                number_format((float) $e->in_amount, 2), number_format((float) $e->out_amount, 2),
+            ])->all(),
+            'totals' => [
+                'Total In' => round((float) $entries->sum('in_amount'), 2),
+                'Total Out' => round((float) $entries->sum('out_amount'), 2),
+            ],
+        ];
+
+        return $request->string('format')->value() === 'pdf'
+            ? Pdf::loadView('reports.pdf', ['report' => $report])->download('petty-cash-report.pdf')
+            : $this->xlsx($report);
     }
 
     public function store(Request $request)
@@ -62,5 +89,30 @@ class PettyCashController extends Controller
         $data['out_amount'] ??= 0;
 
         return $data;
+    }
+
+    private function xlsx(array $report): StreamedResponse
+    {
+        $ss = new Spreadsheet();
+        $sheet = $ss->getActiveSheet();
+        $sheet->setCellValue('A1', $report['title']);
+        foreach ($report['columns'] as $i => $col) {
+            $sheet->setCellValue([$i + 1, 3], $col);
+        }
+        foreach ($report['rows'] as $r => $row) {
+            foreach ($row as $c => $val) {
+                $sheet->setCellValue([$c + 1, $r + 4], $val);
+            }
+        }
+        $totalsRow = count($report['rows']) + 5;
+        $offset = 0;
+        foreach ($report['totals'] as $label => $value) {
+            $sheet->setCellValue([1 + $offset, $totalsRow], $label.': '.number_format($value, 2));
+            $offset++;
+        }
+
+        return response()->streamDownload(function () use ($ss) {
+            (new Xlsx($ss))->save('php://output');
+        }, $report['type'].'-report.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 }

@@ -15,18 +15,25 @@ export default function PettyCashIndex({ entries, totals }) {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     const openAdd = () => { setEditingEntry(null); setModalOpen(true); };
     const openEdit = (e) => { setEditingEntry(e); setModalOpen(true); };
     const closeModal = () => { setModalOpen(false); setEditingEntry(null); };
 
-    const del = (e) => {
-        if (confirm('Delete this petty cash entry?')) {
-            router.delete(route('petty-cash.destroy', e.id), { preserveScroll: true });
-        }
+    const del = (e) => setDeleteTarget(e);
+    const confirmDelete = () => {
+        setDeleting(true);
+        router.delete(route('petty-cash.destroy', deleteTarget.id), {
+            preserveScroll: true,
+            onFinish: () => { setDeleting(false); setDeleteTarget(null); },
+        });
     };
 
     const balance = (totals.in || 0) - (totals.out || 0);
+
+    const exportUrl = (format) => window.open(route('petty-cash.export') + '?' + new URLSearchParams({ format }).toString(), '_blank');
 
     return (
         <AuthenticatedLayout header="Petty Cash">
@@ -36,11 +43,19 @@ export default function PettyCashIndex({ entries, totals }) {
                 <p className="max-w-2xl text-sm text-slate-500">
                     No-invoice cash notes for reference only — these entries do not affect the Cash &amp; Bank Book, Daily Work Sheet balance, or Final Calculation.
                 </p>
-                {canWrite && (
-                    <button onClick={openAdd} className="shrink-0 rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700">
-                        + Add Entry
+                <div className="flex shrink-0 gap-2">
+                    <button onClick={() => exportUrl('xlsx')} className="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                        Excel
                     </button>
-                )}
+                    <button onClick={() => exportUrl('pdf')} className="rounded-lg border border-accent-red px-3 py-2 text-sm font-semibold text-accent-red hover:bg-red-50">
+                        PDF
+                    </button>
+                    {canWrite && (
+                        <button onClick={openAdd} className="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700">
+                            + Add Entry
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -105,6 +120,23 @@ export default function PettyCashIndex({ entries, totals }) {
                     </div>
                 </Modal>
             )}
+
+            <Modal show={deleteTarget !== null} onClose={() => setDeleteTarget(null)} maxWidth="sm">
+                <div className="p-6">
+                    <h2 className="text-lg font-semibold text-navy-900">Delete petty cash entry?</h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                        {deleteTarget && <>“{deleteTarget.item}” on {fmtDate(deleteTarget.entry_date)} will be permanently removed. This can&rsquo;t be undone.</>}
+                    </p>
+                    <div className="mt-6 flex justify-end gap-2">
+                        <button type="button" onClick={() => setDeleteTarget(null)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-navy-700 hover:bg-slate-50">
+                            Cancel
+                        </button>
+                        <button type="button" onClick={confirmDelete} disabled={deleting} className="rounded-lg bg-accent-red px-5 py-2 text-sm font-semibold text-white shadow hover:bg-accent-red-dark disabled:opacity-50">
+                            {deleting ? 'Deleting…' : 'Delete'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

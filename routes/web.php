@@ -87,6 +87,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Petty Cash — no-invoice cash notes, record-keeping only (never touches Cash & Bank Book or Final Calculation)
     Route::get('petty-cash', [PettyCashController::class, 'index'])->name('petty-cash.index');
+    Route::get('petty-cash/export', [PettyCashController::class, 'export'])->name('petty-cash.export');
     Route::middleware('role:super_admin,admin,accountant')->group(function () {
         Route::post('petty-cash', [PettyCashController::class, 'store'])->name('petty-cash.store');
         Route::put('petty-cash/{pettyCashEntry}', [PettyCashController::class, 'update'])->name('petty-cash.update');

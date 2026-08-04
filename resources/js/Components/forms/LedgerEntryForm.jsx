@@ -115,16 +115,16 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
                 {data.details.length > 0 && (
                     <div className="space-y-2">
                         <div className="grid grid-cols-12 gap-2 text-center text-[11px] font-semibold text-primary-700">
-                            <span className="col-span-2"></span>
-                            <span className="col-span-5"></span>
+                            <span className="col-span-3"></span>
+                            <span className="col-span-4"></span>
                             <span className="col-span-2">{creditWord}</span>
                             <span className="col-span-2">{paidWord}</span>
                             <span className="col-span-1"></span>
                         </div>
                         {data.details.map((row, i) => (
                             <div key={i} className="grid grid-cols-12 gap-2">
-                                <input type="date" className={input + ' col-span-2'} value={row.detail_date} onChange={(e) => updateDetail(i, 'detail_date', e.target.value)} />
-                                <input className={input + ' col-span-5'} placeholder="Description" value={row.description} onChange={(e) => updateDetail(i, 'description', e.target.value)} />
+                                <input type="date" className={input + ' col-span-3'} value={row.detail_date} onChange={(e) => updateDetail(i, 'detail_date', e.target.value)} />
+                                <input className={input + ' col-span-4'} placeholder="Description" value={row.description} onChange={(e) => updateDetail(i, 'description', e.target.value)} />
                                 <input type="number" step="0.01" className={input + ' col-span-2'} placeholder="0.00" value={row.amount} onChange={(e) => updateDetail(i, 'amount', e.target.value)} />
                                 <input type="number" step="0.01" className={input + ' col-span-2'} placeholder="0.00" value={row.returned_amount} onChange={(e) => updateDetail(i, 'returned_amount', e.target.value)} />
                                 <button type="button" onClick={() => removeDetail(i)} className="col-span-1 text-accent-red hover:text-accent-red-dark">✕</button>

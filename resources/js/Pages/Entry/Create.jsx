@@ -81,7 +81,7 @@ export default function AddEntry({ customers, references, paymentMethods, expens
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <Card title={ledgerMeta.label} className="lg:col-span-1 lg:col-start-1">
+                    <Card title={ledgerMeta.label} className="lg:col-span-2 lg:col-start-1">
                         <LedgerEntryForm
                             key={ledgerMeta.slug}
                             meta={ledgerMeta}
@@ -91,7 +91,7 @@ export default function AddEntry({ customers, references, paymentMethods, expens
                             onDone={() => router.visit(route('ledger.index', ledgerMeta.slug))}
                         />
                     </Card>
-                    <div className="hidden rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-400 lg:col-span-2 lg:block">
+                    <div className="hidden rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-400 lg:col-span-1 lg:block">
                         Enter a {ledgerMeta.label} entry. Balance and status are calculated automatically —
                         after saving you'll be taken to the {ledgerMeta.label} list.
                     </div>
