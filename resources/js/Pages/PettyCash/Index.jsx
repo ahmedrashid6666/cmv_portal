@@ -67,7 +67,7 @@ export default function PettyCashIndex({ entries, totals }) {
                                 <tr><td colSpan="6" className="py-8 text-center text-slate-400">No petty cash entries yet.</td></tr>
                             )}
                             {entries.data.map((e) => (
-                                <tr key={e.id} className="border-b last:border-0 hover:bg-slate-100">
+                                <tr key={e.id} className="border-b last:border-0 hover:bg-slate-200">
                                     <td className="py-2 pr-3 whitespace-nowrap">{fmtDate(e.entry_date)}</td>
                                     <td className="py-2 pr-3 font-medium text-navy-800">{e.item}</td>
                                     <td className="py-2 pr-3 text-slate-500">{e.description || '—'}</td>

@@ -204,7 +204,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         <tbody>
                             {rows.data.length === 0 && <tr><td colSpan={columns.length + 4} className="py-10 text-center text-slate-400">No records for this filter.</td></tr>}
                             {rows.data.map((r, ri) => (
-                                <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-100 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
+                                <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-200 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
                                     {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
                                     <td className="whitespace-nowrap py-2 pr-3 text-slate-400">{(rows.from || 1) + ri}</td>
                                     {r.cells.map((cell, i) => <td key={i} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums' : '')}>{cell}</td>)}

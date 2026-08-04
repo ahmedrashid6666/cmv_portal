@@ -78,7 +78,7 @@ export default function TransactionsIndex({ transactions, filters, customers, pa
                                 <tr><td colSpan="10" className="py-10 text-center text-slate-400">No transactions found.</td></tr>
                             )}
                             {transactions.data.map((t) => (
-                                <tr key={t.id} className="border-b last:border-0 hover:bg-slate-100">
+                                <tr key={t.id} className="border-b last:border-0 hover:bg-slate-200">
                                     <td className="py-2 pr-4 whitespace-nowrap">{fmtDate(t.transaction_date)}</td>
                                     <td className="py-2 pr-4">{t.invoice_no || '—'}</td>
                                     <td className="py-2 pr-4">{t.boe_no || '—'}</td>

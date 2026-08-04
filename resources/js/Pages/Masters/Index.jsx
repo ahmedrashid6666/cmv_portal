@@ -84,7 +84,7 @@ export default function MastersIndex({ master, label, singular, columns, fields,
                                     <tr><td colSpan="9" className="py-8 text-center text-slate-400">{filters?.search ? 'No records match your search.' : 'No records yet.'}</td></tr>
                                 )}
                                 {rows.data.map((row) => (
-                                    <tr key={row.id} className={'border-b last:border-0 hover:bg-slate-100 ' + (selected.includes(row.id) ? 'bg-primary-50' : '')}>
+                                    <tr key={row.id} className={'border-b last:border-0 hover:bg-slate-200 ' + (selected.includes(row.id) ? 'bg-primary-50' : '')}>
                                         {canWrite && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(row.id)} onChange={() => toggleOne(row.id)} /></td>}
                                         {Object.keys(columns).map((k) => <td key={k} className="py-2 pr-4">{String(row[k] ?? '—')}</td>)}
                                         {canWrite && (

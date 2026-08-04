@@ -103,7 +103,7 @@ export default function ReportShow({ report, filters, customers }) {
                         <tbody>
                             {report.rows.length === 0 && <tr><td colSpan={report.columns.length} className="py-8 text-center text-slate-400">No data for this period.</td></tr>}
                             {report.rows.map((row, i) => (
-                                <tr key={i} className="border-b last:border-0 hover:bg-slate-100">
+                                <tr key={i} className="border-b last:border-0 hover:bg-slate-200">
                                     {row.map((cell, j) => <td key={j} className={'py-2 pr-4 ' + (j >= 3 ? 'text-right tabular-nums' : '')}>{cell}</td>)}
                                 </tr>
                             ))}

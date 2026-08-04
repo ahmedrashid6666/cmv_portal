@@ -72,7 +72,7 @@ export default function ActivityIndex({ logs, filters, users, models, actions })
                         <tbody>
                             {logs.data.length === 0 && <tr><td colSpan="6" className="py-8 text-center text-slate-400">No activity yet.</td></tr>}
                             {logs.data.map((l) => (
-                                <tr key={l.id} className="border-b align-top last:border-0 hover:bg-slate-100">
+                                <tr key={l.id} className="border-b align-top last:border-0 hover:bg-slate-200">
                                     <td className="py-2 pr-4 whitespace-nowrap text-slate-500">{fmtDate(l.at)}</td>
                                     <td className="py-2 pr-4">{l.user}</td>
                                     <td className="py-2 pr-4"><span className={'rounded-full px-2 py-0.5 text-xs font-semibold ' + (actionStyle[l.action] || '')}>{l.action}</span></td>
