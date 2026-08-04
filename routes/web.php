@@ -17,6 +17,7 @@ use App\Http\Controllers\LedgerEntryController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\OfficeExpenseController;
 use App\Http\Controllers\OperationsController;
+use App\Http\Controllers\PettyCashController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecycleBinController;
 use App\Http\Controllers\ReportController;
@@ -83,6 +84,14 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:super_admin,admin,accountant')->name('final-calc.store');
     Route::delete('books/final-calculation/{finalCalculation}', [FinalCalculationController::class, 'destroy'])
         ->middleware('role:super_admin,admin,accountant')->name('final-calc.destroy');
+
+    // Petty Cash — no-invoice cash notes, record-keeping only (never touches Cash & Bank Book or Final Calculation)
+    Route::get('petty-cash', [PettyCashController::class, 'index'])->name('petty-cash.index');
+    Route::middleware('role:super_admin,admin,accountant')->group(function () {
+        Route::post('petty-cash', [PettyCashController::class, 'store'])->name('petty-cash.store');
+        Route::put('petty-cash/{pettyCashEntry}', [PettyCashController::class, 'update'])->name('petty-cash.update');
+        Route::delete('petty-cash/{pettyCashEntry}', [PettyCashController::class, 'destroy'])->name('petty-cash.destroy');
+    });
 
     // Bank accounts — per-bank balances (customs/gov disbursements) + statement
     Route::get('bank-accounts', [BankAccountController::class, 'index'])->name('bank-accounts.index');

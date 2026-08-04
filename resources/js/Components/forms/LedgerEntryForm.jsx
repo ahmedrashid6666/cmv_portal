@@ -4,7 +4,7 @@ import { money } from '@/lib/format';
 import { todayLocalISO } from '@/lib/date';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { useForm } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
@@ -45,11 +45,31 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
         paid_amount: entry?.paid_amount ?? 0,
         return_date: entry?.return_date ?? '',
         remarks: entry?.remarks ?? '',
+        details: entry?.details?.length
+            ? entry.details.map((d) => ({ detail_date: d.detail_date, description: d.description ?? '', amount: d.amount ?? '' }))
+            // A brand-new entry starts with one blank row; an existing entry saved
+            // before this feature existed keeps its manually-entered total instead.
+            : (entry ? [] : [{ detail_date: todayLocalISO(), description: '', amount: '' }]),
     };
     const { data, setData, post, put, processing, errors, reset } = useForm(blank);
 
-    const liveBalance = useMemo(() => Math.max(0, (parseFloat(data.total_amount) || 0) - (parseFloat(data.paid_amount) || 0)), [data.total_amount, data.paid_amount]);
+    const detailsTotal = useMemo(() => data.details.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0), [data.details]);
+    // Only switch into computed-total mode once a row actually has an amount —
+    // a fresh, still-blank default row shouldn't lock Total Amount to 0.
+    const hasDetails = data.details.some((d) => d.amount !== '' && d.amount !== null && d.amount !== undefined);
+    const totalAmount = hasDetails ? detailsTotal : (parseFloat(data.total_amount) || 0);
+
+    const addDetail = () => setData('details', [...data.details, { detail_date: todayLocalISO(), description: '', amount: '' }]);
+    const updateDetail = (i, key, value) => setData('details', data.details.map((row, idx) => (idx === i ? { ...row, [key]: value } : row)));
+    const removeDetail = (i) => setData('details', data.details.filter((_, idx) => idx !== i));
+
+    const liveBalance = useMemo(() => Math.max(0, totalAmount - (parseFloat(data.paid_amount) || 0)), [totalAmount, data.paid_amount]);
     const liveStatus = (parseFloat(data.paid_amount) || 0) <= 0 ? 'pending' : liveBalance <= 0 ? 'returned' : 'partial';
+
+    // Detail rows are the source of truth for the total once any exist — keep the submitted value in sync.
+    useEffect(() => {
+        if (hasDetails) setData('total_amount', String(detailsTotal));
+    }, [hasDetails, detailsTotal]);
 
     const submit = (ev) => {
         ev.preventDefault();
@@ -80,9 +100,28 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
                     <option value="OMR">OMR — Omani Rial</option>
                 </select>
             </Field>
+            <div>
+                <span className="mb-1 block text-xs font-medium text-slate-600">Details</span>
+                {data.details.length > 0 && (
+                    <div className="space-y-2">
+                        {data.details.map((row, i) => (
+                            <div key={i} className="grid grid-cols-12 gap-2">
+                                <input type="date" className={input + ' col-span-3'} value={row.detail_date} onChange={(e) => updateDetail(i, 'detail_date', e.target.value)} />
+                                <input className={input + ' col-span-6'} placeholder="Description" value={row.description} onChange={(e) => updateDetail(i, 'description', e.target.value)} />
+                                <input type="number" step="0.01" className={input + ' col-span-2'} placeholder="0.00" value={row.amount} onChange={(e) => updateDetail(i, 'amount', e.target.value)} />
+                                <button type="button" onClick={() => removeDetail(i)} className="col-span-1 text-accent-red hover:text-accent-red-dark">✕</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <button type="button" onClick={addDetail} className="mt-2 text-xs font-semibold text-primary-600 hover:underline">+ Add row</button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
-                <Field label="Total Amount" error={errors.total_amount} required>
-                    <input type="number" step="0.01" className={input} value={data.total_amount} onChange={(e) => setData('total_amount', e.target.value)} />
+                <Field label={meta.totalLabel} error={errors.total_amount} required>
+                    <input type="number" step="0.01" className={input + (hasDetails ? ' bg-slate-50 text-slate-500' : '')}
+                        value={hasDetails ? totalAmount : data.total_amount} disabled={hasDetails}
+                        onChange={(e) => setData('total_amount', e.target.value)} />
+                    {hasDetails && <span className="mt-1 block text-[11px] text-slate-400">Sum of {data.details.length} detail row{data.details.length > 1 ? 's' : ''}</span>}
                 </Field>
                 <Field label={meta.paidLabel} error={errors.paid_amount}>
                     <input type="number" step="0.01" className={input} value={data.paid_amount} onChange={(e) => setData('paid_amount', e.target.value)} />

@@ -13,18 +13,18 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LedgerEntryController extends Controller
 {
-    /** slug => [type, module label, party field label, paid field label]. */
+    /** slug => [type, module label, party field label, paid field label, total field label]. */
     private const TYPES = [
-        'daily-credit' => [LedgerEntry::TYPE_CREDIT, 'Daily Credit', 'Customer Name', 'Paid Amount'],
-        'borrowed' => [LedgerEntry::TYPE_BORROWED, 'Borrowed Amount', 'Person Name', 'Returned Amount'],
+        'daily-credit' => [LedgerEntry::TYPE_CREDIT, 'Daily Credit', 'Customer Name', 'Paid Amount', 'Credit Amount'],
+        'borrowed' => [LedgerEntry::TYPE_BORROWED, 'Borrowed Amount', 'Person Name', 'Returned Amount', 'Borrowed Amount'],
     ];
 
     private function meta(string $slug): array
     {
         abort_unless(isset(self::TYPES[$slug]), 404);
-        [$type, $label, $partyLabel, $paidLabel] = self::TYPES[$slug];
+        [$type, $label, $partyLabel, $paidLabel, $totalLabel] = self::TYPES[$slug];
 
-        return compact('slug', 'type', 'label', 'partyLabel', 'paidLabel');
+        return compact('slug', 'type', 'label', 'partyLabel', 'paidLabel', 'totalLabel');
     }
 
     private function filtered(Request $request, string $type)
@@ -58,6 +58,7 @@ class LedgerEntryController extends Controller
             'meta' => $meta,
             'summary' => $summary,
             'entries' => $this->filtered($request, $type)
+                ->with('details')
                 ->latest('entry_date')->latest('id')->paginate(20)->withQueryString(),
             'filters' => $request->only(['search', 'status', 'from', 'to']),
             'customers' => \App\Models\Customer::orderBy('name')->get(['id', 'name']),
@@ -69,9 +70,13 @@ class LedgerEntryController extends Controller
     {
         $meta = $this->meta($slug);
         $data = $this->validated($request);
+        $details = $data['details'] ?? [];
+        unset($data['details']);
         $data['type'] = $meta['type'];
         $data['created_by'] = $request->user()->id;
-        LedgerEntry::create($data);
+
+        $entry = LedgerEntry::create($data);
+        $this->syncDetails($entry, $details);
 
         return back()->with('success', $meta['label'].' entry added.');
     }
@@ -80,9 +85,32 @@ class LedgerEntryController extends Controller
     {
         $meta = $this->meta($slug);
         abort_unless($ledgerEntry->type === $meta['type'], 404);
-        $ledgerEntry->update($this->validated($request));
+        $data = $this->validated($request);
+        $details = $data['details'] ?? [];
+        unset($data['details']);
+
+        $ledgerEntry->update($data);
+        $ledgerEntry->details()->delete();
+        $this->syncDetails($ledgerEntry, $details);
 
         return back()->with('success', $meta['label'].' entry updated.');
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $details
+     */
+    private function syncDetails(LedgerEntry $entry, array $details): void
+    {
+        foreach ($details as $detail) {
+            if (($detail['amount'] ?? null) === null && ($detail['description'] ?? null) === null) {
+                continue;
+            }
+            $entry->details()->create([
+                'detail_date' => $detail['detail_date'] ?? $entry->entry_date,
+                'description' => $detail['description'] ?? null,
+                'amount' => $detail['amount'] ?? 0,
+            ]);
+        }
     }
 
     public function destroy(string $slug, LedgerEntry $ledgerEntry)
@@ -153,9 +181,19 @@ class LedgerEntryController extends Controller
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'return_date' => ['nullable', 'date'],
             'status' => ['nullable', Rule::in(['pending', 'partial', 'returned'])],
+            'details' => ['nullable', 'array'],
+            'details.*.detail_date' => ['required_with:details', 'date'],
+            'details.*.description' => ['nullable', 'string', 'max:255'],
+            'details.*.amount' => ['required_with:details', 'numeric', 'min:0'],
         ]);
 
         $data['contact_numbers'] = $this->cleanNumbers($data['contact_numbers'] ?? []);
+
+        // The detail rows, when present, are the source of truth for the total —
+        // never trust a client-computed sum.
+        if (! empty($data['details'])) {
+            $data['total_amount'] = round(array_sum(array_column($data['details'], 'amount')), 2);
+        }
 
         return $data;
     }

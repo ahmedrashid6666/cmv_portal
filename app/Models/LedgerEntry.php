@@ -74,6 +74,12 @@ class LedgerEntry extends Model
         return $this->hasMany(LedgerPayment::class)->latest('payment_date');
     }
 
+    /** Itemized date + description + amount rows that build up total_amount. */
+    public function details()
+    {
+        return $this->hasMany(LedgerEntryDetail::class)->orderBy('detail_date');
+    }
+
     public function scopeOfType($query, string $type)
     {
         return $query->where('type', $type);

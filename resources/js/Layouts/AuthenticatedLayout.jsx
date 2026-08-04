@@ -95,6 +95,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 { label: 'Customer Ledger', href: route('books.ledger'), icon: '≣', active: current('books.ledger') },
                 { label: 'Final Calculation', href: route('final-calc.index'), icon: '∑', active: current('final-calc.*') },
                 { label: 'Daily Cash Count', href: route('cash-count.index'), icon: '🧮', active: current('cash-count.*') },
+                { label: 'Petty Cash', href: route('petty-cash.index'), icon: '🗒', active: current('petty-cash.*') },
             ],
         },
         {

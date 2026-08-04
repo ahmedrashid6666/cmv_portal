@@ -28,8 +28,8 @@ class EntryController extends Controller
             'customFields' => CustomField::active()->get(['key', 'label', 'type', 'options', 'required']),
             // Ledger metas
             'ledgerMetas' => [
-                ['slug' => 'daily-credit', 'type' => 'daily_credit', 'label' => 'Daily Credit', 'partyLabel' => 'Customer Name', 'paidLabel' => 'Paid Amount'],
-                ['slug' => 'borrowed', 'type' => 'borrowed', 'label' => 'Borrowed Amount', 'partyLabel' => 'Person Name', 'paidLabel' => 'Returned Amount'],
+                ['slug' => 'daily-credit', 'type' => 'daily_credit', 'label' => 'Daily Credit', 'partyLabel' => 'Customer Name', 'paidLabel' => 'Paid Amount', 'totalLabel' => 'Credit Amount'],
+                ['slug' => 'borrowed', 'type' => 'borrowed', 'label' => 'Borrowed Amount', 'partyLabel' => 'Person Name', 'paidLabel' => 'Returned Amount', 'totalLabel' => 'Borrowed Amount'],
             ],
         ]);
     }
