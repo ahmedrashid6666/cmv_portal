@@ -19,7 +19,7 @@ class OfficeExpense extends Model
 
     protected $fillable = [
         'expense_date', 'expense_category_id', 'description', 'amount',
-        'currency', 'payment_method_id', 'contact_numbers', 'remarks', 'created_by',
+        'currency', 'payment_method_id', 'bank_id', 'contact_numbers', 'remarks', 'created_by',
     ];
 
     protected function casts(): array
@@ -39,6 +39,11 @@ class OfficeExpense extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class);
     }
 
     public function creator()

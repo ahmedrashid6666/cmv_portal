@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\ExpenseCategory;
 use App\Models\OfficeExpense;
 use App\Models\PaymentMethod;
@@ -21,6 +22,7 @@ class OfficeExpenseController extends Controller
             'amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['nullable', Rule::in(['AED', 'OMR'])],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'bank_id' => ['nullable', 'exists:banks,id'],
             'contact_numbers' => ['nullable', 'array'],
             'contact_numbers.*' => ['nullable', 'string', 'max:50'],
             'remarks' => ['nullable', 'string'],
@@ -69,11 +71,13 @@ class OfficeExpenseController extends Controller
                 'amount' => (float) $officeExpense->amount,
                 'currency' => $officeExpense->currency,
                 'payment_method_id' => $officeExpense->payment_method_id,
+                'bank_id' => $officeExpense->bank_id,
                 'contact_numbers' => $officeExpense->contact_numbers,
                 'remarks' => $officeExpense->remarks,
             ],
             'expenseCategories' => ExpenseCategory::orderBy('name')->get(['id', 'name']),
-            'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name', 'type']),
+            'banks' => Bank::orderBy('name')->get(['id', 'name']),
         ]);
     }
 

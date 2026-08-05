@@ -21,7 +21,7 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
 
             <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Stat label="Opening (all banks)" value={money(totals.opening, 'AED')} />
-                <Stat label="Fees Paid Out" value={money(totals.customs_paid + totals.gov_paid, 'AED')} accent="text-accent-red" />
+                <Stat label="Fees & Expenses Paid Out" value={money(totals.customs_paid + totals.gov_paid + totals.office_expenses_paid, 'AED')} accent="text-accent-red" />
                 <Stat label="Current Balance" value={money(totals.balance, 'AED')} accent="text-emerald-700" />
             </div>
 
@@ -35,12 +35,13 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
                                 <th className="py-2 pr-4 text-right">Opening</th>
                                 <th className="py-2 pr-4 text-right">Customs Paid</th>
                                 <th className="py-2 pr-4 text-right">Gov. Paid</th>
+                                <th className="py-2 pr-4 text-right">Office Expenses</th>
                                 <th className="py-2 pr-4 text-right">Balance</th>
                                 <th className="py-2"></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {banks.length === 0 && <tr><td colSpan="7" className="py-8 text-center text-slate-400">No bank accounts yet. Add them under Master Data → Banks.</td></tr>}
+                            {banks.length === 0 && <tr><td colSpan="8" className="py-8 text-center text-slate-400">No bank accounts yet. Add them under Master Data → Banks.</td></tr>}
                             {banks.map((b) => (
                                 <tr key={b.id} className="border-b last:border-0 hover:bg-slate-200">
                                     <td className="py-2 pr-4 font-medium text-navy-800">
@@ -51,6 +52,7 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
                                     <td className="py-2 pr-4 text-right tabular-nums">{money(b.opening, 'AED')}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums text-accent-red">{b.customs_paid ? '−' + money(b.customs_paid, 'AED') : '—'}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums text-accent-red">{b.gov_paid ? '−' + money(b.gov_paid, 'AED') : '—'}</td>
+                                    <td className="py-2 pr-4 text-right tabular-nums text-accent-red">{b.office_expenses_paid ? '−' + money(b.office_expenses_paid, 'AED') : '—'}</td>
                                     <td className={'py-2 pr-4 text-right font-semibold tabular-nums ' + (b.balance < 0 ? 'text-accent-red' : 'text-navy-900')}>{money(b.balance, 'AED')}</td>
                                     <td className="py-2 text-right whitespace-nowrap">
                                         {canWrite && (
@@ -68,6 +70,7 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
                                     <td className="py-2 pr-4 text-right tabular-nums">{money(totals.opening, 'AED')}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums text-accent-red">−{money(totals.customs_paid, 'AED')}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums text-accent-red">−{money(totals.gov_paid, 'AED')}</td>
+                                    <td className="py-2 pr-4 text-right tabular-nums text-accent-red">−{money(totals.office_expenses_paid, 'AED')}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums">{money(totals.balance, 'AED')}</td>
                                     <td></td>
                                 </tr>

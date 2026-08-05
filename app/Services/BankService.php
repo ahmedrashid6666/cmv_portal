@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Bank;
 use App\Models\BankEntry;
+use App\Models\OfficeExpense;
 use App\Models\Setting;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
@@ -15,8 +16,11 @@ use Illuminate\Support\Carbon;
  *  - Customs fees are always paid from the CDR bank (resolved by setting or the
  *    bank literally named "CDR"). Every shipment drains its customs fee there.
  *  - Government fees are paid from the bank chosen on the shipment (gov_bank_id).
+ *  - Office expenses paid via a bank-type payment method optionally name the
+ *    specific bank they were paid from (OfficeExpense.bank_id).
  *
- * A bank's balance = opening_balance − customs paid from it − gov paid from it.
+ * A bank's balance = opening_balance − customs paid from it − gov paid from it
+ *                     − office expenses paid from it.
  * Sales received by bank transfer are not tied to a specific bank yet, so they
  * are reported separately as "unassigned" and never distort a bank statement.
  */
@@ -49,6 +53,12 @@ class BankService
             ->groupBy('gov_bank_id')
             ->pluck('total', 'gov_bank_id');
 
+        $officeByBank = OfficeExpense::query()
+            ->whereNotNull('bank_id')
+            ->selectRaw('bank_id, SUM(amount) as total')
+            ->groupBy('bank_id')
+            ->pluck('total', 'bank_id');
+
         // Manual in/out movements, newest first, grouped per bank for the dialog.
         $entriesByBank = BankEntry::query()
             ->orderByDesc('entry_date')
@@ -56,9 +66,10 @@ class BankService
             ->get()
             ->groupBy('bank_id');
 
-        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank, $entriesByBank) {
+        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank, $officeByBank, $entriesByBank) {
             $customs = $bank->id === $customsBankId ? $totalCustoms : 0.0;
             $gov = (float) ($govByBank[$bank->id] ?? 0);
+            $office = (float) ($officeByBank[$bank->id] ?? 0);
             $opening = (float) $bank->opening_balance;
 
             $entries = ($entriesByBank[$bank->id] ?? collect())->map(fn ($e) => [
@@ -81,9 +92,10 @@ class BankService
                 'opening' => round($opening, 2),
                 'customs_paid' => round($customs, 2),
                 'gov_paid' => round($gov, 2),
+                'office_expenses_paid' => round($office, 2),
                 'total_in' => round($totalIn, 2),
                 'total_out' => round($totalOut, 2),
-                'balance' => round($opening + $totalIn - $totalOut - $customs - $gov, 2),
+                'balance' => round($opening + $totalIn - $totalOut - $customs - $gov - $office, 2),
                 'entries' => $entries,
             ];
         })->all();
@@ -119,6 +131,16 @@ class BankService
             ->get()
             ->each(function ($t) use (&$events) {
                 $events[] = $this->event($t->transaction_date, 'Government fee — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->gov_fees);
+            });
+
+        // Office expenses paid from this bank
+        OfficeExpense::query()
+            ->where('bank_id', $bank->id)
+            ->with('category:id,name')
+            ->get()
+            ->each(function ($e) use (&$events) {
+                $label = $e->description ?: $e->category?->name;
+                $events[] = $this->event($e->expense_date, $label ? 'Office expense — '.$label : 'Office expense', null, (float) $e->amount);
             });
 
         // Manual in/out movements: an "in" is a debit (adds), an "out" a credit (subtracts).

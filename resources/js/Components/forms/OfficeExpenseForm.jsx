@@ -22,7 +22,7 @@ function Field({ label, error, children, required }) {
  * Standalone office / overhead expense entry (rent, salary, utilities, …).
  * Not tied to a shipment — it is a direct cash/bank outflow.
  */
-export default function OfficeExpenseForm({ officeExpense = null, expenseCategories = [], paymentMethods = [], onDone }) {
+export default function OfficeExpenseForm({ officeExpense = null, expenseCategories = [], paymentMethods = [], banks = [], onDone }) {
     const editing = !!officeExpense;
     const { data, setData, post, put, processing, errors, reset } = useForm({
         expense_date: officeExpense?.expense_date ?? todayLocalISO(),
@@ -31,9 +31,18 @@ export default function OfficeExpenseForm({ officeExpense = null, expenseCategor
         amount: officeExpense?.amount ?? '',
         currency: officeExpense?.currency ?? 'AED',
         payment_method_id: officeExpense?.payment_method_id ?? '',
+        bank_id: officeExpense?.bank_id ?? '',
         contact_numbers: officeExpense?.contact_numbers?.length ? officeExpense.contact_numbers : [''],
         remarks: officeExpense?.remarks ?? '',
     });
+
+    const selectedMethod = paymentMethods.find((m) => String(m.id) === String(data.payment_method_id));
+    const isBankMethod = selectedMethod?.type === 'bank';
+
+    const setPaymentMethod = (id) => {
+        const method = paymentMethods.find((m) => String(m.id) === String(id));
+        setData({ ...data, payment_method_id: id, bank_id: method?.type === 'bank' ? data.bank_id : '' });
+    };
 
     const submit = (e) => {
         e.preventDefault();
@@ -80,12 +89,22 @@ export default function OfficeExpenseForm({ officeExpense = null, expenseCategor
                     </select>
                 </Field>
                 <Field label="Paid Via" required error={errors.payment_method_id}>
-                    <select className={input} value={data.payment_method_id} onChange={(e) => setData('payment_method_id', e.target.value)}>
+                    <select className={input} value={data.payment_method_id} onChange={(e) => setPaymentMethod(e.target.value)}>
                         <option value="">Select…</option>
                         {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                 </Field>
             </div>
+
+            {isBankMethod && (
+                <Field label="Bank Account" error={errors.bank_id}>
+                    <select className={input} value={data.bank_id} onChange={(e) => setData('bank_id', e.target.value)}>
+                        <option value="">Select bank…</option>
+                        {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                    <span className="mt-1 block text-xs text-slate-400">The amount will be deducted from this bank&rsquo;s balance.</span>
+                </Field>
+            )}
 
             <Field label="Remarks" error={errors.remarks}>
                 <textarea rows="2" className={input} value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} />

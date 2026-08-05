@@ -20,7 +20,7 @@ class EntryController extends Controller
             // Transaction form options
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'references' => Reference::orderBy('name')->get(['id', 'name', 'company']),
-            'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name', 'type']),
             'expenseCategories' => ExpenseCategory::orderBy('name')->get(['id', 'name']),
             'banks' => Bank::orderBy('name')->get(['id', 'name']),
             'customsBank' => $bankService->customsBank()?->only(['id', 'name']),

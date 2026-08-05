@@ -3,7 +3,7 @@ import OfficeExpenseForm from '@/Components/forms/OfficeExpenseForm';
 import { Card } from '@/Components/ui/Card';
 import { Head, Link, router } from '@inertiajs/react';
 
-export default function EditOfficeExpense({ officeExpense, expenseCategories, paymentMethods }) {
+export default function EditOfficeExpense({ officeExpense, expenseCategories, paymentMethods, banks }) {
     return (
         <AuthenticatedLayout header="Edit Office Expense">
             <Head title="Edit Office Expense" />
@@ -20,6 +20,7 @@ export default function EditOfficeExpense({ officeExpense, expenseCategories, pa
                         officeExpense={officeExpense}
                         expenseCategories={expenseCategories}
                         paymentMethods={paymentMethods}
+                        banks={banks}
                         onDone={() => router.visit(route('operations.index', { type: 'office-expenses' }))}
                     />
                 </Card>

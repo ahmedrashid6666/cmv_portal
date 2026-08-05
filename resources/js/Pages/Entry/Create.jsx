@@ -70,6 +70,7 @@ export default function AddEntry({ customers, references, paymentMethods, expens
                         <OfficeExpenseForm
                             expenseCategories={expenseCategories}
                             paymentMethods={paymentMethods}
+                            banks={banks}
                             onDone={() => router.visit(route('operations.index', { type: 'office-expenses' }))}
                         />
                     </Card>
