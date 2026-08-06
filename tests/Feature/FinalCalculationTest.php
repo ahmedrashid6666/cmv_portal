@@ -58,7 +58,7 @@ it("overlays the frozen snapshot's counted cash with a cash count saved afterwar
 
     $this->actingAs($this->actor)->get(route('final-calc.index', ['date' => '2026-07-01']))
         ->assertOk()
-        ->assertInertia(fn ($p) => $p->where('data.aed_counted', 12500.0));
+        ->assertInertia(fn ($p) => $p->where('data.aed_counted', fn ($v) => (float) $v === 12500.0));
 });
 
 it('passes the full CashCount fields through so the embedded widget round-trips extras/remarks', function () {

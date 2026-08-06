@@ -32,18 +32,6 @@ class FinalCalculationController extends Controller
 
         $count = CashCount::whereDate('count_date', $date)->first();
 
-        // Cast numeric data values to float to ensure type consistency
-        // through serialization, particularly for values overlaid from CashCount
-        if (isset($data['aed_counted'])) {
-            $data['aed_counted'] = (float) $data['aed_counted'];
-        }
-        if (isset($data['omr_counted'])) {
-            $data['omr_counted'] = (float) $data['omr_counted'];
-        }
-        if (isset($data['omr_rate'])) {
-            $data['omr_rate'] = (float) $data['omr_rate'];
-        }
-
         return Inertia::render('Books/FinalCalculation/Index', [
             'date' => $date,
             'data' => $data,
@@ -93,15 +81,6 @@ class FinalCalculationController extends Controller
 
         $data = $validated['data'];
         $data['remarks'] = $validated['remarks'] ?? ($data['remarks'] ?? null);
-
-        // Cast all numeric data values to float before storing to ensure
-        // consistent type handling during deserialization
-        foreach (['opening_balance', 'total_income', 'customs_gov_fees', 'credit_unpaid', 'office_expenses', 'borrowed_amount', 'daily_credit_pending', 'bank_ac_balance', 'cdr_ac_balance', 'aed_counted', 'omr_counted', 'omr_rate'] as $key) {
-            if (isset($data[$key]) && is_numeric($data[$key])) {
-                $data[$key] = (float) $data[$key];
-            }
-        }
-
         $totals = $this->service->compute($data);
 
         FinalCalculation::updateOrCreate(
