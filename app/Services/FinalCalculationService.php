@@ -2,20 +2,28 @@
 
 namespace App\Services;
 
+use App\Models\Bank;
+use App\Models\BankEntry;
 use App\Models\CashCount;
 use App\Models\FinalCalculation;
 use App\Models\LedgerEntry;
+use App\Models\OfficeExpense;
 use App\Models\Setting;
+use App\Models\Transaction;
 
 /**
- * Builds and evaluates the "Final Calculation" reconciliation worksheet.
+ * Builds and evaluates the "Final Calculation" reconciliation worksheet — a
+ * fixed ladder of figures mirroring the accountant's spreadsheet:
  *
- * The worksheet is a grid of rows, each mirroring the four Excel columns:
- *   amount | ac_balance | debt_exp | cash (cash_aed + cash_omr × rate)
+ *   Opening Balance + Total Income - Customs/Gov Fees - Credit Unpaid - Office Expenses
+ *     = Total Amount
+ *   + Borrowed Amount - Daily Credit (Pending) = Total Balance Amount
+ *   - All Bank A/C Balance - CDR A/C Balance = Total Cash Balance In Hand
  *
- * compute() runs the exact workbook formulas (see the design spec); defaults()
- * pre-fills the auto rows for a date from the live balances. The same math is
- * mirrored in the React page so on-screen totals match the saved snapshot.
+ * compute() runs the formulas above on a plain array of inputs (server-side on
+ * save, and mirrored client-side in resources/js/lib/calc.js so on-screen
+ * totals match the saved snapshot). defaults() builds those inputs live for a
+ * given date.
  */
 class FinalCalculationService
 {
@@ -31,43 +39,51 @@ class FinalCalculationService
      */
     public function compute(array $data): array
     {
-        $rows = $data['rows'] ?? [];
         $rate = (float) ($data['omr_rate'] ?? self::DEFAULT_OMR_RATE);
 
-        $sum = fn (string $col) => round(array_reduce(
-            $rows,
-            fn ($carry, $row) => $carry + (float) ($row[$col] ?? 0),
-            0.0,
-        ), 2);
+        $openingBalance = round((float) ($data['opening_balance'] ?? 0), 2);
+        $totalIncome = round((float) ($data['total_income'] ?? 0), 2);
+        $customsGovFees = round((float) ($data['customs_gov_fees'] ?? 0), 2);
+        $creditUnpaid = round((float) ($data['credit_unpaid'] ?? 0), 2);
+        $officeExpenses = round((float) ($data['office_expenses'] ?? 0), 2);
+        $totalAmount = round($openingBalance + $totalIncome - $customsGovFees - $creditUnpaid - $officeExpenses, 2);
 
-        $totalAmount = $sum('amount');
-        $totalAcBalance = $sum('ac_balance');
-        $totalDebtExp = $sum('debt_exp');
-        $liquidCash = round($totalAmount - ($totalAcBalance + $totalDebtExp), 2);
+        $borrowedAmount = round((float) ($data['borrowed_amount'] ?? 0), 2);
+        $dailyCreditPending = round((float) ($data['daily_credit_pending'] ?? 0), 2);
+        $totalBalanceAmount = round($totalAmount + $borrowedAmount - $dailyCreditPending, 2);
 
-        $cashAedTotal = $sum('cash_aed');
-        $cashOmrTotal = round(array_reduce(
-            $rows,
-            fn ($carry, $row) => $carry + (float) ($row['cash_omr'] ?? 0),
-            0.0,
-        ), 3);
-        $cashOmrAsAed = round($cashOmrTotal * $rate, 2);
-        $cashCounted = round($cashAedTotal + $cashOmrAsAed, 2);
+        $bankAcBalance = round((float) ($data['bank_ac_balance'] ?? 0), 2);
+        $cdrAcBalance = round((float) ($data['cdr_ac_balance'] ?? 0), 2);
+        $totalCashBalance = round($totalBalanceAmount - $bankAcBalance - $cdrAcBalance, 2);
+
+        $aedCounted = round((float) ($data['aed_counted'] ?? 0), 2);
+        $omrCounted = round((float) ($data['omr_counted'] ?? 0), 3);
+        $cashCounted = round($aedCounted + $omrCounted * $rate, 2);
+        $cashExtra = round($cashCounted - $totalCashBalance, 2);
 
         return [
+            'opening_balance' => $openingBalance,
+            'total_income' => $totalIncome,
+            'customs_gov_fees' => $customsGovFees,
+            'credit_unpaid' => $creditUnpaid,
+            'office_expenses' => $officeExpenses,
             'total_amount' => $totalAmount,
-            'total_ac_balance' => $totalAcBalance,
-            'total_debt_exp' => $totalDebtExp,
-            'liquid_cash' => $liquidCash,
-            'cash_omr_total' => $cashOmrTotal,
-            'cash_omr_as_aed' => $cashOmrAsAed,
+            'borrowed_amount' => $borrowedAmount,
+            'daily_credit_pending' => $dailyCreditPending,
+            'total_balance_amount' => $totalBalanceAmount,
+            'bank_ac_balance' => $bankAcBalance,
+            'cdr_ac_balance' => $cdrAcBalance,
+            'total_cash_balance' => $totalCashBalance,
+            'aed_counted' => $aedCounted,
+            'omr_counted' => $omrCounted,
+            'omr_rate' => $rate,
             'cash_counted' => $cashCounted,
-            'cash_extra' => round($cashCounted - $liquidCash, 2),
+            'cash_extra' => $cashExtra,
         ];
     }
 
     /**
-     * The Total Liquid Cash in CMV figure for a date — the saved snapshot's
+     * The Total Cash Balance In Hand figure for a date — the saved snapshot's
      * total if one exists, otherwise the live-computed default. Used as the
      * "Expected Cash" baseline on the Daily Cash Count page, so both screens
      * reconcile against the same number.
@@ -77,7 +93,7 @@ class FinalCalculationService
         $snapshot = FinalCalculation::whereDate('calc_date', $date)->first();
         $data = $snapshot ? $snapshot->data : $this->defaults($date);
 
-        return $this->compute($data)['liquid_cash'];
+        return $this->compute($data)['total_cash_balance'];
     }
 
     /** The app-wide OMR → AED rate, editable in Settings. */
@@ -87,146 +103,94 @@ class FinalCalculationService
     }
 
     /**
-     * Auto-filled worksheet for a date: the live core rows, plus the manual
-     * rows carried forward (labels + values) from the most recent snapshot.
+     * Live-computed worksheet inputs for a date — every figure cumulative
+     * through $date except Borrowed Amount, Daily Credit (Pending), and the
+     * bank balances, which are current live totals.
      *
      * @return array<string, mixed>
      */
     public function defaults(string $date): array
     {
-        $rows = $this->coreRows($date);
+        [$bankAcBalance, $cdrAcBalance] = $this->rawBankBalances();
 
-        foreach ($this->carriedManualRows($date) as $row) {
-            $rows[] = $row;
-        }
-
-        $rows = $this->withDwsCashDefault($rows, $date);
-
-        return [
-            'rows' => $rows,
+        return array_merge([
+            'opening_balance' => (float) Setting::get('cash_opening_balance', 0),
+            'total_income' => round((float) Transaction::whereDate('transaction_date', '<=', $date)->sum('profit'), 2),
+            'customs_gov_fees' => round(
+                (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('customs_fees')
+                + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('gov_fees'),
+                2,
+            ),
+            'credit_unpaid' => (float) $this->balances->creditOutstandingAsOf($date),
+            'office_expenses' => round((float) OfficeExpense::whereDate('expense_date', '<=', $date)->sum('amount'), 2),
+            'borrowed_amount' => $this->ledgerOutstanding(LedgerEntry::TYPE_BORROWED),
+            'daily_credit_pending' => $this->ledgerOutstanding(LedgerEntry::TYPE_CREDIT),
+            'bank_ac_balance' => $bankAcBalance,
+            'cdr_ac_balance' => $cdrAcBalance,
             'omr_rate' => $this->omrRate(),
             'remarks' => null,
-        ];
+        ], $this->countTotalsFor($date));
     }
 
     /**
-     * Overlay the Daily Work Sheet Bal row's Cash (AED)/(OMR) cells with the
-     * date's actual saved Daily Cash Count, whether $data came from a live
-     * default or an already-saved snapshot. Without this, saving a Final
-     * Calculation before the day's cash count is entered (or re-counted)
-     * freezes a stale/zero figure that a later Cash Count save never reaches.
+     * Overlay a data payload's counted-cash cells with the date's actual
+     * saved Daily Cash Count, whether $data came from a live default or an
+     * already-saved snapshot. Without this, saving a Final Calculation
+     * before the day's cash count is entered (or re-counted) freezes a
+     * stale/zero figure that a later Cash Count save never reaches.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     public function withLiveCashCount(array $data, string $date): array
     {
-        $data['rows'] = $this->withDwsCashDefault($data['rows'] ?? [], $date);
-
-        return $data;
+        return array_merge($data, $this->countTotalsFor($date));
     }
 
-    /**
-     * The auto-computed rows every worksheet starts with.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function coreRows(string $date): array
-    {
-        $rows = [
-            $this->row('dws_bal', 'DAILY WORK SHEET BAL', 'top', ['amount' => (float) $this->balances->dwsBalance($date)], 'amount'),
-            $this->row('borrowed', 'BORROWED CASH', 'top', ['amount' => $this->ledgerOutstanding(LedgerEntry::TYPE_BORROWED)], 'amount'),
-            $this->row('daily_credit', 'DAILY CREDIT TOTAL', 'top', ['debt_exp' => $this->ledgerOutstanding(LedgerEntry::TYPE_CREDIT)], 'debt_exp'),
-        ];
-
-        foreach ($this->banks->balances() as $bank) {
-            $rows[] = $this->row(
-                'bank_'.$bank['id'],
-                strtoupper($bank['name']),
-                'banks',
-                ['ac_balance' => (float) $bank['balance']],
-                'ac_balance',
-                $bank['is_customs'] ? 'OMR' : 'AED',
-            );
-        }
-
-        return $rows;
-    }
-
-    /**
-     * The Daily Work Sheet Bal row's Cash (AED)/(OMR) cells default to that
-     * date's actual Daily Cash Count total when one has been saved; otherwise
-     * they default to Total Liquid Cash in CMV, so the sheet reads as
-     * "balanced" until the real count overrides it.
-     *
-     * @param  array<int, array<string, mixed>>  $rows
-     * @return array<int, array<string, mixed>>
-     */
-    private function withDwsCashDefault(array $rows, string $date): array
+    /** @return array{aed_counted: float, omr_counted: float} */
+    private function countTotalsFor(string $date): array
     {
         $count = CashCount::whereDate('count_date', $date)->first();
 
-        return array_map(function ($row) use ($rows, $count) {
-            if (($row['key'] ?? null) !== 'dws_bal') {
-                return $row;
-            }
-
-            if ($count) {
-                $row['cash_aed'] = (float) $count->total_aed;
-                $row['cash_omr'] = (float) $count->total_omr;
-
-                return $row;
-            }
-
-            $sum = fn (string $col) => array_reduce(
-                $rows,
-                fn ($carry, $r) => $carry + (float) ($r[$col] ?? 0),
-                0.0,
-            );
-            $liquidCash = $sum('amount') - ($sum('ac_balance') + $sum('debt_exp'));
-            $row['cash_aed'] = round($liquidCash, 2);
-
-            return $row;
-        }, $rows);
-    }
-
-    /** Manual rows from the latest saved snapshot, carried into a new date. */
-    private function carriedManualRows(string $date): array
-    {
-        $latest = FinalCalculation::whereDate('calc_date', '<=', $date)
-            ->where('calc_date', '!=', $date)
-            ->orderByDesc('calc_date')
-            ->first();
-
-        if (! $latest) {
-            return [];
-        }
-
-        return collect($latest->data['rows'] ?? [])
-            ->filter(fn ($r) => ($r['manual'] ?? false) === true)
-            ->values()
-            ->all();
+        return [
+            'aed_counted' => $count ? (float) $count->total_aed : 0.0,
+            'omr_counted' => $count ? (float) $count->total_omr : 0.0,
+        ];
     }
 
     /**
-     * @param  array<string, float>  $values
-     * @return array<string, mixed>
+     * Every bank's raw position — opening balance plus manual BankEntry
+     * in/out movements only, deliberately *not* netting out customs/gov/
+     * office fees the way BankService::balances() does for its own callers
+     * (Bank Accounts page, dashboard, statements). Those fees are already
+     * subtracted once via the "Total Customs/Gov Fees Paid" row above, so
+     * re-netting them here would double-count them against Total Cash
+     * Balance In Hand.
+     *
+     * @return array{0: float, 1: float} [allBankTotal, cdrTotal]
      */
-    private function row(string $key, string $label, string $group, array $values, ?string $autoField = null, string $currency = 'AED'): array
+    private function rawBankBalances(): array
     {
-        return array_merge([
-            'key' => $key,
-            'label' => $label,
-            'group' => $group,
-            'currency' => $currency,
-            'amount' => null,
-            'ac_balance' => null,
-            'debt_exp' => null,
-            'cash_aed' => null,
-            'cash_omr' => null,
-            'manual' => false,
-            'auto_field' => $autoField,
-        ], $values);
+        $customsBankId = $this->banks->customsBank()?->id;
+        $entriesIn = BankEntry::where('direction', 'in')->selectRaw('bank_id, SUM(amount) as total')->groupBy('bank_id')->pluck('total', 'bank_id');
+        $entriesOut = BankEntry::where('direction', 'out')->selectRaw('bank_id, SUM(amount) as total')->groupBy('bank_id')->pluck('total', 'bank_id');
+
+        $bankTotal = 0.0;
+        $cdrTotal = 0.0;
+
+        foreach (Bank::all() as $bank) {
+            $raw = (float) $bank->opening_balance
+                + (float) ($entriesIn[$bank->id] ?? 0)
+                - (float) ($entriesOut[$bank->id] ?? 0);
+
+            if ($bank->id === $customsBankId) {
+                $cdrTotal += $raw;
+            } else {
+                $bankTotal += $raw;
+            }
+        }
+
+        return [round($bankTotal, 2), round($cdrTotal, 2)];
     }
 
     private function ledgerOutstanding(string $type): float
