@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CashCount;
 use App\Models\FinalCalculation;
 use App\Services\FinalCalculationService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,10 +25,24 @@ class FinalCalculationController extends Controller
             ? $snapshot->data
             : $this->service->defaults($date);
 
-        // The Daily Work Sheet Bal row's cash cells always reflect the date's
-        // actual Daily Cash Count, even for an already-saved snapshot — so a
-        // cash count entered/updated after saving still shows up here.
+        // The counted-cash cells always reflect the date's actual Daily Cash
+        // Count, even for an already-saved snapshot — so a cash count
+        // entered/updated after saving still shows up here.
         $data = $this->service->withLiveCashCount($data, $date);
+
+        $count = CashCount::whereDate('count_date', $date)->first();
+
+        // Cast numeric data values to float to ensure type consistency
+        // through serialization, particularly for values overlaid from CashCount
+        if (isset($data['aed_counted'])) {
+            $data['aed_counted'] = (float) $data['aed_counted'];
+        }
+        if (isset($data['omr_counted'])) {
+            $data['omr_counted'] = (float) $data['omr_counted'];
+        }
+        if (isset($data['omr_rate'])) {
+            $data['omr_rate'] = (float) $data['omr_rate'];
+        }
 
         return Inertia::render('Books/FinalCalculation/Index', [
             'date' => $date,
@@ -36,11 +51,21 @@ class FinalCalculationController extends Controller
             'saved' => (bool) $snapshot,
             'savedId' => $snapshot?->id,
             'defaultOmrRate' => FinalCalculationService::DEFAULT_OMR_RATE,
+            'denominations' => CashCount::DENOMINATIONS,
+            // Full CashCount shape (not just lines/bundles) so the embedded
+            // widget can resubmit extras/remarks unchanged even though it
+            // doesn't render them — see Global Constraints.
+            'count' => $count ? [
+                'lines' => $count->lines,
+                'extras' => $count->extras ?? ['AED' => [], 'OMR' => []],
+                'bundles' => $count->bundles ?? ['AED' => [], 'OMR' => []],
+                'remarks' => $count->remarks,
+            ] : null,
             'history' => FinalCalculation::latest('calc_date')->limit(20)->get()
                 ->map(fn ($c) => [
                     'id' => $c->id,
                     'date' => $c->calc_date->format('Y-m-d'),
-                    'liquid_cash' => (float) $c->liquid_cash,
+                    'total_cash_balance' => (float) $c->liquid_cash,
                     'cash_extra' => (float) $c->cash_extra,
                 ]),
         ]);
@@ -51,22 +76,45 @@ class FinalCalculationController extends Controller
         $validated = $request->validate([
             'calc_date' => ['required', 'date'],
             'data' => ['required', 'array'],
-            'data.rows' => ['required', 'array'],
+            'data.opening_balance' => ['required', 'numeric'],
+            'data.total_income' => ['required', 'numeric'],
+            'data.customs_gov_fees' => ['required', 'numeric'],
+            'data.credit_unpaid' => ['required', 'numeric'],
+            'data.office_expenses' => ['required', 'numeric'],
+            'data.borrowed_amount' => ['required', 'numeric'],
+            'data.daily_credit_pending' => ['required', 'numeric'],
+            'data.bank_ac_balance' => ['required', 'numeric'],
+            'data.cdr_ac_balance' => ['required', 'numeric'],
+            'data.aed_counted' => ['nullable', 'numeric'],
+            'data.omr_counted' => ['nullable', 'numeric'],
             'data.omr_rate' => ['nullable', 'numeric', 'min:0'],
             'remarks' => ['nullable', 'string'],
         ]);
 
         $data = $validated['data'];
         $data['remarks'] = $validated['remarks'] ?? ($data['remarks'] ?? null);
+
+        // Cast all numeric data values to float before storing to ensure
+        // consistent type handling during deserialization
+        foreach (['opening_balance', 'total_income', 'customs_gov_fees', 'credit_unpaid', 'office_expenses', 'borrowed_amount', 'daily_credit_pending', 'bank_ac_balance', 'cdr_ac_balance', 'aed_counted', 'omr_counted', 'omr_rate'] as $key) {
+            if (isset($data[$key]) && is_numeric($data[$key])) {
+                $data[$key] = (float) $data[$key];
+            }
+        }
+
         $totals = $this->service->compute($data);
 
         FinalCalculation::updateOrCreate(
             ['calc_date' => $validated['calc_date']],
-            array_merge($totals, [
+            [
                 'data' => $data,
+                'total_amount' => $totals['total_amount'],
+                'liquid_cash' => $totals['total_cash_balance'],
+                'cash_counted' => $totals['cash_counted'],
+                'cash_extra' => $totals['cash_extra'],
                 'remarks' => $data['remarks'],
                 'created_by' => $request->user()->id,
-            ]),
+            ],
         );
 
         return back()->with('success', 'Final calculation saved for '.$validated['calc_date'].'.');

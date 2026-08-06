@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\CashCount;
 use App\Models\FinalCalculation;
 use App\Models\User;
 
@@ -9,16 +10,11 @@ beforeEach(fn () => $this->actor = User::factory()->role(Role::ACCOUNTANT)->crea
 $payload = fn (string $date = '2026-07-01') => [
     'calc_date' => $date,
     'data' => [
-        'omr_rate' => 9.5238,
-        'rows' => [
-            ['key' => 'dws_bal', 'label' => 'DAILY WORK SHEET BAL', 'group' => 'top', 'amount' => 14345],
-            ['key' => 'borrowed', 'label' => 'BORROWED CASH', 'group' => 'top', 'amount' => 71955],
-            ['key' => 'daily_credit', 'label' => 'DAILY CREDIT TOTAL', 'group' => 'top', 'debt_exp' => 39329, 'cash_aed' => 15375],
-            ['key' => 'bank_cdr', 'label' => 'CDR ACCOUNT', 'group' => 'banks', 'ac_balance' => 3612, 'currency' => 'OMR'],
-            ['key' => 'exp_rak', 'label' => 'RAK A/C EXP', 'group' => 'other', 'cash_omr' => 250, 'manual' => true],
-            ['key' => 'salary', 'label' => 'SALARY', 'group' => 'other', 'ac_balance' => 2000, 'manual' => true],
-            ['key' => 'banks_rest', 'label' => 'OTHER BANKS', 'group' => 'banks', 'ac_balance' => 23537],
-        ],
+        'opening_balance' => 64061, 'total_income' => 15793, 'customs_gov_fees' => 11688,
+        'credit_unpaid' => 8850, 'office_expenses' => 2434,
+        'borrowed_amount' => 89700, 'daily_credit_pending' => 58069,
+        'bank_ac_balance' => 56684, 'cdr_ac_balance' => 19927,
+        'aed_counted' => 11000, 'omr_counted' => 0, 'omr_rate' => 9.5238,
     ],
     'remarks' => 'July close',
 ];
@@ -26,19 +22,18 @@ $payload = fn (string $date = '2026-07-01') => [
 it('shows the page with live-computed defaults when no snapshot exists', function () {
     $this->actingAs($this->actor)->get(route('final-calc.index'))
         ->assertOk()
-        ->assertInertia(fn ($p) => $p->has('data.rows')->has('totals.liquid_cash')->where('saved', false));
+        ->assertInertia(fn ($p) => $p->has('data.opening_balance')->has('totals.total_cash_balance')
+            ->has('denominations')->where('saved', false));
 });
 
 it('saves a snapshot and stores the computed totals', function () use ($payload) {
     $this->actingAs($this->actor)->post(route('final-calc.store'), $payload())->assertRedirect();
 
     $c = FinalCalculation::first();
-    expect((float) $c->total_amount)->toBe(86300.0)
-        ->and((float) $c->total_ac_balance)->toBe(29149.0)   // 3612 + 2000 + 23537
-        ->and((float) $c->total_debt_exp)->toBe(39329.0)
-        ->and((float) $c->liquid_cash)->toBe(17822.0)
-        ->and((float) $c->cash_counted)->toBe(17755.95)
-        ->and((float) $c->cash_extra)->toBe(-66.05)
+    expect((float) $c->total_amount)->toBe(56882.0)
+        ->and((float) $c->liquid_cash)->toBe(11902.0)   // Total Cash Balance In Hand
+        ->and((float) $c->cash_counted)->toBe(11000.0)
+        ->and((float) $c->cash_extra)->toBe(-902.0)      // 11000 - 11902
         ->and($c->remarks)->toBe('July close');
 });
 
@@ -53,7 +48,33 @@ it('reopens a saved date with its frozen figures', function () use ($payload) {
 
     $this->actingAs($this->actor)->get(route('final-calc.index', ['date' => '2026-07-01']))
         ->assertOk()
-        ->assertInertia(fn ($p) => $p->where('saved', true)->where('totals.liquid_cash', fn ($v) => (float) $v === 17822.0));
+        ->assertInertia(fn ($p) => $p->where('saved', true)->where('totals.total_cash_balance', fn ($v) => (float) $v === 11902.0));
+});
+
+it("overlays the frozen snapshot's counted cash with a cash count saved afterwards", function () use ($payload) {
+    $this->actingAs($this->actor)->post(route('final-calc.store'), $payload())->assertRedirect();
+
+    CashCount::create(['count_date' => '2026-07-01', 'lines' => ['AED' => [], 'OMR' => []], 'total_aed' => 12500, 'total_omr' => 0]);
+
+    $this->actingAs($this->actor)->get(route('final-calc.index', ['date' => '2026-07-01']))
+        ->assertOk()
+        ->assertInertia(fn ($p) => $p->where('data.aed_counted', 12500.0));
+});
+
+it('passes the full CashCount fields through so the embedded widget round-trips extras/remarks', function () {
+    CashCount::create([
+        'count_date' => '2026-07-01',
+        'lines' => ['AED' => ['1000' => 2], 'OMR' => []],
+        'extras' => ['AED' => [['label' => 'Petty cash out', 'amount' => 50]], 'OMR' => []],
+        'bundles' => ['AED' => [], 'OMR' => []],
+        'remarks' => 'Counted twice to confirm',
+        'total_aed' => 2000, 'total_omr' => 0,
+    ]);
+
+    $this->actingAs($this->actor)->get(route('final-calc.index', ['date' => '2026-07-01']))
+        ->assertOk()
+        ->assertInertia(fn ($p) => $p->where('count.extras.AED.0.label', 'Petty cash out')
+            ->where('count.remarks', 'Counted twice to confirm'));
 });
 
 it('forbids read-only users from saving', function () use ($payload) {
@@ -65,7 +86,7 @@ it('forbids read-only users from saving', function () use ($payload) {
 it('exports a snapshot PDF', function () {
     $c = FinalCalculation::create([
         'calc_date' => '2026-07-01',
-        'data' => ['omr_rate' => 9.5238, 'rows' => [['key' => 'a', 'label' => 'X', 'group' => 'top', 'amount' => 100]]],
+        'data' => ['opening_balance' => 100, 'omr_rate' => 9.5238],
         'total_amount' => 100, 'liquid_cash' => 100, 'cash_counted' => 0, 'cash_extra' => -100,
     ]);
 
