@@ -6,7 +6,7 @@ use App\Models\User;
 
 beforeEach(fn () => $this->actor = User::factory()->role(Role::ACCOUNTANT)->create());
 
-it('saves a cash count and computes totals from denominations only (bundles and extras are reference only)', function () {
+it('saves a cash count and computes totals from denominations plus bundles (extras are reference only)', function () {
     $this->actingAs($this->actor)->post(route('cash-count.store'), [
         'count_date' => '2026-07-27',
         'lines' => [
@@ -18,14 +18,14 @@ it('saves a cash count and computes totals from denominations only (bundles and 
             'OMR' => [['label' => 'MIX BDL', 'amount' => 1271.7]],
         ],
         'bundles' => [
-            'AED' => [['label' => 'Bundle-1', 'amount' => 9000]],
-            'OMR' => [['label' => 'Bundle-1', 'amount' => 500]],
+            'AED' => [['label' => 'Bundle-1', 'amount' => 9000]],  // 5300 + 9000 = 14300
+            'OMR' => [['label' => 'Bundle-1', 'amount' => 500]],   // 210.3 + 500 = 710.3
         ],
     ])->assertRedirect();
 
     $c = CashCount::first();
-    expect((float) $c->total_aed)->toBe(5300.0)
-        ->and((float) $c->total_omr)->toBe(210.3);
+    expect((float) $c->total_aed)->toBe(14300.0)
+        ->and((float) $c->total_omr)->toBe(710.3);
 });
 
 it('upserts one count per date', function () {

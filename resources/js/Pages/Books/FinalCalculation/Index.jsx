@@ -269,17 +269,25 @@ function CashCountWidget({ date, denominations, count, onSaved }) {
     };
     const removeBundle = (cur, idx) => setData('bundles', { ...data.bundles, [cur]: (data.bundles[cur] || []).filter((_, i) => i !== idx) });
 
-    // Bundles are reference only (like the IN/OUT slips on the Daily Cash
-    // Count page) — they don't count toward the total.
+    // Denomination-only subtotal — shown as the card's header badge.
     const denomTotal = (cur) => {
         let sum = 0;
         for (const d of denominations[cur]) sum += d * (parseFloat(data.lines[cur]?.[d]) || 0);
         return cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
     };
 
+    // Bundles ARE counted toward the actual reconciliation total (matches
+    // CashCount::totalFor on the backend) — only the denomination subtotal
+    // above excludes them.
+    const bundleTotal = (cur) => (data.bundles[cur] || []).reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
+    const countedTotal = (cur) => {
+        const sum = denomTotal(cur) + bundleTotal(cur);
+        return cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
+    };
+
     const save = () => post(route('cash-count.store'), {
         preserveScroll: true,
-        onSuccess: () => onSaved?.({ aed_counted: denomTotal('AED'), omr_counted: denomTotal('OMR') }),
+        onSuccess: () => onSaved?.({ aed_counted: countedTotal('AED'), omr_counted: countedTotal('OMR') }),
     });
 
     const rowCount = Math.max(denominations.AED.length, denominations.OMR.length);
@@ -354,7 +362,7 @@ function CashCountWidget({ date, denominations, count, onSaved }) {
                                 <span className="text-xs font-semibold uppercase text-slate-600">{cur} Bundles</span>
                                 <button type="button" onClick={() => addBundle(cur)} className="text-xs font-semibold text-primary-600 hover:underline">+ Add Bundle</button>
                             </div>
-                            <p className="mb-2 text-[10px] text-slate-400">Reference only — not included in the total above.</p>
+                            <p className="mb-2 text-[10px] text-slate-400">Not in the {cur} total above — added into Total Counted below.</p>
                             {(data.bundles[cur] || []).length > 0 && (
                                 <table className="w-full text-sm">
                                     <tbody>
@@ -374,6 +382,10 @@ function CashCountWidget({ date, denominations, count, onSaved }) {
                                     </tbody>
                                 </table>
                             )}
+                            <div className="mt-2 flex items-center justify-between border-t border-dashed pt-2 text-xs font-semibold text-navy-800">
+                                <span>{cur} Total Counted</span>
+                                <span className="tabular-nums">{num(countedTotal(cur))}</span>
+                            </div>
                         </div>
                     ))}
                 </div>
