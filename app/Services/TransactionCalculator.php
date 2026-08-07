@@ -9,7 +9,7 @@ namespace App\Services;
  * so we never accumulate floating-point error on stored totals.
  *
  * Mirrors the CMV Shipping workbook:
- *   Total Amount = Customs + Gov Fees + Profit + VAT
+ *   Total Amount = Customs + Gov Fees + Other Amount + Profit + VAT
  *   Grand Total  = Total Amount + commissions charged to the customer
  *   Net Profit   = Profit - Expenses - commissions payable to references
  */
@@ -29,14 +29,16 @@ class TransactionCalculator
         return $this->round(bcmul($this->s($taxableBase), $rateFraction, 6));
     }
 
-    /** Total Amount = customs + gov fees + profit + vat. */
+    /** Total Amount = customs + gov fees + other amount + profit + vat. */
     public function totalAmount(
         string|float|int $customs,
         string|float|int $govFees,
+        string|float|int $otherAmount,
         string|float|int $profit,
         string|float|int $vat,
     ): string {
         $sum = bcadd($this->s($customs), $this->s($govFees), self::SCALE);
+        $sum = bcadd($sum, $this->s($otherAmount), self::SCALE);
         $sum = bcadd($sum, $this->s($profit), self::SCALE);
 
         return bcadd($sum, $this->s($vat), self::SCALE);

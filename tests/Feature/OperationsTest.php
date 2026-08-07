@@ -100,12 +100,12 @@ it('splits commissions into Com-1 and Com-2 columns and totals', function () {
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('columns.12', 'Com-1')
-            ->where('columns.13', 'Com-2')
-            ->where('rows.data.0.cells.12', '30') // Com-1
-            ->where('rows.data.0.cells.13', '20') // Com-2
-            ->where('totals.12', '30')
-            ->where('totals.13', '20')
+            ->where('columns.13', 'Com-1')
+            ->where('columns.14', 'Com-2')
+            ->where('rows.data.0.cells.13', '30') // Com-1
+            ->where('rows.data.0.cells.14', '20') // Com-2
+            ->where('totals.13', '30')
+            ->where('totals.14', '20')
             ->etc());
 });
 
@@ -119,10 +119,10 @@ it('folds a third commission into the Com-2 total so it reconciles', function ()
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('rows.data.0.cells.12', '30') // Com-1
-            ->where('rows.data.0.cells.13', '25') // Com-2 = 20 + 5
-            ->where('totals.12', '30')
-            ->where('totals.13', '25')
+            ->where('rows.data.0.cells.13', '30') // Com-1
+            ->where('rows.data.0.cells.14', '25') // Com-2 = 20 + 5
+            ->where('totals.13', '30')
+            ->where('totals.14', '25')
             ->etc());
 });
 
@@ -144,10 +144,10 @@ it('places commissions by their Com-1/Com-2 label, not by order', function () {
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('rows.data.0.cells.12', '0')   // Com-1 stays empty
-            ->where('rows.data.0.cells.13', '25')  // Com-2 keeps its value
-            ->where('totals.12', '0')
-            ->where('totals.13', '25')
+            ->where('rows.data.0.cells.13', '0')   // Com-1 stays empty
+            ->where('rows.data.0.cells.14', '25')  // Com-2 keeps its value
+            ->where('totals.13', '0')
+            ->where('totals.14', '25')
             ->etc());
 });
 

@@ -60,6 +60,8 @@ export default function TransactionEntryForm({
         customs_fees: transaction?.customs_fees ?? 0,
         gov_fees: transaction?.gov_fees ?? 0,
         gov_bank_id: transaction?.gov_bank_id ?? '',
+        other_amount: transaction?.other_amount ?? 0,
+        other_bank_id: transaction?.other_bank_id ?? '',
         profit: transaction?.profit ?? 0,
         vat_rate: transaction?.vat_rate ?? vatRate ?? 0,
         currency: transaction?.currency ?? 'AED',
@@ -130,7 +132,7 @@ export default function TransactionEntryForm({
                 </Card>
 
                 <Card title="Income Details">
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
                         <Field label="Customs Fees (CDR)" required error={errors.customs_fees}>
                             <input type="number" step="0.01" className={input} value={data.customs_fees} onChange={(e) => setData('customs_fees', e.target.value)} />
                             <span className="mt-1 block text-[11px] text-slate-400">
@@ -144,6 +146,14 @@ export default function TransactionEntryForm({
                                 {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
                             {errors.gov_bank_id && <span className="mt-1 block text-xs text-accent-red">{errors.gov_bank_id}</span>}
+                        </Field>
+                        <Field label="Other Amount" required error={errors.other_amount}>
+                            <input type="number" step="0.01" className={input} value={data.other_amount} onChange={(e) => setData('other_amount', e.target.value)} />
+                            <select className={input + ' mt-1 text-xs'} value={data.other_bank_id} onChange={(e) => setData('other_bank_id', e.target.value)}>
+                                <option value="">Pay from bank…</option>
+                                {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            {errors.other_bank_id && <span className="mt-1 block text-xs text-accent-red">{errors.other_bank_id}</span>}
                         </Field>
                         <Field label="Profit" required error={errors.profit}>
                             <input type="number" step="0.01" className={input} value={data.profit} onChange={(e) => setData('profit', e.target.value)} />

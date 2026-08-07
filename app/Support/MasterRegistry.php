@@ -83,6 +83,7 @@ class MasterRegistry
                     ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'required' => true],
                     ['name' => 'account_no', 'label' => 'Account No', 'type' => 'text'],
                     ['name' => 'opening_balance', 'label' => 'Opening Balance', 'type' => 'number', 'default' => 0],
+                    ['name' => 'is_customs', 'label' => 'Customs (CDR) bank — receives customs fee disbursements', 'type' => 'checkbox', 'default' => false],
                 ],
             ],
             'account-heads' => [
@@ -124,6 +125,7 @@ class MasterRegistry
             $r[] = match ($field['type']) {
                 'number' => 'numeric',
                 'select' => 'in:'.implode(',', $field['options']),
+                'checkbox' => 'boolean',
                 default => 'string',
             };
             $rules[$field['name']] = $r;

@@ -29,6 +29,8 @@ class TransactionRequest extends FormRequest
             'customs_fees' => ['required', 'numeric', 'min:0'],
             'gov_fees' => ['required', 'numeric', 'min:0'],
             'gov_bank_id' => ['nullable', 'exists:banks,id'],
+            'other_amount' => ['required', 'numeric', 'min:0'],
+            'other_bank_id' => ['nullable', 'exists:banks,id'],
             'profit' => ['required', 'numeric', 'min:0'],
             'vat_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'currency' => ['nullable', Rule::in(['AED', 'OMR'])],

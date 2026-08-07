@@ -16,19 +16,33 @@ use Illuminate\Support\Carbon;
  *  - Customs fees are always paid from the CDR bank (resolved by setting or the
  *    bank literally named "CDR"). Every shipment drains its customs fee there.
  *  - Government fees are paid from the bank chosen on the shipment (gov_bank_id).
+ *  - "Other Amount" is a second, identically-behaved fee on the shipment, paid
+ *    from the bank chosen there (other_bank_id).
  *  - Office expenses paid via a bank-type payment method optionally name the
  *    specific bank they were paid from (OfficeExpense.bank_id).
  *
  * A bank's balance = opening_balance − customs paid from it − gov paid from it
- *                     − office expenses paid from it.
+ *                     − other amount paid from it − office expenses paid from it.
  * Sales received by bank transfer are not tied to a specific bank yet, so they
  * are reported separately as "unassigned" and never distort a bank statement.
  */
 class BankService
 {
-    /** The bank customs fees are paid from (locked to CDR). */
+    /**
+     * The bank customs fees are paid from (the CDR bank).
+     *
+     * Resolution order: the explicit `is_customs` flag (the reliable source
+     * of truth) → the `customs_bank_id` setting → an exact "CDR" name match
+     * (kept only as a fallback for old, unflagged data — a bank not named
+     * precisely "CDR" silently resolved to no customs bank at all here,
+     * which miscounted every balance downstream).
+     */
     public function customsBank(): ?Bank
     {
+        if ($bank = Bank::where('is_customs', true)->first()) {
+            return $bank;
+        }
+
         $id = Setting::get('customs_bank_id');
         if ($id && ($bank = Bank::find($id))) {
             return $bank;
@@ -53,6 +67,12 @@ class BankService
             ->groupBy('gov_bank_id')
             ->pluck('total', 'gov_bank_id');
 
+        $otherByBank = Transaction::query()
+            ->whereNotNull('other_bank_id')
+            ->selectRaw('other_bank_id, SUM(other_amount) as total')
+            ->groupBy('other_bank_id')
+            ->pluck('total', 'other_bank_id');
+
         $officeByBank = OfficeExpense::query()
             ->whereNotNull('bank_id')
             ->selectRaw('bank_id, SUM(amount) as total')
@@ -66,9 +86,10 @@ class BankService
             ->get()
             ->groupBy('bank_id');
 
-        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank, $officeByBank, $entriesByBank) {
+        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank, $otherByBank, $officeByBank, $entriesByBank) {
             $customs = $bank->id === $customsBankId ? $totalCustoms : 0.0;
             $gov = (float) ($govByBank[$bank->id] ?? 0);
+            $other = (float) ($otherByBank[$bank->id] ?? 0);
             $office = (float) ($officeByBank[$bank->id] ?? 0);
             $opening = (float) $bank->opening_balance;
 
@@ -92,10 +113,11 @@ class BankService
                 'opening' => round($opening, 2),
                 'customs_paid' => round($customs, 2),
                 'gov_paid' => round($gov, 2),
+                'other_paid' => round($other, 2),
                 'office_expenses_paid' => round($office, 2),
                 'total_in' => round($totalIn, 2),
                 'total_out' => round($totalOut, 2),
-                'balance' => round($opening + $totalIn - $totalOut - $customs - $gov - $office, 2),
+                'balance' => round($opening + $totalIn - $totalOut - $customs - $gov - $other - $office, 2),
                 'entries' => $entries,
             ];
         })->all();
@@ -131,6 +153,16 @@ class BankService
             ->get()
             ->each(function ($t) use (&$events) {
                 $events[] = $this->event($t->transaction_date, 'Government fee — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->gov_fees);
+            });
+
+        // "Other Amount" disbursements paid from this bank
+        Transaction::query()
+            ->where('other_bank_id', $bank->id)
+            ->where('other_amount', '>', 0)
+            ->with('customer:id,name')
+            ->get()
+            ->each(function ($t) use (&$events) {
+                $events[] = $this->event($t->transaction_date, 'Other amount — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->other_amount);
             });
 
         // Office expenses paid from this bank

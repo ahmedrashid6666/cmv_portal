@@ -56,6 +56,8 @@ class TransactionWriter
             'customs_fees' => $data['customs_fees'] ?? 0,
             'gov_fees' => $data['gov_fees'] ?? 0,
             'gov_bank_id' => $data['gov_bank_id'] ?? null,
+            'other_amount' => $data['other_amount'] ?? 0,
+            'other_bank_id' => $data['other_bank_id'] ?? null,
             'profit' => $data['profit'] ?? 0,
             'vat_rate' => $data['vat_rate'] ?? 0,
             'currency' => $data['currency'] ?? 'AED',

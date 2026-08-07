@@ -17,6 +17,11 @@ use App\Models\Transaction;
  *
  *   Opening Balance + Total Income - Customs/Gov Fees - Credit Unpaid - Office Expenses
  *     = Total Amount
+ *
+ * Total Income = Σ Transaction.total_amount (Customs + Gov Fees + Other Amount +
+ * Profit + VAT), cumulative through the worksheet date. Customs/Gov Fees are
+ * counted here as part of Total Income and then subtracted again on the next
+ * line, so they net to zero; Other Amount, Profit and VAT flow through.
  *   + Borrowed Amount - Daily Credit (Pending) = Total Balance Amount
  *   - All Bank A/C Balance - CDR A/C Balance = Total Cash Balance In Hand
  *
@@ -115,7 +120,7 @@ class FinalCalculationService
 
         return array_merge([
             'opening_balance' => (float) Setting::get('cash_opening_balance', 0),
-            'total_income' => round((float) Transaction::whereDate('transaction_date', '<=', $date)->sum('profit'), 2),
+            'total_income' => round((float) Transaction::whereDate('transaction_date', '<=', $date)->sum('total_amount'), 2),
             'customs_gov_fees' => round(
                 (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('customs_fees')
                 + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('gov_fees'),

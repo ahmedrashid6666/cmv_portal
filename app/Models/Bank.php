@@ -11,11 +11,11 @@ class Bank extends Model
 {
     use Auditable, HasFactory;
 
-    protected $fillable = ['name', 'account_no', 'opening_balance'];
+    protected $fillable = ['name', 'account_no', 'opening_balance', 'is_customs'];
 
     protected function casts(): array
     {
-        return ['opening_balance' => 'decimal:2'];
+        return ['opening_balance' => 'decimal:2', 'is_customs' => 'boolean'];
     }
 
     public function entries()

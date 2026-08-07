@@ -100,11 +100,13 @@ class BalanceService
         $balance = bcadd($balance, $this->d((string) (\App\Models\BankEntry::where('direction', 'in')->sum('amount') ?: '0')), 2);
         $balance = bcsub($balance, $this->d((string) (\App\Models\BankEntry::where('direction', 'out')->sum('amount') ?: '0')), 2);
 
-        // Customs fees drain the CDR bank; government fees drain the bank chosen
-        // on each shipment. Both reduce the overall bank balance.
+        // Customs fees drain the CDR bank; government fees and the "other
+        // amount" fee each drain whichever bank was chosen on the shipment.
+        // All three reduce the overall bank balance.
         $balance = bcsub($balance, $this->totalCustomsPaid(), 2);
+        $balance = bcsub($balance, $this->totalGovPaid(), 2);
 
-        return bcsub($balance, $this->totalGovPaid(), 2);
+        return bcsub($balance, $this->totalOtherPaid(), 2);
     }
 
     /** All customs fees — always disbursed from the CDR bank (if one exists). */
@@ -121,6 +123,12 @@ class BalanceService
     private function totalGovPaid(): string
     {
         return $this->d((string) Transaction::whereNotNull('gov_bank_id')->sum('gov_fees'));
+    }
+
+    /** "Other Amount" fees that were assigned to a bank on the shipment. */
+    private function totalOtherPaid(): string
+    {
+        return $this->d((string) Transaction::whereNotNull('other_bank_id')->sum('other_amount'));
     }
 
     /** Total unpaid receivables across all credit sales. */

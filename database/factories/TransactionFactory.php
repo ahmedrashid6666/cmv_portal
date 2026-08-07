@@ -17,7 +17,7 @@ class TransactionFactory extends Factory
             'customer_id' => Customer::factory(),
             'reference_id' => null,
             'vehicle_id' => null,
-            'customs_fees' => 75, 'gov_fees' => 0, 'profit' => 25,
+            'customs_fees' => 75, 'gov_fees' => 0, 'other_amount' => 0, 'profit' => 25,
             'vat_rate' => 0, 'vat_amount' => 0, 'total_amount' => 100,
             'payment_method_id' => PaymentMethod::factory(),
             'credit_amount' => 0,

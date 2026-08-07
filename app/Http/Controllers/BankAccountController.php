@@ -27,6 +27,7 @@ class BankAccountController extends Controller
                 'opening' => round(array_sum(array_column($rows, 'opening')), 2),
                 'customs_paid' => round(array_sum(array_column($rows, 'customs_paid')), 2),
                 'gov_paid' => round(array_sum(array_column($rows, 'gov_paid')), 2),
+                'other_paid' => round(array_sum(array_column($rows, 'other_paid')), 2),
                 'office_expenses_paid' => round(array_sum(array_column($rows, 'office_expenses_paid')), 2),
                 'balance' => round(array_sum(array_column($rows, 'balance')), 2),
             ],

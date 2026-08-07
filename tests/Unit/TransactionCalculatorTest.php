@@ -5,11 +5,11 @@ use App\Services\TransactionCalculator;
 beforeEach(fn () => $this->calc = new TransactionCalculator());
 
 it('matches workbook row 7: customs 295, profit 50, vat 0, commission 25 to customer', function () {
-    // taxable base = customs + gov + profit
+    // taxable base = customs + gov + other + profit
     $vat = $this->calc->vatAmount('345.00', '0');
     expect($vat)->toBe('0.00');
 
-    $total = $this->calc->totalAmount('295.00', '0.00', '50.00', $vat);
+    $total = $this->calc->totalAmount('295.00', '0.00', '0.00', '50.00', $vat);
     expect($total)->toBe('345.00');
 
     $grand = $this->calc->grandTotal($total, [
@@ -19,9 +19,14 @@ it('matches workbook row 7: customs 295, profit 50, vat 0, commission 25 to cust
 });
 
 it('matches workbook row 3: customs 245, profit 35, total 280, no commission', function () {
-    $total = $this->calc->totalAmount('245', '0', '35', '0');
+    $total = $this->calc->totalAmount('245', '0', '0', '35', '0');
     expect($total)->toBe('280.00');
     expect($this->calc->grandTotal($total, []))->toBe('280.00');
+});
+
+it('includes other_amount in the taxable base, same as gov_fees', function () {
+    $total = $this->calc->totalAmount('245', '10', '15', '35', '0');
+    expect($total)->toBe('305.00');
 });
 
 it('sums expenses', function () {
@@ -61,6 +66,6 @@ it('applies a non-zero vat rate and rounds to 2dp', function () {
 });
 
 it('handles integer and float inputs safely', function () {
-    expect($this->calc->totalAmount(245, 0, 35, 0))->toBe('280.00')
+    expect($this->calc->totalAmount(245, 0, 0, 35, 0))->toBe('280.00')
         ->and($this->calc->totalExpenses([['amount' => 10], ['amount' => 5.5]]))->toBe('15.50');
 });

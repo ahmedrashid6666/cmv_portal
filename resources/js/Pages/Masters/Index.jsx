@@ -113,22 +113,31 @@ export default function MastersIndex({ master, label, singular, columns, fields,
                     <Card title={editing ? `Edit ${singular}` : `Add ${singular}`} action={editing && <button onClick={openNew} className="text-xs text-slate-500 hover:underline">Cancel</button>}>
                         <form onSubmit={submit} className="space-y-3">
                             {fields.map((field) => (
-                                <label key={field.name} className="block">
-                                    <span className="mb-1 block text-xs font-medium text-slate-600">
-                                        {field.label} {field.required && <span className="text-accent-red">*</span>}
-                                    </span>
-                                    {field.type === 'select' ? (
-                                        <select className={input} value={data[field.name]} onChange={(e) => setData(field.name, e.target.value)}>
-                                            <option value="">Select…</option>
-                                            {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                                        </select>
-                                    ) : field.type === 'textarea' ? (
-                                        <textarea rows="2" className={input} value={data[field.name]} onChange={(e) => setData(field.name, e.target.value)} />
-                                    ) : (
-                                        <input type={field.type === 'number' ? 'number' : 'text'} step="0.01" className={input} value={data[field.name]} onChange={(e) => setData(field.name, e.target.value)} />
-                                    )}
-                                    {errors[field.name] && <span className="mt-1 block text-xs text-accent-red">{errors[field.name]}</span>}
-                                </label>
+                                field.type === 'checkbox' ? (
+                                    <label key={field.name} className="flex items-center gap-2">
+                                        <input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                            checked={!!data[field.name]} onChange={(e) => setData(field.name, e.target.checked)} />
+                                        <span className="text-xs font-medium text-slate-600">{field.label}</span>
+                                        {errors[field.name] && <span className="ml-1 text-xs text-accent-red">{errors[field.name]}</span>}
+                                    </label>
+                                ) : (
+                                    <label key={field.name} className="block">
+                                        <span className="mb-1 block text-xs font-medium text-slate-600">
+                                            {field.label} {field.required && <span className="text-accent-red">*</span>}
+                                        </span>
+                                        {field.type === 'select' ? (
+                                            <select className={input} value={data[field.name]} onChange={(e) => setData(field.name, e.target.value)}>
+                                                <option value="">Select…</option>
+                                                {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                                            </select>
+                                        ) : field.type === 'textarea' ? (
+                                            <textarea rows="2" className={input} value={data[field.name]} onChange={(e) => setData(field.name, e.target.value)} />
+                                        ) : (
+                                            <input type={field.type === 'number' ? 'number' : 'text'} step="0.01" className={input} value={data[field.name]} onChange={(e) => setData(field.name, e.target.value)} />
+                                        )}
+                                        {errors[field.name] && <span className="mt-1 block text-xs text-accent-red">{errors[field.name]}</span>}
+                                    </label>
+                                )
                             ))}
                             <button disabled={processing} className="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">
                                 {editing ? 'Update' : 'Add'}

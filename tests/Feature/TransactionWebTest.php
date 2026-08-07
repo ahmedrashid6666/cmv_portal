@@ -21,7 +21,7 @@ function fullPayload(): array
         'boe_no' => '2010029464726',
         'customer_id' => test()->customer->id,
         'payment_method_id' => test()->method->id,
-        'customs_fees' => 295, 'gov_fees' => 0, 'profit' => 50, 'vat_rate' => 0,
+        'customs_fees' => 295, 'gov_fees' => 0, 'other_amount' => 0, 'profit' => 50, 'vat_rate' => 0,
         'credit_amount' => 0,
         'expenses' => [['expense_category_id' => test()->category->id, 'description' => 'Fuel', 'amount' => 27]],
         'commissions' => [['label' => 'Com-1', 'amount' => 25, 'type' => 'charged_to_customer']],

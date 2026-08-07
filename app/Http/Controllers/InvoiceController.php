@@ -65,6 +65,9 @@ class InvoiceController extends Controller
         if ((float) $t->gov_fees > 0) {
             $lines[] = ['label' => 'Government Fees', 'amount' => (float) $t->gov_fees];
         }
+        if ((float) $t->other_amount > 0) {
+            $lines[] = ['label' => 'Other Amount', 'amount' => (float) $t->other_amount];
+        }
         $lines[] = ['label' => 'Clearing / Service Charges', 'amount' => (float) $t->profit];
         foreach ($t->commissions->where('type', 'charged_to_customer') as $c) {
             $lines[] = ['label' => $c->label ?: 'Commission', 'amount' => (float) $c->amount];

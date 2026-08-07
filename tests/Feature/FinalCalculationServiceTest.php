@@ -10,14 +10,26 @@ use App\Services\FinalCalculationService;
 
 beforeEach(fn () => $this->service = app(FinalCalculationService::class));
 
-it('sums shipment profit — not net profit — into total_income, date-scoped', function () {
-    Transaction::factory()->create(['transaction_date' => '2026-07-01', 'profit' => 100, 'net_profit' => 40]);
-    Transaction::factory()->create(['transaction_date' => '2026-07-05', 'profit' => 50, 'net_profit' => 10]);
-    Transaction::factory()->create(['transaction_date' => '2026-08-01', 'profit' => 999, 'net_profit' => 999]); // after the cutoff
+it('sums transaction total_amount into total_income, date-scoped', function () {
+    Transaction::factory()->create(['transaction_date' => '2026-07-01', 'customs_fees' => 0, 'gov_fees' => 0, 'other_amount' => 0, 'vat_rate' => 0, 'profit' => 100]);
+    Transaction::factory()->create(['transaction_date' => '2026-07-05', 'customs_fees' => 0, 'gov_fees' => 0, 'other_amount' => 0, 'vat_rate' => 0, 'profit' => 50]);
+    Transaction::factory()->create(['transaction_date' => '2026-08-01', 'customs_fees' => 0, 'gov_fees' => 0, 'other_amount' => 0, 'vat_rate' => 0, 'profit' => 999]); // after the cutoff
 
     $data = $this->service->defaults('2026-07-05');
 
     expect($data['total_income'])->toBe(150.0);
+});
+
+it('total_income includes customs, gov fees, other amount and vat — not just profit', function () {
+    Transaction::factory()->create([
+        'transaction_date' => '2026-07-01',
+        'customs_fees' => 75, 'gov_fees' => 25, 'other_amount' => 10, 'profit' => 100, 'vat_rate' => 0,
+    ]);
+
+    $data = $this->service->defaults('2026-07-01');
+
+    // total_amount is recomputed by TransactionObserver = 75 + 25 + 10 + 100 + 0 (vat)
+    expect($data['total_income'])->toBe(210.0);
 });
 
 it('sums customs and gov fees paid, date-scoped', function () {

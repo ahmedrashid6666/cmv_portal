@@ -52,13 +52,17 @@ export function computeFinalCalculation(data, defaultRate = 9.5238) {
 
     const aedCounted = n(data.aed_counted);
     const omrCounted = n(data.omr_counted);
-    const cashCounted = r2(aedCounted + omrCounted * rate);
+    const omrAsAed = r2(omrCounted * rate);
+    const cashCounted = r2(aedCounted + omrAsAed);
     const cashExtra = r2(cashCounted - totalCashBalance);
 
     return {
         total_amount: totalAmount,
         total_balance_amount: totalBalanceAmount,
         total_cash_balance: totalCashBalance,
+        aed_counted: aedCounted,
+        omr_counted: omrCounted,
+        cash_omr_as_aed: omrAsAed,
         cash_counted: cashCounted,
         cash_extra: cashExtra,
     };

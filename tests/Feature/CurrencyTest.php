@@ -24,7 +24,7 @@ it('defaults a transaction currency to AED', function () {
 it('saves a transaction in OMR via the form', function () {
     $this->actingAs($this->actor)->post(route('transactions.store'), [
         'transaction_date' => '2026-07-01', 'customer_id' => $this->customer->id, 'payment_method_id' => $this->method->id,
-        'customs_fees' => 100, 'gov_fees' => 0, 'profit' => 10, 'vat_rate' => 0, 'currency' => 'OMR',
+        'customs_fees' => 100, 'gov_fees' => 0, 'other_amount' => 0, 'profit' => 10, 'vat_rate' => 0, 'currency' => 'OMR',
     ])->assertRedirect();
 
     expect(Transaction::first()->currency)->toBe('OMR');
@@ -41,6 +41,6 @@ it('saves a daily-credit entry in OMR', function () {
 it('rejects an unsupported currency', function () {
     $this->actingAs($this->actor)->post(route('transactions.store'), [
         'transaction_date' => '2026-07-01', 'customer_id' => $this->customer->id, 'payment_method_id' => $this->method->id,
-        'customs_fees' => 100, 'gov_fees' => 0, 'profit' => 10, 'vat_rate' => 0, 'currency' => 'USD',
+        'customs_fees' => 100, 'gov_fees' => 0, 'other_amount' => 0, 'profit' => 10, 'vat_rate' => 0, 'currency' => 'USD',
     ])->assertSessionHasErrors('currency');
 });

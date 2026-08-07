@@ -19,7 +19,7 @@ function withCustom(array $custom): array
         'transaction_date' => '2026-07-01',
         'customer_id' => test()->customer->id,
         'payment_method_id' => test()->method->id,
-        'customs_fees' => 100, 'gov_fees' => 0, 'profit' => 20, 'vat_rate' => 0,
+        'customs_fees' => 100, 'gov_fees' => 0, 'other_amount' => 0, 'profit' => 20, 'vat_rate' => 0,
         'custom_data' => $custom,
     ];
 }

@@ -19,7 +19,7 @@ function apiPayload(): array
         'invoice_no' => '56732',
         'customer_id' => test()->customer->id,
         'payment_method_id' => test()->method->id,
-        'customs_fees' => 295, 'gov_fees' => 0, 'profit' => 50, 'vat_rate' => 0,
+        'customs_fees' => 295, 'gov_fees' => 0, 'other_amount' => 0, 'profit' => 50, 'vat_rate' => 0,
         'commissions' => [['amount' => 25, 'type' => 'charged_to_customer']],
     ];
 }

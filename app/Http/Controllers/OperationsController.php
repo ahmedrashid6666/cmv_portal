@@ -284,7 +284,7 @@ class OperationsController extends Controller
 
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
-        $agg = (clone $totalsSource)->selectRaw('SUM(customs_fees) customs, SUM(gov_fees) gov, SUM(profit) profit, SUM(vat_amount) vat, SUM(total_amount) total_amount, SUM(grand_total) grand_total, SUM(credit_amount) credit_amount')->first();
+        $agg = (clone $totalsSource)->selectRaw('SUM(customs_fees) customs, SUM(gov_fees) gov, SUM(other_amount) other_amount, SUM(profit) profit, SUM(vat_amount) vat, SUM(total_amount) total_amount, SUM(grand_total) grand_total, SUM(credit_amount) credit_amount')->first();
 
         // Commissions split: the first per transaction is Com-1, the rest fold
         // into Com-2 (so Com-1 + Com-2 always reconciles with the grand total).
@@ -293,7 +293,7 @@ class OperationsController extends Controller
         $currencies = (clone $totalsSource)->distinct()->pluck('currency')->map(fn ($c) => $c ?: 'AED')->unique();
         $tCur = $currencies->count() === 1 ? $currencies->first() : 'AED';
         $t = fn ($v) => \App\Support\Money::display($v, $tCur);
-        $totals = ['', '', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
+        $totals = ['', '', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->other_amount), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
 
         $query->with(['commissions' => fn ($q) => $q->orderBy('id')]);
 
@@ -324,6 +324,7 @@ class OperationsController extends Controller
                     $t->vehicle_number ?? '—',
                     $money($t->customs_fees),
                     $money($t->gov_fees),
+                    $money($t->other_amount),
                     $money($t->profit),
                     $money($t->vat_amount),
                     $money($t->total_amount),
@@ -336,9 +337,9 @@ class OperationsController extends Controller
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Contact', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
-            'align' => [false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, false],
+        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Contact', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Gov.Fees', 'Other Amount', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
+            'align' => [false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, false],
             'totals' => $totals,
             'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
     }

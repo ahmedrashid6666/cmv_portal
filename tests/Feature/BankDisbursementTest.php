@@ -41,6 +41,27 @@ it('resolves CDR as the customs bank and flags it', function () {
         ->and($rows->firstWhere('name', 'RAK')['is_customs'])->toBeFalse();
 });
 
+it('resolves the customs bank by its is_customs flag, regardless of name', function () {
+    // Neither bank is named "CDR" — the old name-only match would silently
+    // resolve to no customs bank at all here, miscounting every balance.
+    $dubaiCustoms = Bank::create(['name' => 'Dubai Customs Account', 'account_no' => '3', 'opening_balance' => 2000, 'is_customs' => true]);
+    Transaction::factory()->create(['customs_fees' => 300, 'gov_fees' => 0]);
+
+    expect(app(BankService::class)->customsBank()->id)->toBe($dubaiCustoms->id);
+
+    $rows = collect(app(BankService::class)->balances());
+    expect((float) $rows->firstWhere('name', 'Dubai Customs Account')['customs_paid'])->toBe(300.0)
+        ->and((float) $rows->firstWhere('name', 'Dubai Customs Account')['balance'])->toBe(1700.0) // 2000 - 300
+        ->and((float) $rows->firstWhere('name', 'CDR')['customs_paid'])->toBe(0.0); // the name "CDR" alone no longer matters
+});
+
+it('prefers the is_customs flag over the customs_bank_id setting and the name fallback', function () {
+    $flagged = Bank::create(['name' => 'Second Bank', 'account_no' => '4', 'opening_balance' => 0, 'is_customs' => true]);
+    \App\Models\Setting::put('customs_bank_id', $this->rak->id);
+
+    expect(app(BankService::class)->customsBank()->id)->toBe($flagged->id);
+});
+
 it('stores the chosen gov bank when a transaction is saved', function () {
     $method = PaymentMethod::factory()->create(['type' => 'cash']);
     $customer = \App\Models\Customer::factory()->create();
@@ -48,7 +69,7 @@ it('stores the chosen gov bank when a transaction is saved', function () {
     $this->actingAs(User::factory()->role(Role::ACCOUNTANT)->create())
         ->post(route('transactions.store'), [
             'transaction_date' => '2026-07-28', 'customer_id' => $customer->id,
-            'customs_fees' => 100, 'gov_fees' => 40, 'gov_bank_id' => $this->rak->id,
+            'customs_fees' => 100, 'gov_fees' => 40, 'gov_bank_id' => $this->rak->id, 'other_amount' => 0,
             'profit' => 25, 'vat_rate' => 0, 'payment_method_id' => $method->id,
         ])->assertRedirect();
 

@@ -15,10 +15,11 @@ class TransactionObserver
      */
     public function saving(Transaction $transaction): void
     {
-        // taxable base = customs + gov fees + profit
+        // taxable base = customs + gov fees + other amount + profit
         $taxable = $this->calc->totalAmount(
             $transaction->customs_fees ?? 0,
             $transaction->gov_fees ?? 0,
+            $transaction->other_amount ?? 0,
             $transaction->profit ?? 0,
             0,
         );
@@ -28,6 +29,7 @@ class TransactionObserver
         $transaction->total_amount = $this->calc->totalAmount(
             $transaction->customs_fees ?? 0,
             $transaction->gov_fees ?? 0,
+            $transaction->other_amount ?? 0,
             $transaction->profit ?? 0,
             $transaction->vat_amount,
         );
