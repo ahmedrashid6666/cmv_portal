@@ -81,6 +81,7 @@ class FinalCalculationController extends Controller
 
         $data = $validated['data'];
         $data['remarks'] = $validated['remarks'] ?? ($data['remarks'] ?? null);
+        $data = $this->service->withLiveCashCount($data, $validated['calc_date']);
         $totals = $this->service->compute($data);
 
         FinalCalculation::updateOrCreate(

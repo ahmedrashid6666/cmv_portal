@@ -126,7 +126,8 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                         </table>
                     </Card>
 
-                    <CashCountWidget date={form.calc_date} denominations={denominations} count={count} />
+                    <CashCountWidget date={form.calc_date} denominations={denominations} count={count}
+                        onSaved={(counted) => setData('data', { ...form.data, aed_counted: counted.aed_counted, omr_counted: counted.omr_counted })} />
                 </div>
 
                 {/* Reconciliation */}
@@ -217,7 +218,7 @@ function DetailRow({ row, t, form, editable, setField }) {
 // The AED/OMR denomination + bundle count, relocated from the Daily Cash
 // Count page. Saves independently via its own "Save Count" action — see
 // docs/superpowers/specs/2026-08-06-final-calculation-redesign-design.md.
-function CashCountWidget({ date, denominations, count }) {
+function CashCountWidget({ date, denominations, count, onSaved }) {
     const { data, setData, post, processing } = useForm({
         count_date: date,
         lines: count?.lines ?? { AED: {}, OMR: {} },
@@ -247,7 +248,10 @@ function CashCountWidget({ date, denominations, count }) {
         return cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
     };
 
-    const save = () => post(route('cash-count.store'), { preserveScroll: true });
+    const save = () => post(route('cash-count.store'), {
+        preserveScroll: true,
+        onSuccess: () => onSaved?.({ aed_counted: denomTotal('AED'), omr_counted: denomTotal('OMR') }),
+    });
 
     return (
         <div className="space-y-6">
