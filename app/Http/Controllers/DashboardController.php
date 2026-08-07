@@ -72,9 +72,10 @@ class DashboardController extends Controller
             'stats' => [
                 'todaysIncome' => (float) $balances->todaysIncome(),
                 'todaysExpenses' => (float) $balances->todaysExpenses(),
-                // Matches "Total Liquid Cash in CMV" on Final Calculation — the
-                // reconciled figure (cash + borrowed − bank balances − credit
-                // outstanding), not the raw cash ledger balance.
+                // Matches "Total Cash Balance In Hand" on the Final Calculation
+                // page — the reconciled figure (opening balance + income − fees
+                // − credit unpaid − office expenses + borrowed − daily credit
+                // pending − bank balances), not the raw cash ledger balance.
                 'cashBalance' => (float) $finalCalc->liquidCashFor($today->toDateString()),
                 'bankBalance' => (float) $balances->bankBalance(),
                 'creditBalance' => (float) $balances->creditOutstandingTotal(),

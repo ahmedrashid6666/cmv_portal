@@ -3,6 +3,7 @@ import { Card } from '@/Components/ui/Card';
 import { money, num } from '@/lib/format';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
@@ -20,6 +21,22 @@ export default function CashCount({ date, denominations, count, history }) {
         extras: count?.extras ?? { AED: [], OMR: [] },
         remarks: count?.remarks ?? '',
     });
+
+    // Inertia caches page props in browser history state, so an instance
+    // restored via the Back button can be holding a stale `count`. Force a
+    // fresh partial reload on mount so we never save over newer data saved
+    // elsewhere (e.g. the AED/OMR counts on the Final Calculation page) in
+    // the meantime.
+    useEffect(() => {
+        router.reload({ only: ['count'] });
+    }, []);
+
+    useEffect(() => {
+        setData('lines', count?.lines ?? { AED: {}, OMR: {} });
+        setData('bundles', count?.bundles ?? { AED: [], OMR: [] });
+        setData('extras', count?.extras ?? { AED: [], OMR: [] });
+        setData('remarks', count?.remarks ?? '');
+    }, [count]);
 
     const updateExtra = (cur, idx, key, value) => {
         const extras = [...(data.extras[cur] || [])];

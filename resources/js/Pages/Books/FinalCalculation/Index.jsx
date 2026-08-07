@@ -4,7 +4,7 @@ import { num } from '@/lib/format';
 import { computeFinalCalculation } from '@/lib/calc';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const EDIT_MODE_STORAGE_KEY = 'finalCalc.editable';
 
@@ -53,7 +53,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
         }
     };
 
-    const { data: form, setData, post, processing } = useForm({
+    const { data: form, setData, post, processing, errors } = useForm({
         calc_date: date,
         data: { omr_rate: defaultOmrRate, ...data },
         remarks: data.remarks ?? '',
@@ -62,7 +62,7 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
     const setField = (key, value) => setData('data', { ...form.data, [key]: value });
 
     // Mirror of FinalCalculationService::compute — on-screen totals must match the save.
-    const t = useMemo(() => computeFinalCalculation(form.data), [form.data]);
+    const t = useMemo(() => computeFinalCalculation(form.data, defaultOmrRate), [form.data, defaultOmrRate]);
     const extra = t.cash_extra;
 
     const changeDate = (d) => router.get(route('final-calc.index'), { date: d }, { preserveState: false });
@@ -108,6 +108,12 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                         {saved ? 'Update' : 'Save'}
                     </button>
                 </div>
+
+                {Object.keys(errors).length > 0 && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-accent-red">
+                        {Object.values(errors).map((msg, i) => <div key={i}>{msg}</div>)}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                     <Card className="overflow-x-auto">
@@ -228,6 +234,21 @@ function CashCountWidget({ date, denominations, count, onSaved }) {
         bundles: count?.bundles ?? { AED: [], OMR: [] },
         remarks: count?.remarks ?? '',
     });
+
+    // Inertia caches page props in browser history state, so an instance
+    // restored via the Back button can be holding a stale `count`. Force a
+    // fresh partial reload on mount so we never save over newer data saved
+    // elsewhere (e.g. on the Daily Cash Count page) in the meantime.
+    useEffect(() => {
+        router.reload({ only: ['count'] });
+    }, []);
+
+    useEffect(() => {
+        setData('lines', count?.lines ?? { AED: {}, OMR: {} });
+        setData('extras', count?.extras ?? { AED: [], OMR: [] });
+        setData('bundles', count?.bundles ?? { AED: [], OMR: [] });
+        setData('remarks', count?.remarks ?? '');
+    }, [count]);
 
     const setQty = (cur, denom, qty) => setData('lines', { ...data.lines, [cur]: { ...data.lines[cur], [denom]: qty } });
 

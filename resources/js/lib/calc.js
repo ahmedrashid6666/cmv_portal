@@ -30,8 +30,10 @@ export function computeTotals({ customs_fees, gov_fees, other_amount, profit, va
 }
 
 // Mirrors app/Services/FinalCalculationService::compute() for instant on-screen totals.
-export function computeFinalCalculation(data) {
-    const rate = n(data.omr_rate) || 9.5238;
+export function computeFinalCalculation(data, defaultRate = 9.5238) {
+    const rate = data.omr_rate === '' || data.omr_rate === null || data.omr_rate === undefined
+        ? defaultRate
+        : n(data.omr_rate);
 
     const openingBalance = n(data.opening_balance);
     const totalIncome = n(data.total_income);
