@@ -27,6 +27,12 @@ it('shows the page with live-computed defaults when no snapshot exists', functio
 });
 
 it('saves a snapshot and stores the computed totals', function () use ($payload) {
+    // aed_counted/omr_counted are re-derived server-side from the live
+    // CashCount for the date (see FinalCalculationController::store), so the
+    // payload's counted-cash figures only take effect once a matching
+    // CashCount exists.
+    CashCount::create(['count_date' => '2026-07-01', 'lines' => ['AED' => [], 'OMR' => []], 'total_aed' => 11000, 'total_omr' => 0]);
+
     $this->actingAs($this->actor)->post(route('final-calc.store'), $payload())->assertRedirect();
 
     $c = FinalCalculation::first();
@@ -35,6 +41,21 @@ it('saves a snapshot and stores the computed totals', function () use ($payload)
         ->and((float) $c->cash_counted)->toBe(11000.0)
         ->and((float) $c->cash_extra)->toBe(-902.0)      // 11000 - 11902
         ->and($c->remarks)->toBe('July close');
+});
+
+it('ignores a stale client-submitted counted-cash figure and re-derives it from the live CashCount', function () use ($payload) {
+    // The client submitted aed_counted=11000 (baked into $payload), but the
+    // actual live CashCount for the date says 12500 — e.g. the user saved a
+    // cash count and immediately clicked Save on the worksheet before its
+    // stale local copy re-synced. The persisted snapshot must reflect the
+    // live figure, not whatever the client happened to submit.
+    CashCount::create(['count_date' => '2026-07-01', 'lines' => ['AED' => [], 'OMR' => []], 'total_aed' => 12500, 'total_omr' => 0]);
+
+    $this->actingAs($this->actor)->post(route('final-calc.store'), $payload())->assertRedirect();
+
+    $c = FinalCalculation::first();
+    expect((float) $c->data['aed_counted'])->toBe(12500.0)
+        ->and((float) $c->cash_counted)->toBe(12500.0);
 });
 
 it('upserts one snapshot per date', function () use ($payload) {
