@@ -6,7 +6,7 @@ use App\Models\User;
 
 beforeEach(fn () => $this->actor = User::factory()->role(Role::ACCOUNTANT)->create());
 
-it('saves a cash count and computes totals from denominations only (extras are reference only)', function () {
+it('saves a cash count and computes totals from denominations only (bundles and extras are reference only)', function () {
     $this->actingAs($this->actor)->post(route('cash-count.store'), [
         'count_date' => '2026-07-27',
         'lines' => [
@@ -16,6 +16,10 @@ it('saves a cash count and computes totals from denominations only (extras are r
         'extras' => [
             'AED' => [['label' => 'BDL-1', 'amount' => 18900]],
             'OMR' => [['label' => 'MIX BDL', 'amount' => 1271.7]],
+        ],
+        'bundles' => [
+            'AED' => [['label' => 'Bundle-1', 'amount' => 9000]],
+            'OMR' => [['label' => 'Bundle-1', 'amount' => 500]],
         ],
     ])->assertRedirect();
 

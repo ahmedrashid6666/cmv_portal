@@ -141,7 +141,14 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                     <Stat label="Total Cash Balance In Hand" value={num(t.total_cash_balance)} accent="text-emerald-700" big />
                     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <p className="text-xs uppercase text-slate-500">Cash Counted</p>
-                        <p className="mt-2 text-2xl font-bold text-navy-900">{num(t.cash_counted)} <Tag>AED equiv.</Tag></p>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-lg font-bold text-navy-900">
+                            <span>{num(t.aed_counted)} <Tag>AED</Tag></span>
+                            <span>OMR {num(t.omr_counted)} <span className="text-xs font-normal text-slate-400">(AED {num(t.cash_omr_as_aed)})</span></span>
+                        </div>
+                        <div className="mt-2 flex items-baseline gap-2 border-t border-slate-100 pt-2">
+                            <span className="text-xs uppercase text-slate-500">Total</span>
+                            <span className="text-2xl font-bold text-navy-900">{num(t.cash_counted)} <Tag>AED</Tag></span>
+                        </div>
                     </div>
                     <div className={'rounded-xl border p-4 shadow-sm ' + (extra === 0 ? 'border-emerald-200 bg-emerald-50' : extra > 0 ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50')}>
                         <p className="text-xs uppercase text-slate-500">Cash Extra</p>
@@ -262,10 +269,11 @@ function CashCountWidget({ date, denominations, count, onSaved }) {
     };
     const removeBundle = (cur, idx) => setData('bundles', { ...data.bundles, [cur]: (data.bundles[cur] || []).filter((_, i) => i !== idx) });
 
+    // Bundles are reference only (like the IN/OUT slips on the Daily Cash
+    // Count page) — they don't count toward the total.
     const denomTotal = (cur) => {
         let sum = 0;
         for (const d of denominations[cur]) sum += d * (parseFloat(data.lines[cur]?.[d]) || 0);
-        for (const b of data.bundles[cur] || []) sum += parseFloat(b.amount) || 0;
         return cur === 'OMR' ? Math.round(sum * 1000) / 1000 : Math.round(sum * 100) / 100;
     };
 
@@ -274,61 +282,102 @@ function CashCountWidget({ date, denominations, count, onSaved }) {
         onSuccess: () => onSaved?.({ aed_counted: denomTotal('AED'), omr_counted: denomTotal('OMR') }),
     });
 
+    const rowCount = Math.max(denominations.AED.length, denominations.OMR.length);
+
     return (
         <div className="space-y-6">
-            {Object.keys(denominations).map((cur) => (
-                <Card key={cur} title={`${cur} Cash Count`} action={<span className="text-sm font-bold text-primary-700">{num(denomTotal(cur))}</span>}>
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b text-left text-xs uppercase text-slate-500">
-                                <th className="py-1.5 pr-3">Denomination</th>
-                                <th className="py-1.5 pr-3 text-center">Qty</th>
-                                <th className="py-1.5 text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {denominations[cur].map((d) => {
-                                const qty = parseFloat(data.lines[cur]?.[d]) || 0;
-                                return (
-                                    <tr key={d} className="border-b last:border-0">
-                                        <td className="py-1 pr-3 font-medium text-navy-800">{num(d)}</td>
-                                        <td className="py-1 pr-3">
-                                            <input type="number" min="0" step="1" className={input + ' text-center'} value={data.lines[cur]?.[d] ?? ''} onChange={(e) => setQty(cur, d, e.target.value)} />
-                                        </td>
-                                        <td className="py-1 text-right tabular-nums text-slate-600">{qty ? num(d * qty) : '—'}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-
-                    <div className="mt-4 border-t pt-3">
-                        <div className="mb-2 flex items-center justify-between">
-                            <span className="text-xs font-semibold uppercase text-slate-600">Bundles</span>
-                            <button type="button" onClick={() => addBundle(cur)} className="text-xs font-semibold text-primary-600 hover:underline">+ Add Bundle</button>
-                        </div>
-                        {(data.bundles[cur] || []).length > 0 && (
-                            <table className="w-full text-sm">
-                                <tbody>
-                                    {(data.bundles[cur] || []).map((b, idx) => (
-                                        <tr key={idx} className="border-b last:border-0">
+            <Card title="Cash Count" action={
+                <div className="flex items-center gap-4 text-sm font-bold text-primary-700">
+                    <span>{num(denomTotal('AED'))} <span className="text-xs font-normal text-slate-400">AED</span></span>
+                    <span>{num(denomTotal('OMR'))} <span className="text-xs font-normal text-slate-400">OMR</span></span>
+                </div>
+            }>
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b text-left text-xs uppercase text-slate-500">
+                            <th className="py-1.5 pr-3">AED Denom.</th>
+                            <th className="py-1.5 pr-3 text-center">Qty</th>
+                            <th className="py-1.5 pr-3 text-right">Amount</th>
+                            <th className="py-1.5 pr-3 pl-4 border-l">OMR Denom.</th>
+                            <th className="py-1.5 pr-3 text-center">Qty</th>
+                            <th className="py-1.5 text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {Array.from({ length: rowCount }).map((_, i) => {
+                            const dAed = denominations.AED[i];
+                            const dOmr = denominations.OMR[i];
+                            const qtyAed = dAed !== undefined ? (parseFloat(data.lines.AED?.[dAed]) || 0) : 0;
+                            const qtyOmr = dOmr !== undefined ? (parseFloat(data.lines.OMR?.[dOmr]) || 0) : 0;
+                            return (
+                                <tr key={i} className="border-b last:border-0">
+                                    {dAed !== undefined ? (
+                                        <>
+                                            <td className="py-1 pr-3 font-medium text-navy-800">{num(dAed)}</td>
                                             <td className="py-1 pr-3">
-                                                <input type="text" className={input} value={b.label} onChange={(e) => updateBundle(cur, idx, 'label', e.target.value)} />
+                                                <input type="number" min="0" step="1" className={input + ' text-center'} value={data.lines.AED?.[dAed] ?? ''} onChange={(e) => setQty('AED', dAed, e.target.value)} />
                                             </td>
-                                            <td className="py-1 pr-3 w-36">
-                                                <input type="number" step="0.01" className={input + ' text-right'} placeholder="0.00" value={b.amount} onChange={(e) => updateBundle(cur, idx, 'amount', e.target.value)} />
+                                            <td className="py-1 pr-3 text-right tabular-nums text-slate-600">{qtyAed ? num(dAed * qtyAed) : '—'}</td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td className="py-1 pr-3" />
+                                            <td className="py-1 pr-3" />
+                                            <td className="py-1 pr-3" />
+                                        </>
+                                    )}
+                                    {dOmr !== undefined ? (
+                                        <>
+                                            <td className="py-1 pr-3 pl-4 border-l font-medium text-navy-800">{num(dOmr)}</td>
+                                            <td className="py-1 pr-3">
+                                                <input type="number" min="0" step="1" className={input + ' text-center'} value={data.lines.OMR?.[dOmr] ?? ''} onChange={(e) => setQty('OMR', dOmr, e.target.value)} />
                                             </td>
-                                            <td className="py-1 pl-1 text-center w-6">
-                                                <button type="button" onClick={() => removeBundle(cur, idx)} className="text-accent-red hover:text-accent-red-dark">✕</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                </Card>
-            ))}
+                                            <td className="py-1 text-right tabular-nums text-slate-600">{qtyOmr ? num(dOmr * qtyOmr) : '—'}</td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td className="py-1 pr-3 pl-4 border-l" />
+                                            <td className="py-1 pr-3" />
+                                            <td className="py-1" />
+                                        </>
+                                    )}
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 border-t pt-3 sm:grid-cols-2">
+                    {['AED', 'OMR'].map((cur) => (
+                        <div key={cur}>
+                            <div className="mb-1 flex items-center justify-between">
+                                <span className="text-xs font-semibold uppercase text-slate-600">{cur} Bundles</span>
+                                <button type="button" onClick={() => addBundle(cur)} className="text-xs font-semibold text-primary-600 hover:underline">+ Add Bundle</button>
+                            </div>
+                            <p className="mb-2 text-[10px] text-slate-400">Reference only — not included in the total above.</p>
+                            {(data.bundles[cur] || []).length > 0 && (
+                                <table className="w-full text-sm">
+                                    <tbody>
+                                        {(data.bundles[cur] || []).map((b, idx) => (
+                                            <tr key={idx} className="border-b last:border-0">
+                                                <td className="py-1 pr-3">
+                                                    <input type="text" className={input} value={b.label} onChange={(e) => updateBundle(cur, idx, 'label', e.target.value)} />
+                                                </td>
+                                                <td className="py-1 pr-3 w-36">
+                                                    <input type="number" step="0.01" className={input + ' text-right'} placeholder="0.00" value={b.amount} onChange={(e) => updateBundle(cur, idx, 'amount', e.target.value)} />
+                                                </td>
+                                                <td className="py-1 pl-1 text-center w-6">
+                                                    <button type="button" onClick={() => removeBundle(cur, idx)} className="text-accent-red hover:text-accent-red-dark">✕</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </Card>
             <button type="button" onClick={save} disabled={processing} className="w-full rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">
                 Save Cash Count
             </button>

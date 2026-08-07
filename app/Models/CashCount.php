@@ -32,16 +32,13 @@ class CashCount extends Model
         ];
     }
 
-    /** Total counted for a currency = Σ(denomination × qty) + Σ(bundle amounts). Slips/extras are reference only. */
+    /** Total counted for a currency = Σ(denomination × qty). Bundles/slips/extras are reference only. */
     public static function totalFor(string $currency, array $lines, array $extras, array $bundles = []): float
     {
         $total = 0.0;
         foreach (self::DENOMINATIONS[$currency] ?? [] as $denom) {
             $qty = (float) ($lines[$currency][(string) $denom] ?? 0);
             $total += $denom * $qty;
-        }
-        foreach ($bundles[$currency] ?? [] as $bundle) {
-            $total += (float) ($bundle['amount'] ?? 0);
         }
 
         return round($total, $currency === 'OMR' ? 3 : 2);
