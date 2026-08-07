@@ -9,13 +9,11 @@
     table.fc { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
     table.fc th { background: #f6d9c3; color: #1e3a5f; text-align: right; padding: 6px; font-size: 10px; text-transform: uppercase; }
     table.fc th.l { text-align: left; }
-    table.fc td { padding: 4px 6px; border-bottom: 1px solid #e8edf2; }
+    table.fc td { padding: 5px 8px; border-bottom: 1px solid #e8edf2; }
     .r { text-align: right; }
-    .grp { font-size: 9px; text-transform: uppercase; color: #94a3b8; font-weight: bold; padding-top: 8px; }
-    .banks td { background: #f0fbf4; }
-    .other td { background: #fffaf0; }
-    .tag { font-size: 8px; background: #eef2f6; color: #64748b; padding: 1px 4px; border-radius: 3px; }
-    tr.tot td { border-top: 2px solid #cbd5e1; font-weight: bold; color: #1e3a5f; background: #f8fafc; }
+    tr.green td { background: #d1fae5; font-weight: bold; color: #065f46; }
+    tr.blue td { background: #dbeafe; font-weight: bold; color: #1e40af; }
+    tr.yellow td { background: #fef3c7; font-weight: bold; color: #92400e; }
     .boxes { width: 100%; margin-top: 6px; }
     .boxes td { width: 33.3%; padding: 8px; vertical-align: top; }
     .box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; }
@@ -30,11 +28,22 @@
 </style></head>
 <body>
     @php
-        $rows = $calc->data['rows'] ?? [];
-        $rate = (float) ($calc->data['omr_rate'] ?? 9.5238);
-        $groups = ['top' => 'Cash & Credit', 'banks' => 'Bank Accounts', 'other' => 'Expenses & Other'];
-        $fmt = fn ($v) => is_numeric($v) && (float) $v != 0 ? number_format((float) $v, 2) : '';
+        $fmt = fn ($v) => number_format((float) $v, 2);
         $extra = (float) $totals['cash_extra'];
+        $rows = [
+            ['Opening Balance', $totals['opening_balance']],
+            ['Total Income', $totals['total_income']],
+            ['Total Customs/Gov. Fees Paid', -$totals['customs_gov_fees']],
+            ['Total Credit (Unpaid)', -$totals['credit_unpaid']],
+            ['Office Expenses', -$totals['office_expenses']],
+            ['TOTAL AMOUNT', $totals['total_amount'], 'green'],
+            ['Borrowed Amount', $totals['borrowed_amount']],
+            ['Daily Credit (Pending)', -$totals['daily_credit_pending']],
+            ['TOTAL BALANCE AMOUNT', $totals['total_balance_amount'], 'blue'],
+            ['All Bank A/C Balance', -$totals['bank_ac_balance']],
+            ['CDR A/C Balance', -$totals['cdr_ac_balance']],
+            ['TOTAL CASH BALANCE IN HAND', $totals['total_cash_balance'], 'yellow'],
+        ];
     @endphp
 
     <div class="head">
@@ -45,48 +54,23 @@
     <table class="fc">
         <thead>
             <tr>
-                <th class="l">Final Calculation</th>
+                <th class="l">Details</th>
                 <th>Amount</th>
-                <th>A/C Balance</th>
-                <th>Debt / Exp</th>
-                <th>Cash (AED)</th>
-                <th>Cash (OMR)</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($groups as $gkey => $glabel)
-                <tr class="{{ $gkey }}"><td colspan="6" class="grp">{{ $glabel }}</td></tr>
-                @foreach($rows as $r)
-                    @continue(($r['group'] ?? 'top') !== $gkey)
-                    <tr class="{{ $gkey }}">
-                        <td>{{ $r['label'] ?? '' }}
-                            @if(($r['currency'] ?? 'AED') === 'OMR')<span class="tag">OMR</span>@endif
-                        </td>
-                        <td class="r">{{ $fmt($r['amount'] ?? null) }}</td>
-                        <td class="r">{{ $fmt($r['ac_balance'] ?? null) }}</td>
-                        <td class="r">{{ $fmt($r['debt_exp'] ?? null) }}</td>
-                        <td class="r">{{ $fmt($r['cash_aed'] ?? null) }}</td>
-                        <td class="r">{{ $fmt($r['cash_omr'] ?? null) }}</td>
-                    </tr>
-                @endforeach
+            @foreach($rows as $row)
+                <tr class="{{ $row[2] ?? '' }}">
+                    <td>{{ $row[0] }}</td>
+                    <td class="r">{{ $fmt($row[1]) }}</td>
+                </tr>
             @endforeach
-            <tr class="tot">
-                <td>TOTAL</td>
-                <td class="r">{{ number_format($totals['total_amount'], 2) }}</td>
-                <td class="r">{{ number_format($totals['total_ac_balance'], 2) }}</td>
-                <td class="r">{{ number_format($totals['total_debt_exp'], 2) }}</td>
-                <td class="r" colspan="2">{{ number_format($totals['cash_counted'], 2) }} (AED)</td>
-            </tr>
         </tbody>
     </table>
 
-    <div style="font-size:9px;color:#94a3b8;margin-bottom:4px;">
-        Liquid Cash = Amount − (A/C Balance + Debt/Exp). Cash column OMR converted at {{ number_format($rate, 4) }}.
-    </div>
-
     <table class="boxes"><tr>
-        <td><div class="box liquid"><div class="lbl">Total Liquid Cash in CMV</div><div class="val">{{ number_format($totals['liquid_cash'], 2) }}</div></div></td>
-        <td><div class="box"><div class="lbl">Cash Counted (AED)</div><div class="val">{{ number_format($totals['cash_counted'], 2) }}</div></div></td>
+        <td><div class="box liquid"><div class="lbl">Total Cash Balance In Hand</div><div class="val">{{ $fmt($totals['total_cash_balance']) }}</div></div></td>
+        <td><div class="box"><div class="lbl">Cash Counted (AED equiv.)</div><div class="val">{{ $fmt($totals['cash_counted']) }}</div></div></td>
         <td><div class="box {{ $extra == 0 ? '' : ($extra > 0 ? 'over' : 'short') }}"><div class="lbl">Cash Extra</div>
             <div class="val">{{ $extra == 0 ? 'Balanced' : ($extra > 0 ? 'Over ' : 'Short ').number_format(abs($extra), 2) }}</div></div></td>
     </tr></table>
