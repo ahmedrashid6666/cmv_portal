@@ -27,13 +27,14 @@ class CashCountController extends Controller
             ] : null,
             'expectedAed' => $finalCalc->liquidCashFor($date),
             'omrRate' => $finalCalc->omrRate(),
-            'history' => CashCount::latest('count_date')->limit(15)->get(['id', 'count_date', 'total_aed', 'total_omr', 'expected_aed'])
+            'history' => CashCount::latest('count_date')->limit(15)->get(['id', 'count_date', 'total_aed', 'total_omr', 'expected_aed', 'extras'])
                 ->map(fn ($c) => [
                     'id' => $c->id,
                     'date' => $c->count_date->format('Y-m-d'),
                     'total_aed' => (float) $c->total_aed,
                     'total_omr' => (float) $c->total_omr,
                     'variance' => round((float) $c->total_aed - (float) $c->expected_aed, 2),
+                    'extras' => $c->extras ?? ['AED' => [], 'OMR' => []],
                 ]),
         ]);
     }

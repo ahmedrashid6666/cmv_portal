@@ -36,13 +36,13 @@
             ['Total Customs/Gov. Fees Paid', -$totals['customs_gov_fees']],
             ['Total Credit (Unpaid)', -$totals['credit_unpaid']],
             ['Office Expenses', -$totals['office_expenses']],
-            ['TOTAL AMOUNT', $totals['total_amount'], 'green'],
+            ['TOTAL AMOUNT', $totals['total_amount'], 'yellow'],
             ['Borrowed Amount', $totals['borrowed_amount']],
             ['Daily Credit (Pending)', -$totals['daily_credit_pending']],
             ['TOTAL BALANCE AMOUNT', $totals['total_balance_amount'], 'blue'],
             ['All Bank A/C Balance', -$totals['bank_ac_balance']],
             ['CDR A/C Balance', -$totals['cdr_ac_balance']],
-            ['TOTAL CASH BALANCE IN HAND', $totals['total_cash_balance'], 'yellow'],
+            ['TOTAL CASH BALANCE IN HAND', $totals['total_cash_balance'], 'green'],
         ];
     @endphp
 

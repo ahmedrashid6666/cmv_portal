@@ -18,13 +18,13 @@ const ROWS = [
     { key: 'customs_gov_fees', label: 'Total Customs/Gov. Fees Paid', negative: true },
     { key: 'credit_unpaid', label: 'Total Credit (Unpaid)', negative: true },
     { key: 'office_expenses', label: 'Office Expenses', negative: true },
-    { key: 'total', label: 'TOTAL AMOUNT', total: 'total_amount', tone: 'green' },
+    { key: 'total', label: 'TOTAL AMOUNT', total: 'total_amount', tone: 'yellow' },
     { key: 'borrowed_amount', label: 'Borrowed Amount' },
     { key: 'daily_credit_pending', label: 'Daily Credit (Pending)', negative: true },
     { key: 'total', label: 'TOTAL BALANCE AMOUNT', total: 'total_balance_amount', tone: 'blue' },
     { key: 'bank_ac_balance', label: 'All Bank A/C Balance', negative: true },
     { key: 'cdr_ac_balance', label: 'CDR A/C Balance', negative: true },
-    { key: 'total', label: 'TOTAL CASH BALANCE IN HAND', total: 'total_cash_balance', tone: 'yellow' },
+    { key: 'total', label: 'TOTAL CASH BALANCE IN HAND', total: 'total_cash_balance', tone: 'green' },
 ];
 
 const TONE = {

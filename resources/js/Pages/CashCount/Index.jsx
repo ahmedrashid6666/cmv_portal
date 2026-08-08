@@ -7,6 +7,22 @@ import { useEffect } from 'react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
+// extras[currency] alternates IN (even index) / OUT (odd index) rows — mirrors
+// the Bundles/Slips table above. Skips blank rows so most days show "—".
+function summarizeExtras(extras) {
+    if (!extras) return [];
+    const out = [];
+    for (const cur of Object.keys(extras)) {
+        (extras[cur] || []).forEach((item, i) => {
+            const label = (item?.label || '').trim();
+            const amount = parseFloat(item?.amount) || 0;
+            if (!label && !amount) return;
+            out.push({ currency: cur, direction: i % 2 === 0 ? 'IN' : 'OUT', label: label || '—', amount });
+        });
+    }
+    return out;
+}
+
 export default function CashCount({ date, denominations, count, history }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
@@ -179,6 +195,7 @@ export default function CashCount({ date, denominations, count, history }) {
                         <thead>
                             <tr className="border-b text-left text-xs uppercase text-slate-500">
                                 <th className="py-2 pr-4">Date</th>
+                                <th className="py-2 pr-4">Bundle / Slip Details</th>
                                 <th className="py-2 pr-4 text-right">AED</th>
                                 <th className="py-2 pr-4 text-right">OMR</th>
                                 <th className="py-2 pr-4 text-right">Difference</th>
@@ -186,22 +203,40 @@ export default function CashCount({ date, denominations, count, history }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {history.length === 0 && <tr><td colSpan="5" className="py-6 text-center text-slate-400">No counts saved yet.</td></tr>}
-                            {history.map((h) => (
-                                <tr key={h.id} className="border-b last:border-0 hover:bg-slate-200">
-                                    <td className="py-2 pr-4">{h.date}</td>
-                                    <td className="py-2 pr-4 text-right">{money(h.total_aed, 'AED')}</td>
-                                    <td className="py-2 pr-4 text-right">{money(h.total_omr, 'OMR')}</td>
-                                    <td className={'py-2 pr-4 text-right font-semibold ' + (h.variance === 0 ? 'text-emerald-700' : h.variance > 0 ? 'text-amber-600' : 'text-accent-red')}>
-                                        {h.variance === 0 ? 'Balanced' : `${h.variance > 0 ? '+' : ''}${num(h.variance)}`}
-                                    </td>
-                                    <td className="py-2 text-right whitespace-nowrap">
-                                        <a href={route('cash-count.pdf', h.id)} target="_blank" className="text-primary-600 hover:underline">PDF</a>
-                                        <button onClick={() => changeDate(h.date)} className="ml-3 text-navy-600 hover:underline">Edit</button>
-                                        {canWrite && <button onClick={() => deleteCount(h)} className="ml-3 text-accent-red hover:underline">Delete</button>}
-                                    </td>
-                                </tr>
-                            ))}
+                            {history.length === 0 && <tr><td colSpan="6" className="py-6 text-center text-slate-400">No counts saved yet.</td></tr>}
+                            {history.map((h) => {
+                                const details = summarizeExtras(h.extras);
+                                return (
+                                    <tr key={h.id} className="border-b last:border-0 hover:bg-slate-200">
+                                        <td className="py-2 pr-4 align-top">{h.date}</td>
+                                        <td className="py-2 pr-4 align-top text-xs">
+                                            {details.length === 0 ? (
+                                                <span className="text-slate-400">—</span>
+                                            ) : (
+                                                <div className="space-y-0.5">
+                                                    {details.map((d, i) => (
+                                                        <div key={i} className="whitespace-nowrap">
+                                                            <span className={d.direction === 'IN' ? 'font-semibold text-emerald-700' : 'font-semibold text-accent-red'}>{d.direction}</span>
+                                                            {' '}<span className="text-slate-500">{d.currency}</span>
+                                                            {' '}{d.label}: {money(d.amount, d.currency)}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="py-2 pr-4 text-right align-top">{money(h.total_aed, 'AED')}</td>
+                                        <td className="py-2 pr-4 text-right align-top">{money(h.total_omr, 'OMR')}</td>
+                                        <td className={'py-2 pr-4 text-right font-semibold align-top ' + (h.variance === 0 ? 'text-emerald-700' : h.variance > 0 ? 'text-amber-600' : 'text-accent-red')}>
+                                            {h.variance === 0 ? 'Balanced' : `${h.variance > 0 ? '+' : ''}${num(h.variance)}`}
+                                        </td>
+                                        <td className="py-2 text-right align-top whitespace-nowrap">
+                                            <a href={route('cash-count.pdf', h.id)} target="_blank" className="text-primary-600 hover:underline">PDF</a>
+                                            <button onClick={() => changeDate(h.date)} className="ml-3 text-navy-600 hover:underline">Edit</button>
+                                            {canWrite && <button onClick={() => deleteCount(h)} className="ml-3 text-accent-red hover:underline">Delete</button>}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
