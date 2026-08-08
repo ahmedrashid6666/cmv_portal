@@ -17,9 +17,12 @@ use App\Models\Transaction;
  *     = Total Amount
  *
  * Total Income = Σ Transaction.total_amount (Customs + Gov Fees + Other Amount +
- * Profit + VAT), cumulative through the worksheet date. Customs/Gov/Other Fees
- * are counted here as part of Total Income and then subtracted again on the
- * next line, so they net to zero; Profit and VAT flow through.
+ * Profit + VAT), cumulative through the worksheet date. Customs/Gov Fees are
+ * counted here as part of Total Income and then subtracted again on the next
+ * line, so they net to zero; Other Amount, Profit and VAT flow through and
+ * affect Total Amount for real — Other Amount must NOT also be added to
+ * "Customs/Gov Fees Paid" below, or it would net to zero too and vanish from
+ * the ladder entirely instead of flowing through.
  *   + Borrowed Amount - Daily Credit (Pending) = Total Balance Amount
  *   - All Bank A/C Balance - CDR A/C Balance = Total Cash Balance In Hand
  *
@@ -132,8 +135,7 @@ class FinalCalculationService
             'total_income' => round((float) Transaction::whereDate('transaction_date', '<=', $date)->sum('total_amount'), 2),
             'customs_gov_fees' => round(
                 (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('customs_fees')
-                + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('gov_fees')
-                + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('other_amount'),
+                + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('gov_fees'),
                 2,
             ),
             'credit_unpaid' => (float) $this->balances->creditOutstandingAsOf($date),
