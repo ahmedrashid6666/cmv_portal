@@ -189,9 +189,9 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
                                 <th className="py-2 pr-3 leading-tight">Sl No</th>
                                 {columns.map((c, i) => (
-                                    <th key={c} className={'py-2 pr-3 leading-tight ' + (isRight(i) ? 'text-right' : '')}>
+                                    <th key={c} className={'py-2 pr-3 leading-tight ' + (isRight(i) ? 'text-right ' : '') + (c === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
                                         {sortKeys[i] ? (
-                                            <button onClick={() => sortBy(sortKeys[i])} className={'inline-flex items-end gap-1 uppercase hover:text-navy-700 ' + (isRight(i) ? 'text-right' : 'text-left')}>
+                                            <button onClick={() => sortBy(sortKeys[i])} className={'inline-flex items-end gap-1 uppercase hover:text-navy-700 ' + (isRight(i) ? 'text-right' : 'text-left') + (c === 'Total Amount' ? ' hover:text-white' : '')}>
                                                 {c} {arrow(sortKeys[i])}
                                             </button>
                                         ) : c}
@@ -207,7 +207,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-200 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
                                     {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
                                     <td className="whitespace-nowrap py-2 pr-3 text-slate-400">{(rows.from || 1) + ri}</td>
-                                    {r.cells.map((cell, i) => <td key={i} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums' : '')}>{cell}</td>)}
+                                    {r.cells.map((cell, i) => <td key={i} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>{cell}</td>)}
                                     <td className="py-2 pr-3">
                                         {r.settle && canWrite ? (
                                             <button onClick={() => openSettle(r.settle)} title="Click to collect / pay / edit paid amount"
