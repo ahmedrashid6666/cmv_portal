@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Bank;
-use App\Models\BankEntry;
 use App\Models\CashCount;
 use App\Models\FinalCalculation;
 use App\Models\LedgerEntry;
@@ -19,11 +17,22 @@ use App\Models\Transaction;
  *     = Total Amount
  *
  * Total Income = Σ Transaction.total_amount (Customs + Gov Fees + Other Amount +
- * Profit + VAT), cumulative through the worksheet date. Customs/Gov Fees are
- * counted here as part of Total Income and then subtracted again on the next
- * line, so they net to zero; Other Amount, Profit and VAT flow through.
+ * Profit + VAT), cumulative through the worksheet date. Customs/Gov/Other Fees
+ * are counted here as part of Total Income and then subtracted again on the
+ * next line, so they net to zero; Profit and VAT flow through.
  *   + Borrowed Amount - Daily Credit (Pending) = Total Balance Amount
  *   - All Bank A/C Balance - CDR A/C Balance = Total Cash Balance In Hand
+ *
+ * All Bank A/C Balance / CDR A/C Balance MUST be each bank's actual current
+ * balance (BankService::balances() — the same figures shown on the Bank
+ * Accounts page), not a raw/pre-fee balance. This isn't just cosmetic
+ * consistency: any fee counted in "Customs/Gov/Other Fees Paid" above that
+ * was disbursed from a specific bank is *already* reflected in that bank's
+ * actual balance, so subtracting the actual balance here cancels the fee out
+ * exactly once overall (paid from a bank ⇒ doesn't touch cash; paid from no
+ * bank ⇒ correctly stays subtracted from cash via the row above). Using a
+ * pre-fee balance here would subtract that same fee a second time, making
+ * Total Cash Balance In Hand artificially — and incorrectly — too low.
  *
  * compute() runs the formulas above on a plain array of inputs (server-side on
  * save, and mirrored client-side in resources/js/lib/calc.js so on-screen
@@ -116,14 +125,15 @@ class FinalCalculationService
      */
     public function defaults(string $date): array
     {
-        [$bankAcBalance, $cdrAcBalance] = $this->rawBankBalances();
+        [$bankAcBalance, $cdrAcBalance] = $this->currentBankBalances();
 
         return array_merge([
             'opening_balance' => (float) Setting::get('cash_opening_balance', 0),
             'total_income' => round((float) Transaction::whereDate('transaction_date', '<=', $date)->sum('total_amount'), 2),
             'customs_gov_fees' => round(
                 (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('customs_fees')
-                + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('gov_fees'),
+                + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('gov_fees')
+                + (float) Transaction::whereDate('transaction_date', '<=', $date)->sum('other_amount'),
                 2,
             ),
             'credit_unpaid' => (float) $this->balances->creditOutstandingAsOf($date),
@@ -164,34 +174,24 @@ class FinalCalculationService
     }
 
     /**
-     * Every bank's raw position — opening balance plus manual BankEntry
-     * in/out movements only, deliberately *not* netting out customs/gov/
-     * office fees the way BankService::balances() does for its own callers
-     * (Bank Accounts page, dashboard, statements). Those fees are already
-     * subtracted once via the "Total Customs/Gov Fees Paid" row above, so
-     * re-netting them here would double-count them against Total Cash
-     * Balance In Hand.
+     * Every bank's actual current balance (same figures as the Bank Accounts
+     * page — opening balance, manual entries, *and* customs/gov/other/office
+     * fees disbursed from it), split into the CDR total and everything else.
+     * See the class docblock for why the actual (not pre-fee) balance is the
+     * correct figure to subtract here.
      *
      * @return array{0: float, 1: float} [allBankTotal, cdrTotal]
      */
-    private function rawBankBalances(): array
+    private function currentBankBalances(): array
     {
-        $customsBankId = $this->banks->customsBank()?->id;
-        $entriesIn = BankEntry::where('direction', 'in')->selectRaw('bank_id, SUM(amount) as total')->groupBy('bank_id')->pluck('total', 'bank_id');
-        $entriesOut = BankEntry::where('direction', 'out')->selectRaw('bank_id, SUM(amount) as total')->groupBy('bank_id')->pluck('total', 'bank_id');
-
         $bankTotal = 0.0;
         $cdrTotal = 0.0;
 
-        foreach (Bank::all() as $bank) {
-            $raw = (float) $bank->opening_balance
-                + (float) ($entriesIn[$bank->id] ?? 0)
-                - (float) ($entriesOut[$bank->id] ?? 0);
-
-            if ($bank->id === $customsBankId) {
-                $cdrTotal += $raw;
+        foreach ($this->banks->balances() as $bank) {
+            if ($bank['is_customs']) {
+                $cdrTotal += $bank['balance'];
             } else {
-                $bankTotal += $raw;
+                $bankTotal += $bank['balance'];
             }
         }
 

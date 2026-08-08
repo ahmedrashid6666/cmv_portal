@@ -41,22 +41,22 @@ it('sums customs and gov fees paid, date-scoped', function () {
     expect($data['customs_gov_fees'])->toBe(100.0);
 });
 
-it('splits raw bank balances (opening + entries only) between all banks and the CDR bank', function () {
+it('splits banks\' actual current balances (BankService::balances(), fees included) between all banks and the CDR bank', function () {
     $rak = Bank::create(['name' => 'RAK', 'account_no' => '1', 'opening_balance' => 1000]);
-    $cdr = Bank::create(['name' => 'CDR', 'account_no' => '2', 'opening_balance' => 500]);
-    Setting::put('customs_bank_id', $cdr->id);
+    $cdr = Bank::create(['name' => 'CDR', 'account_no' => '2', 'opening_balance' => 500, 'is_customs' => true]);
 
     BankEntry::create(['bank_id' => $rak->id, 'entry_date' => '2026-07-01', 'item' => 'Deposit', 'direction' => 'in', 'amount' => 300]);
     BankEntry::create(['bank_id' => $cdr->id, 'entry_date' => '2026-07-01', 'item' => 'Charge', 'direction' => 'out', 'amount' => 200]);
 
-    // A customs fee that BankService::balances() would net out of the CDR
-    // balance — rawBankBalances() must ignore it entirely.
+    // Customs fees always drain the CDR bank (BankService::balances()) — the
+    // worksheet's CDR A/C Balance must reflect that, matching the Bank
+    // Accounts page exactly, or the fee gets double-counted (see class docblock).
     Transaction::factory()->create(['transaction_date' => '2026-07-01', 'customs_fees' => 9999]);
 
     $data = $this->service->defaults('2026-07-01');
 
-    expect($data['bank_ac_balance'])->toBe(1300.0)   // 1000 + 300
-        ->and($data['cdr_ac_balance'])->toBe(300.0);  // 500 - 200, customs fee NOT subtracted
+    expect($data['bank_ac_balance'])->toBe(1300.0)    // 1000 + 300, no fees tied to RAK
+        ->and($data['cdr_ac_balance'])->toBe(-9699.0); // 500 - 200 - 9999 customs fee
 });
 
 it('reads borrowed and daily-credit pending totals live, not scoped to the date', function () {
