@@ -43,16 +43,6 @@
                     </tbody>
                 </table>
             @endif
-            @if(!empty($count->extras[$cur]))
-                <table class="den">
-                    <thead><tr><th colspan="2">{{ $cur }} Bundles / Slips (reference only)</th></tr></thead>
-                    <tbody>
-                    @foreach($count->extras[$cur] as $x)
-                        <tr><td>{{ $x['label'] ?? '' }}</td><td class="r">{{ number_format((float)($x['amount'] ?? 0), 2) }}</td></tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            @endif
         </td>
     @endforeach
     </tr></table>
