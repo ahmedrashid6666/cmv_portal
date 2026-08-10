@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
-import { money, num } from '@/lib/format';
+import { num } from '@/lib/format';
 import focusNextFieldOnEnter from '@/lib/focusNextFieldOnEnter';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
@@ -179,20 +179,16 @@ export default function CashCount({ date, denominations, count, history }) {
                         <thead>
                             <tr className="border-b text-left text-xs uppercase text-slate-500">
                                 <th className="py-2 pr-4">Date</th>
-                                <th className="py-2 pr-4 text-right">AED</th>
-                                <th className="py-2 pr-4 text-right">OMR</th>
                                 <th className="py-2 pr-4 text-right">AED Balance</th>
                                 <th className="py-2 pr-4 text-right">OMR Balance</th>
                                 <th className="py-2"></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {history.length === 0 && <tr><td colSpan="6" className="py-6 text-center text-slate-400">No counts saved yet.</td></tr>}
+                            {history.length === 0 && <tr><td colSpan="4" className="py-6 text-center text-slate-400">No counts saved yet.</td></tr>}
                             {history.map((h) => (
                                 <tr key={h.id} className="border-b last:border-0 hover:bg-slate-200">
                                     <td className="py-2 pr-4">{h.date}</td>
-                                    <td className="py-2 pr-4 text-right">{money(h.total_aed, 'AED')}</td>
-                                    <td className="py-2 pr-4 text-right">{money(h.total_omr, 'OMR')}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums text-slate-600">{h.balance_aed > 0 ? '+' : ''}{num(h.balance_aed)}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums text-slate-600">{h.balance_omr > 0 ? '+' : ''}{num(h.balance_omr)}</td>
                                     <td className="py-2 text-right whitespace-nowrap">

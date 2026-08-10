@@ -10,6 +10,9 @@
     table.den { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
     table.den th { background: #1e3a5f; color: #fff; text-align: left; padding: 5px; font-size: 10px; }
     table.den td { padding: 4px 5px; border-bottom: 1px solid #e2e8f0; }
+    table.slip th { text-align: center; border: 1px solid #10222f; }
+    table.slip td { border: 1px solid #cbd5e1; font-size: 10px; }
+    table.slip .tot td { background: #f1f5f9; text-align: right; }
     .r { text-align: right; }
     .tot { font-weight: bold; color: #1e3a5f; }
     .rec { margin-top: 14px; border-top: 2px solid #1e3a5f; padding-top: 8px; }
@@ -48,18 +51,29 @@
                 </table>
             @endif
             @php
-                // Keep original indices (not values()) so IN/OUT parity — even
-                // index = IN, odd = OUT — survives dropping blank rows.
-                $slips = collect($count->extras[$cur] ?? [])->filter(fn ($x) => trim($x['label'] ?? '') !== '' || (float) ($x['amount'] ?? 0) !== 0.0);
+                $slipExtras = $count->extras[$cur] ?? [];
+                $hasSlips = collect($slipExtras)->contains(fn ($x) => trim($x['label'] ?? '') !== '' || (float) ($x['amount'] ?? 0) !== 0.0);
+                $slipRows = max((int) ceil(count($slipExtras) / 2), 1);
+                $slipIn = fn ($row) => $slipExtras[$row * 2] ?? null;
+                $slipOut = fn ($row) => $slipExtras[$row * 2 + 1] ?? null;
             @endphp
-            @if($slips->isNotEmpty())
-                <table class="den">
-                    <thead><tr><th colspan="2">{{ $cur }} Slip Details</th></tr></thead>
+            @if($hasSlips)
+                <table class="den slip">
+                    <thead>
+                        <tr><th colspan="2">IN</th><th colspan="2">OUT</th></tr>
+                        <tr><th>Details</th><th class="r">Amount</th><th>Details</th><th class="r">Amount</th></tr>
+                    </thead>
                     <tbody>
-                    @foreach($slips as $i => $x)
-                        <tr><td>{{ $i % 2 === 0 ? 'IN' : 'OUT' }} — {{ $x['label'] ?? '' }}</td><td class="r">{{ number_format((float)($x['amount'] ?? 0), 2) }}</td></tr>
-                    @endforeach
-                    <tr class="tot"><td>Balance Amount</td><td class="r">{{ number_format(\App\Models\CashCount::extrasBalanceFor($cur, $count->extras ?? []), 2) }}</td></tr>
+                    @for($row = 0; $row < $slipRows; $row++)
+                        @php $in = $slipIn($row); $out = $slipOut($row); @endphp
+                        <tr>
+                            <td>{{ $in['label'] ?? '' }}</td>
+                            <td class="r">{{ $in && (float) ($in['amount'] ?? 0) !== 0.0 ? number_format((float) $in['amount'], 2) : '' }}</td>
+                            <td>{{ $out['label'] ?? '' }}</td>
+                            <td class="r">{{ $out && (float) ($out['amount'] ?? 0) !== 0.0 ? number_format((float) $out['amount'], 2) : '' }}</td>
+                        </tr>
+                    @endfor
+                    <tr class="tot"><td colspan="4">{{ $cur }} Balance Amount: {{ number_format(\App\Models\CashCount::extrasBalanceFor($cur, $count->extras ?? []), 2) }}</td></tr>
                     </tbody>
                 </table>
             @endif
