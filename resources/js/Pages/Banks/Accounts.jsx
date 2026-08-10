@@ -25,6 +25,15 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
                 <Stat label="Current Balance" value={money(totals.balance, 'AED')} accent="text-emerald-700" />
             </div>
 
+            {Math.abs(unassigned) >= 0.01 && (
+                <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    This adds up the balance of each individual bank account below. The Dashboard's <span className="font-semibold">Bank Balance</span> shows
+                    a higher figure of <span className="font-semibold">{money(combinedBankBalance, 'AED')}</span> — the difference,{' '}
+                    <span className="font-semibold">{money(unassigned, 'AED')}</span>, is money received by bank transfer that isn't tied to a specific
+                    account yet, so it can't be attributed to one of the banks below. Both numbers are correct; they answer different questions.
+                </p>
+            )}
+
             <Card title="Per-Bank Balances">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -81,13 +90,6 @@ export default function BankAccounts({ banks, totals, combinedBankBalance }) {
                         )}
                     </table>
                 </div>
-
-                {Math.abs(unassigned) >= 0.01 && (
-                    <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-                        The dashboard Bank Balance is <span className="font-semibold">{money(combinedBankBalance, 'AED')}</span>.
-                        The difference of <span className="font-semibold">{money(unassigned, 'AED')}</span> is bank sales / repayments not tied to a specific account.
-                    </p>
-                )}
             </Card>
 
             {openBank && <InOutDialog bank={banks.find((b) => b.id === openBank.id) || openBank} onClose={() => setOpenBank(null)} />}
