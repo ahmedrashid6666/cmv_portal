@@ -17,28 +17,33 @@
 <body>
     <div class="head">
         <div class="company">CMV Shipping</div>
-        <div style="font-size:13px;color:#158a8b;">Daily Cash Count — {{ $count->count_date->format('d-m-Y') }}</div>
+        <div style="font-size:13px;color:#158a8b;">Daily Cash Slip — {{ $count->count_date->format('d-m-Y') }}</div>
     </div>
 
     <table class="cols"><tr>
     @foreach(['AED','OMR'] as $cur)
         <td>
-            <table class="den">
-                <thead><tr><th>{{ $cur }} Denomination</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
-                <tbody>
-                @foreach($denominations[$cur] as $d)
-                    @php $qty = (float)($count->lines[$cur][(string)$d] ?? 0); @endphp
-                    <tr><td>{{ number_format($d, $d < 1 ? 2 : 0) }}</td><td class="r">{{ $qty ?: '' }}</td><td class="r">{{ $qty ? number_format($d*$qty, 2) : '' }}</td></tr>
-                @endforeach
-                <tr class="tot"><td colspan="2">TOTAL {{ $cur }}</td><td class="r">{{ number_format($cur==='OMR' ? $count->total_omr : $count->total_aed, $cur==='OMR'?3:2) }}</td></tr>
-                </tbody>
-            </table>
             @if(!empty($count->bundles[$cur]))
                 <table class="den">
                     <thead><tr><th>{{ $cur }} Bundles</th><th class="r">Amount</th></tr></thead>
                     <tbody>
                     @foreach($count->bundles[$cur] as $b)
                         <tr><td>{{ $b['label'] ?? '' }}</td><td class="r">{{ number_format((float)($b['amount'] ?? 0), 2) }}</td></tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            @endif
+            @php
+                // Keep original indices (not values()) so IN/OUT parity — even
+                // index = IN, odd = OUT — survives dropping blank rows.
+                $slips = collect($count->extras[$cur] ?? [])->filter(fn ($x) => trim($x['label'] ?? '') !== '' || (float) ($x['amount'] ?? 0) !== 0.0);
+            @endphp
+            @if($slips->isNotEmpty())
+                <table class="den">
+                    <thead><tr><th colspan="2">{{ $cur }} Slip Details</th></tr></thead>
+                    <tbody>
+                    @foreach($slips as $i => $x)
+                        <tr><td>{{ $i % 2 === 0 ? 'IN' : 'OUT' }} — {{ $x['label'] ?? '' }}</td><td class="r">{{ number_format((float)($x['amount'] ?? 0), 2) }}</td></tr>
                     @endforeach
                     </tbody>
                 </table>

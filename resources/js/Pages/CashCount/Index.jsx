@@ -56,8 +56,8 @@ export default function CashCount({ date, denominations, count, history }) {
     };
 
     return (
-        <AuthenticatedLayout header="Daily Cash Count">
-            <Head title="Daily Cash Count" />
+        <AuthenticatedLayout header="Daily Cash Slip">
+            <Head title="Daily Cash Slip" />
 
             <div onKeyDown={focusNextFieldOnEnter}>
             <div className="mb-4 flex flex-wrap items-end gap-3">

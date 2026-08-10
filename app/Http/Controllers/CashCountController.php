@@ -80,7 +80,6 @@ class CashCountController extends Controller
     {
         return Pdf::loadView('cash-count.pdf', [
             'count' => $cashCount,
-            'denominations' => CashCount::DENOMINATIONS,
         ])->download('cash-count-'.$cashCount->count_date->format('Y-m-d').'.pdf');
     }
 }
