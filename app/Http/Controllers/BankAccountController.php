@@ -29,6 +29,9 @@ class BankAccountController extends Controller
                 'gov_paid' => round(array_sum(array_column($rows, 'gov_paid')), 2),
                 'other_paid' => round(array_sum(array_column($rows, 'other_paid')), 2),
                 'office_expenses_paid' => round(array_sum(array_column($rows, 'office_expenses_paid')), 2),
+                'sale_receipts' => round(array_sum(array_column($rows, 'sale_receipts')), 2),
+                'credit_received' => round(array_sum(array_column($rows, 'credit_received')), 2),
+                'ledger_paid' => round(array_sum(array_column($rows, 'ledger_paid')), 2),
                 'balance' => round(array_sum(array_column($rows, 'balance')), 2),
             ],
             // The dashboard bank figure also includes bank sales / repayments that

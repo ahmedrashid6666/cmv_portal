@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class LedgerPayment extends Model
 {
-    protected $fillable = ['ledger_entry_id', 'payment_date', 'amount', 'payment_method_id', 'note', 'created_by'];
+    protected $fillable = ['ledger_entry_id', 'payment_date', 'amount', 'payment_method_id', 'bank_id', 'note', 'created_by'];
 
     protected function casts(): array
     {
@@ -21,5 +21,10 @@ class LedgerPayment extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class);
     }
 }

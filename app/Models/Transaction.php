@@ -20,7 +20,7 @@ class Transaction extends Model
         'transaction_date', 'invoice_no', 'boe_no',
         'customer_id', 'reference_id', 'vehicle_id', 'vehicle_number',
         'customs_fees', 'gov_fees', 'gov_bank_id', 'other_amount', 'other_bank_id', 'profit', 'vat_rate', 'currency', 'vat_amount', 'total_amount',
-        'payment_method_id', 'credit_amount', 'remarks', 'attachment_path',
+        'payment_method_id', 'bank_id', 'credit_amount', 'remarks', 'attachment_path',
         'grand_total', 'net_profit', 'created_by', 'custom_data', 'contact_numbers',
     ];
 
@@ -88,6 +88,12 @@ class Transaction extends Model
     public function otherBank()
     {
         return $this->belongsTo(Bank::class, 'other_bank_id');
+    }
+
+    /** The bank the sale's own receipt landed in (when paid via a bank-type method). */
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class);
     }
 
     public function creator()

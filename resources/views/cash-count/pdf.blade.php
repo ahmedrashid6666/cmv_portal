@@ -45,6 +45,7 @@
                     @foreach($slips as $i => $x)
                         <tr><td>{{ $i % 2 === 0 ? 'IN' : 'OUT' }} — {{ $x['label'] ?? '' }}</td><td class="r">{{ number_format((float)($x['amount'] ?? 0), 2) }}</td></tr>
                     @endforeach
+                    <tr class="tot"><td>Balance Amount</td><td class="r">{{ number_format(\App\Models\CashCount::extrasBalanceFor($cur, $count->extras ?? []), 2) }}</td></tr>
                     </tbody>
                 </table>
             @endif

@@ -47,6 +47,29 @@ class CashCount extends Model
         return round($total, $currency === 'OMR' ? 3 : 2);
     }
 
+    /**
+     * Net IN − OUT across the slip/extras list for a currency — the "Balance
+     * Amount" shown under each currency's Bundles/Slips table. Reference
+     * only, same as the slips themselves; not part of totalFor(). Extras
+     * alternate IN (even index) / OUT (odd index), mirroring the two-column
+     * layout on the Daily Cash Slip page.
+     */
+    public static function extrasBalanceFor(string $currency, array $extras): float
+    {
+        $in = 0.0;
+        $out = 0.0;
+        foreach (array_values($extras[$currency] ?? []) as $i => $item) {
+            $amount = (float) ($item['amount'] ?? 0);
+            if ($i % 2 === 0) {
+                $in += $amount;
+            } else {
+                $out += $amount;
+            }
+        }
+
+        return round($in - $out, 2);
+    }
+
     public function auditLabel(): string
     {
         return 'Cash count '.$this->count_date?->format('Y-m-d');

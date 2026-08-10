@@ -9,7 +9,7 @@ class CreditPayment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['transaction_id', 'payment_date', 'amount', 'payment_method_id', 'note', 'created_by'];
+    protected $fillable = ['transaction_id', 'payment_date', 'amount', 'payment_method_id', 'bank_id', 'note', 'created_by'];
 
     protected function casts(): array
     {
@@ -27,5 +27,10 @@ class CreditPayment extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function bank()
+    {
+        return $this->belongsTo(Bank::class);
     }
 }

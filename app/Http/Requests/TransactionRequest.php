@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\CustomField;
+use App\Rules\RequiredBankForPaymentMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -36,6 +37,7 @@ class TransactionRequest extends FormRequest
             'currency' => ['nullable', Rule::in(['AED', 'OMR'])],
 
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'bank_id' => ['nullable', 'exists:banks,id', new RequiredBankForPaymentMethod($this->input('payment_method_id'))],
             'credit_amount' => ['nullable', 'numeric', 'min:0'],
             'contact_numbers' => ['nullable', 'array'],
             'contact_numbers.*' => ['nullable', 'string', 'max:50'],

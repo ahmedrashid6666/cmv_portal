@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Bank;
 use App\Models\BankEntry;
+use App\Models\CreditPayment;
+use App\Models\LedgerEntry;
+use App\Models\LedgerPayment;
 use App\Models\OfficeExpense;
 use App\Models\Setting;
 use App\Models\Transaction;
@@ -20,11 +23,19 @@ use Illuminate\Support\Carbon;
  *    from the bank chosen there (other_bank_id).
  *  - Office expenses paid via a bank-type payment method optionally name the
  *    specific bank they were paid from (OfficeExpense.bank_id).
+ *  - A sale's own receipt (grand_total − credit_amount), a later credit
+ *    repayment (CreditPayment), and a Bulk Payment/Return settlement
+ *    (LedgerPayment) can each optionally name the specific bank they moved
+ *    through (Transaction.bank_id / CreditPayment.bank_id /
+ *    LedgerPayment.bank_id) whenever paid via a bank-type payment method.
  *
- * A bank's balance = opening_balance − customs paid from it − gov paid from it
- *                     − other amount paid from it − office expenses paid from it.
- * Sales received by bank transfer are not tied to a specific bank yet, so they
- * are reported separately as "unassigned" and never distort a bank statement.
+ * A bank's balance = opening_balance + sale receipts + credit repayments
+ *                     − customs paid − gov paid − other amount paid
+ *                     − office expenses paid − ledger (Bulk Payment/Return) paid.
+ * Any bank-type money-flow row left without a specific bank chosen (legacy
+ * data, or a payment method typed "bank" with no bank picked) is not tied to
+ * any bank here — it's reported separately as "unassigned" and never distorts
+ * a bank statement.
  */
 class BankService
 {
@@ -79,6 +90,25 @@ class BankService
             ->groupBy('bank_id')
             ->pluck('total', 'bank_id');
 
+        $receiptsByBank = Transaction::query()
+            ->whereNotNull('bank_id')
+            ->selectRaw('bank_id, SUM(grand_total - credit_amount) as total')
+            ->groupBy('bank_id')
+            ->pluck('total', 'bank_id');
+
+        $creditByBank = CreditPayment::query()
+            ->whereNotNull('bank_id')
+            ->whereHas('transaction')
+            ->selectRaw('bank_id, SUM(amount) as total')
+            ->groupBy('bank_id')
+            ->pluck('total', 'bank_id');
+
+        $ledgerByBank = LedgerPayment::query()
+            ->whereNotNull('bank_id')
+            ->selectRaw('bank_id, SUM(amount) as total')
+            ->groupBy('bank_id')
+            ->pluck('total', 'bank_id');
+
         // Manual in/out movements, newest first, grouped per bank for the dialog.
         $entriesByBank = BankEntry::query()
             ->orderByDesc('entry_date')
@@ -86,11 +116,14 @@ class BankService
             ->get()
             ->groupBy('bank_id');
 
-        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank, $otherByBank, $officeByBank, $entriesByBank) {
+        return Bank::orderBy('name')->get()->map(function ($bank) use ($customsBankId, $totalCustoms, $govByBank, $otherByBank, $officeByBank, $receiptsByBank, $creditByBank, $ledgerByBank, $entriesByBank) {
             $customs = $bank->id === $customsBankId ? $totalCustoms : 0.0;
             $gov = (float) ($govByBank[$bank->id] ?? 0);
             $other = (float) ($otherByBank[$bank->id] ?? 0);
             $office = (float) ($officeByBank[$bank->id] ?? 0);
+            $receipts = (float) ($receiptsByBank[$bank->id] ?? 0);
+            $credits = (float) ($creditByBank[$bank->id] ?? 0);
+            $ledgerPaid = (float) ($ledgerByBank[$bank->id] ?? 0);
             $opening = (float) $bank->opening_balance;
 
             $entries = ($entriesByBank[$bank->id] ?? collect())->map(fn ($e) => [
@@ -115,9 +148,12 @@ class BankService
                 'gov_paid' => round($gov, 2),
                 'other_paid' => round($other, 2),
                 'office_expenses_paid' => round($office, 2),
+                'sale_receipts' => round($receipts, 2),
+                'credit_received' => round($credits, 2),
+                'ledger_paid' => round($ledgerPaid, 2),
                 'total_in' => round($totalIn, 2),
                 'total_out' => round($totalOut, 2),
-                'balance' => round($opening + $totalIn - $totalOut - $customs - $gov - $other - $office, 2),
+                'balance' => round($opening + $totalIn - $totalOut - $customs - $gov - $other - $office + $receipts + $credits - $ledgerPaid, 2),
                 'entries' => $entries,
             ];
         })->all();
@@ -173,6 +209,38 @@ class BankService
             ->each(function ($e) use (&$events) {
                 $label = $e->description ?: $e->category?->name;
                 $events[] = $this->event($e->expense_date, $label ? 'Office expense — '.$label : 'Office expense', null, (float) $e->amount);
+            });
+
+        // Sale receipts landing directly in this bank
+        Transaction::query()
+            ->where('bank_id', $bank->id)
+            ->with('customer:id,name')
+            ->get()
+            ->each(function ($t) use (&$events) {
+                $amount = round((float) $t->grand_total - (float) $t->credit_amount, 2);
+                if ($amount > 0) {
+                    $events[] = $this->debitEvent($t->transaction_date, 'Sale receipt — '.($t->customer?->name ?? ''), $t->invoice_no, $amount);
+                }
+            });
+
+        // Credit repayments received into this bank
+        CreditPayment::query()
+            ->where('bank_id', $bank->id)
+            ->whereHas('transaction')
+            ->with(['transaction:id,invoice_no,customer_id', 'transaction.customer:id,name'])
+            ->get()
+            ->each(function ($p) use (&$events) {
+                $events[] = $this->debitEvent($p->payment_date, 'Credit repayment — '.($p->transaction?->customer?->name ?? ''), $p->transaction?->invoice_no, (float) $p->amount);
+            });
+
+        // Bulk Payment / Bulk Return settlements paid from this bank
+        LedgerPayment::query()
+            ->where('bank_id', $bank->id)
+            ->with('entry:id,party_name,type')
+            ->get()
+            ->each(function ($p) use (&$events) {
+                $label = $p->entry?->type === LedgerEntry::TYPE_BORROWED ? 'Loan return — ' : 'Credit settlement — ';
+                $events[] = $this->event($p->payment_date, $label.($p->entry?->party_name ?? ''), null, (float) $p->amount);
             });
 
         // Manual in/out movements: an "in" is a debit (adds), an "out" a credit (subtracts).
@@ -238,6 +306,20 @@ class BankService
             'ref' => $ref,
             'debit' => 0.0,
             'credit' => round($amount, 2),
+        ];
+    }
+
+    /**
+     * @return array{date: string, description: string, ref: string|null, debit: float, credit: float}
+     */
+    private function debitEvent($date, string $description, ?string $ref, float $amount): array
+    {
+        return [
+            'date' => $date instanceof Carbon ? $date->format('Y-m-d') : (string) $date,
+            'description' => $description,
+            'ref' => $ref,
+            'debit' => round($amount, 2),
+            'credit' => 0.0,
         ];
     }
 }

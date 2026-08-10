@@ -101,7 +101,7 @@ class TransactionController extends Controller
         return [
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'references' => Reference::orderBy('name')->get(['id', 'name', 'company']),
-            'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::orderBy('name')->get(['id', 'name', 'type']),
             'expenseCategories' => ExpenseCategory::orderBy('name')->get(['id', 'name']),
             'banks' => \App\Models\Bank::orderBy('name')->get(['id', 'name']),
             'customsBank' => app(\App\Services\BankService::class)->customsBank()?->only(['id', 'name']),

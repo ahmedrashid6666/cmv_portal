@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\CreditPayment;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
+use App\Rules\RequiredBankForPaymentMethod;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -33,7 +35,8 @@ class CreditPaymentController extends Controller
 
         return Inertia::render('Credits/Index', [
             'outstanding' => $outstanding,
-            'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name', 'type']),
+            'banks' => Bank::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -44,6 +47,7 @@ class CreditPaymentController extends Controller
             'payment_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'bank_id' => ['nullable', 'exists:banks,id', new RequiredBankForPaymentMethod($request->input('payment_method_id'))],
             'note' => ['nullable', 'string'],
         ]);
 

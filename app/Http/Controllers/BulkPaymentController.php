@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\LedgerEntry;
 use App\Models\LedgerPayment;
 use App\Models\PaymentMethod;
+use App\Rules\RequiredBankForPaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -54,7 +56,8 @@ class BulkPaymentController extends Controller
             'meta' => $meta,
             'filters' => ['search' => $search],
             'entries' => $entries,
-            'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name', 'type']),
+            'banks' => Bank::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -66,6 +69,7 @@ class BulkPaymentController extends Controller
             'mode' => ['required', Rule::in(['fifo', 'manual'])],
             'payment_date' => ['required', 'date'],
             'payment_method_id' => ['nullable', 'exists:payment_methods,id'],
+            'bank_id' => ['nullable', 'exists:banks,id', new RequiredBankForPaymentMethod($request->input('payment_method_id'))],
             'note' => ['nullable', 'string', 'max:255'],
             'entry_ids' => ['required', 'array', 'min:1'],
             'entry_ids.*' => ['integer'],
@@ -133,6 +137,7 @@ class BulkPaymentController extends Controller
                     'payment_date' => $data['payment_date'],
                     'amount' => $amt,
                     'payment_method_id' => $data['payment_method_id'] ?? null,
+                    'bank_id' => $data['bank_id'] ?? null,
                     'note' => $data['note'] ?? null,
                     'created_by' => $request->user()->id,
                 ]);

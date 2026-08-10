@@ -6,6 +6,7 @@ use App\Models\Bank;
 use App\Models\ExpenseCategory;
 use App\Models\OfficeExpense;
 use App\Models\PaymentMethod;
+use App\Rules\RequiredBankForPaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -13,7 +14,7 @@ use Inertia\Inertia;
 class OfficeExpenseController extends Controller
 {
     /** @return array<string, mixed> */
-    private function rules(): array
+    private function rules(Request $request): array
     {
         return [
             'expense_date' => ['required', 'date'],
@@ -22,7 +23,7 @@ class OfficeExpenseController extends Controller
             'amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['nullable', Rule::in(['AED', 'OMR'])],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
-            'bank_id' => ['nullable', 'exists:banks,id'],
+            'bank_id' => ['nullable', 'exists:banks,id', new RequiredBankForPaymentMethod($request->input('payment_method_id'))],
             'contact_numbers' => ['nullable', 'array'],
             'contact_numbers.*' => ['nullable', 'string', 'max:50'],
             'remarks' => ['nullable', 'string'],
@@ -47,7 +48,7 @@ class OfficeExpenseController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate($this->rules());
+        $data = $request->validate($this->rules($request));
         $data['contact_numbers'] = $this->cleanNumbers($data['contact_numbers'] ?? []);
 
         OfficeExpense::create([
@@ -83,7 +84,7 @@ class OfficeExpenseController extends Controller
 
     public function update(Request $request, OfficeExpense $officeExpense)
     {
-        $data = $request->validate($this->rules());
+        $data = $request->validate($this->rules($request));
         $data['contact_numbers'] = $this->cleanNumbers($data['contact_numbers'] ?? []);
 
         $officeExpense->update([

@@ -43,6 +43,38 @@ it('shows the cash count page with the expected balance', function () {
         ->assertInertia(fn ($p) => $p->has('expectedAed')->has('denominations'));
 });
 
+it('computes the slip Balance Amount as net IN minus OUT, alternating by index', function () {
+    $extras = [
+        'AED' => [
+            ['label' => 'OLD BAL', 'amount' => 24685],   // IN  (index 0)
+            ['label' => 'car wash', 'amount' => 20],      // OUT (index 1)
+            ['label' => '', 'amount' => 0],                // IN  (index 2, blank — still counted as 0)
+            ['label' => 'recharge', 'amount' => 20],       // OUT (index 3)
+        ],
+    ];
+
+    expect(App\Models\CashCount::extrasBalanceFor('AED', $extras))->toBe(24645.0)   // 24685 - 20 - 20
+        ->and(App\Models\CashCount::extrasBalanceFor('OMR', $extras))->toBe(0.0);
+});
+
+it("includes each date's slip Balance Amount in the Recent Counts history", function () {
+    CashCount::create([
+        'count_date' => '2026-07-27',
+        'lines' => ['AED' => [], 'OMR' => []],
+        'extras' => [
+            'AED' => [['label' => 'IN-1', 'amount' => 500], ['label' => 'OUT-1', 'amount' => 200]],
+            'OMR' => [],
+        ],
+        'total_aed' => 0,
+        'total_omr' => 0,
+    ]);
+
+    $this->actingAs($this->actor)->get(route('cash-count.index'))
+        ->assertOk()
+        ->assertInertia(fn ($p) => $p->where('history.0.balance_aed', fn ($v) => (float) $v === 300.0)
+            ->where('history.0.balance_omr', fn ($v) => (float) $v === 0.0));
+});
+
 it('exports a cash count PDF', function () {
     $c = CashCount::create(['count_date' => '2026-07-27', 'lines' => ['AED' => ['1000' => 1], 'OMR' => []], 'total_aed' => 1000, 'total_omr' => 0, 'expected_aed' => 900]);
 

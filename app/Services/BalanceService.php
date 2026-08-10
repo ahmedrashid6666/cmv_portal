@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Bank;
 use App\Models\Customer;
+use App\Models\LedgerPayment;
 use App\Models\OfficeExpense;
 use App\Models\Setting;
 use App\Models\Transaction;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\DB;
  *  - Transaction expenses are petty-cash outflows: they reduce the cash balance.
  *  - Office expenses are standalone outflows: they reduce cash or bank by the
  *    bucket of their own payment method.
+ *  - Bulk Payment / Bulk Return settlements (LedgerPayment) are standalone
+ *    outflows too: they reduce cash or bank by the bucket of their own
+ *    payment method, the same as office expenses.
  */
 class BalanceService
 {
@@ -37,8 +41,9 @@ class BalanceService
         $balance = bcadd($this->d($opening), $receipts, 2);
         $balance = bcadd($balance, $repayments, 2);
         $balance = bcsub($balance, $expenses, 2);
+        $balance = bcsub($balance, $this->officeExpensesByBucket('cash'), 2);
 
-        return bcsub($balance, $this->officeExpensesByBucket('cash'), 2);
+        return bcsub($balance, $this->ledgerPaymentsByBucket('cash'), 2);
     }
 
     /**
@@ -95,6 +100,7 @@ class BalanceService
         $balance = bcadd($this->d($opening), $receipts, 2);
         $balance = bcadd($balance, $repayments, 2);
         $balance = bcsub($balance, $this->officeExpensesByBucket('bank'), 2);
+        $balance = bcsub($balance, $this->ledgerPaymentsByBucket('bank'), 2);
 
         // Manual in/out movements recorded against a bank account.
         $balance = bcadd($balance, $this->d((string) (\App\Models\BankEntry::where('direction', 'in')->sum('amount') ?: '0')), 2);
@@ -249,6 +255,14 @@ class BalanceService
     private function officeExpensesByBucket(string $bucket): string
     {
         return $this->d((string) OfficeExpense::query()
+            ->whereHas('paymentMethod', fn ($q) => $q->where('type', $bucket))
+            ->sum('amount'));
+    }
+
+    /** Bulk Payment / Bulk Return settlements paid from the given bucket (cash|bank). */
+    private function ledgerPaymentsByBucket(string $bucket): string
+    {
+        return $this->d((string) LedgerPayment::query()
             ->whereHas('paymentMethod', fn ($q) => $q->where('type', $bucket))
             ->sum('amount'));
     }
