@@ -66,6 +66,7 @@ export default function TransactionEntryForm({
         vat_rate: transaction?.vat_rate ?? vatRate ?? 0,
         currency: transaction?.currency ?? 'AED',
         payment_method_id: transaction?.payment_method_id ?? '',
+        bank_id: transaction?.bank_id ?? '',
         credit_amount: transaction?.credit_amount ?? 0,
         contact_numbers: transaction?.contact_numbers?.length ? transaction.contact_numbers : [''],
         remarks: transaction?.remarks ?? '',
@@ -83,6 +84,13 @@ export default function TransactionEntryForm({
 
     const setCustom = (key, value) => setData('custom_data', { ...data.custom_data, [key]: value });
     const totals = useMemo(() => computeTotals(data), [data]);
+
+    const selectedMethod = paymentMethods.find((m) => String(m.id) === String(data.payment_method_id));
+    const isBankMethod = selectedMethod?.type === 'bank';
+    const setPaymentMethod = (id) => {
+        const method = paymentMethods.find((m) => String(m.id) === String(id));
+        setData({ ...data, payment_method_id: id, bank_id: method?.type === 'bank' ? data.bank_id : '' });
+    };
 
     const setCommission = (i, k, v) => setData('commissions', data.commissions.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
     const addCommission = () => setData('commissions', [...data.commissions, { label: `Com-${data.commissions.length + 1}`, amount: '', type: 'charged_to_customer', reference_id: '' }]);
@@ -220,11 +228,20 @@ export default function TransactionEntryForm({
                             </select>
                         </Field>
                         <Field label="Payment Method" required error={errors.payment_method_id}>
-                            <select className={input} value={data.payment_method_id} onChange={(e) => setData('payment_method_id', e.target.value)}>
+                            <select className={input} value={data.payment_method_id} onChange={(e) => setPaymentMethod(e.target.value)}>
                                 <option value="">Select…</option>
                                 {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                             </select>
                         </Field>
+                        {isBankMethod && (
+                            <Field label="Bank Account" required error={errors.bank_id}>
+                                <select className={input} value={data.bank_id} onChange={(e) => setData('bank_id', e.target.value)}>
+                                    <option value="">Select bank…</option>
+                                    {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                </select>
+                                <span className="mt-1 block text-xs text-slate-400">The sale receipt will be credited to this bank&rsquo;s balance.</span>
+                            </Field>
+                        )}
                         <Field label="Credit Amount" error={errors.credit_amount}>
                             <input type="number" step="0.01" className={input} value={data.credit_amount} onChange={(e) => setData('credit_amount', e.target.value)} />
                         </Field>

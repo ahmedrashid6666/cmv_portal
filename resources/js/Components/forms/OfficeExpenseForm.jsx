@@ -97,7 +97,7 @@ export default function OfficeExpenseForm({ officeExpense = null, expenseCategor
             </div>
 
             {isBankMethod && (
-                <Field label="Bank Account" error={errors.bank_id}>
+                <Field label="Bank Account" required error={errors.bank_id}>
                     <select className={input} value={data.bank_id} onChange={(e) => setData('bank_id', e.target.value)}>
                         <option value="">Select bank…</option>
                         {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}

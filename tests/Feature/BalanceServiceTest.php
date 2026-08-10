@@ -4,6 +4,8 @@ use App\Models\Bank;
 use App\Models\CreditPayment;
 use App\Models\Customer;
 use App\Models\ExpenseCategory;
+use App\Models\LedgerEntry;
+use App\Models\LedgerPayment;
 use App\Models\OfficeExpense;
 use App\Models\PaymentMethod;
 use App\Models\Setting;
@@ -118,6 +120,16 @@ it('nets a credit repayment out of dwsBalance only once it is dated on/before th
     expect($this->svc->dwsBalance('2026-07-05'))->toBe('-200.00');
     // On/after the repayment date: only the remaining 50 is outstanding.
     expect($this->svc->dwsBalance('2026-07-10'))->toBe('-50.00');
+});
+
+it('reduces cash or bank balance by Bulk Payment / Bulk Return settlements (previously untracked)', function () {
+    $entry = LedgerEntry::create(['type' => 'daily_credit', 'entry_date' => '2026-07-01', 'party_name' => 'ESQUBE', 'total_amount' => 1000, 'paid_amount' => 0]);
+
+    LedgerPayment::create(['ledger_entry_id' => $entry->id, 'payment_date' => '2026-07-05', 'amount' => 60, 'payment_method_id' => $this->cash->id]);
+    LedgerPayment::create(['ledger_entry_id' => $entry->id, 'payment_date' => '2026-07-06', 'amount' => 40, 'payment_method_id' => $this->bank->id]);
+
+    expect($this->svc->cashBalance())->toBe('-60.00')
+        ->and($this->svc->bankBalance())->toBe('-40.00');
 });
 
 it('excludes transactions and expenses dated after the worksheet date from dwsBalance', function () {

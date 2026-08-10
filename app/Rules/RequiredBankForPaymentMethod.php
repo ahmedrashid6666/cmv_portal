@@ -14,6 +14,12 @@ use Illuminate\Contracts\Validation\ValidationRule;
  */
 class RequiredBankForPaymentMethod implements ValidationRule
 {
+    /**
+     * Run even when bank_id is empty/absent — otherwise Laravel's `nullable`
+     * rule skips this check entirely before it ever sees the missing value.
+     */
+    public bool $implicit = true;
+
     public function __construct(private mixed $paymentMethodId) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void

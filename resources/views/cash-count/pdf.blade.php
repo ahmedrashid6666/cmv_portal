@@ -23,6 +23,20 @@
     <table class="cols"><tr>
     @foreach(['AED','OMR'] as $cur)
         <td>
+            <table class="den">
+                <thead><tr><th>{{ $cur }} Denom.</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
+                <tbody>
+                @foreach(\App\Models\CashCount::DENOMINATIONS[$cur] as $denom)
+                    @php $qty = (float) ($count->lines[$cur][(string) $denom] ?? 0); @endphp
+                    <tr>
+                        <td>{{ rtrim(rtrim(number_format($denom, 2), '0'), '.') }}</td>
+                        <td class="r">{{ $qty ?: '—' }}</td>
+                        <td class="r">{{ $qty ? number_format($denom * $qty, 2) : '—' }}</td>
+                    </tr>
+                @endforeach
+                <tr class="tot"><td colspan="2">Denomination Total</td><td class="r">{{ number_format(\App\Models\CashCount::totalFor($cur, $count->lines ?? [], [], []), $cur === 'OMR' ? 3 : 2) }}</td></tr>
+                </tbody>
+            </table>
             @if(!empty($count->bundles[$cur]))
                 <table class="den">
                     <thead><tr><th>{{ $cur }} Bundles</th><th class="r">Amount</th></tr></thead>
@@ -56,6 +70,7 @@
     <div class="rec">
         <table style="width:60%"><tbody>
             <tr><td>Counted (AED)</td><td class="r tot">AED {{ number_format($count->total_aed, 2) }}</td></tr>
+            <tr><td>Counted (OMR)</td><td class="r tot">OMR {{ number_format($count->total_omr, 3) }}</td></tr>
             <tr><td>Expected Cash (AED)</td><td class="r">AED {{ number_format($count->expected_aed, 2) }}</td></tr>
             @php $v = round($count->total_aed - $count->expected_aed, 2); @endphp
             <tr><td>Difference</td><td class="r tot">{{ $v==0 ? 'Balanced' : ($v>0?'Over':'Short').' AED '.number_format(abs($v),2) }}</td></tr>

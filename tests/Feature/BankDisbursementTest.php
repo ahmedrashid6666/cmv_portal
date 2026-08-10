@@ -2,6 +2,10 @@
 
 use App\Enums\Role;
 use App\Models\Bank;
+use App\Models\CreditPayment;
+use App\Models\Customer;
+use App\Models\LedgerEntry;
+use App\Models\LedgerPayment;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use App\Models\User;
@@ -83,6 +87,36 @@ it('shows the per-bank statement with customs disbursements', function () {
         ->get(route('bank-accounts.statement', $this->cdr->id))
         ->assertOk()
         ->assertInertia(fn ($p) => $p->where('statement.opening', 1000)->where('statement.closing', 880));
+});
+
+it('attributes a sale receipt, a credit repayment and a ledger settlement to the specific bank chosen', function () {
+    $bankMethod = PaymentMethod::factory()->create(['type' => 'bank']);
+    $customer = Customer::factory()->create();
+
+    // Sale receipt of 300 landing directly in RAK (grand_total 300, no credit).
+    $t = Transaction::factory()->create([
+        'customer_id' => $customer->id, 'payment_method_id' => $bankMethod->id, 'bank_id' => $this->rak->id,
+        'customs_fees' => 0, 'gov_fees' => 0, 'profit' => 300, 'credit_amount' => 0,
+    ]);
+    $t->recomputeTotals();
+
+    // Credit repayment of 50 received into RAK against a separate credit sale.
+    $credit = Transaction::factory()->create([
+        'customer_id' => $customer->id, 'payment_method_id' => $bankMethod->id,
+        'customs_fees' => 0, 'gov_fees' => 0, 'profit' => 200, 'credit_amount' => 200,
+    ]);
+    $credit->recomputeTotals();
+    CreditPayment::create(['transaction_id' => $credit->id, 'payment_date' => '2026-07-05', 'amount' => 50, 'payment_method_id' => $bankMethod->id, 'bank_id' => $this->rak->id]);
+
+    // Bulk Payment of 20 settled from RAK.
+    $entry = LedgerEntry::create(['type' => 'daily_credit', 'entry_date' => '2026-07-01', 'party_name' => 'ESQUBE', 'total_amount' => 100, 'paid_amount' => 0]);
+    LedgerPayment::create(['ledger_entry_id' => $entry->id, 'payment_date' => '2026-07-06', 'amount' => 20, 'payment_method_id' => $bankMethod->id, 'bank_id' => $this->rak->id]);
+
+    $rak = collect(app(BankService::class)->balances())->firstWhere('name', 'RAK');
+    expect((float) $rak['sale_receipts'])->toBe(300.0)
+        ->and((float) $rak['credit_received'])->toBe(50.0)
+        ->and((float) $rak['ledger_paid'])->toBe(20.0)
+        ->and((float) $rak['balance'])->toBe(830.0); // 500 opening + 300 + 50 - 20
 });
 
 it('builds a bank-wise report', function () {

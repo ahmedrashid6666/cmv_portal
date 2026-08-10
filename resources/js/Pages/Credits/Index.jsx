@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
-export default function CreditsIndex({ outstanding, paymentMethods }) {
+export default function CreditsIndex({ outstanding, paymentMethods, banks = [] }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const [payFor, setPayFor] = useState(null);
@@ -16,8 +16,16 @@ export default function CreditsIndex({ outstanding, paymentMethods }) {
         payment_date: todayLocalISO(),
         amount: '',
         payment_method_id: '',
+        bank_id: '',
         note: '',
     });
+
+    const selectedMethod = paymentMethods.find((m) => String(m.id) === String(data.payment_method_id));
+    const isBankMethod = selectedMethod?.type === 'bank';
+    const setPaymentMethod = (id) => {
+        const method = paymentMethods.find((m) => String(m.id) === String(id));
+        setData({ ...data, payment_method_id: id, bank_id: method?.type === 'bank' ? data.bank_id : '' });
+    };
 
     const open = (row) => { setPayFor(row); setData({ ...data, transaction_id: row.id, amount: row.outstanding }); };
     const submit = (e) => {
@@ -88,12 +96,22 @@ export default function CreditsIndex({ outstanding, paymentMethods }) {
                             </label>
                             <label className="block">
                                 <span className="mb-1 block text-xs font-medium text-slate-600">Received In</span>
-                                <select className={input} value={data.payment_method_id} onChange={(e) => setData('payment_method_id', e.target.value)}>
+                                <select className={input} value={data.payment_method_id} onChange={(e) => setPaymentMethod(e.target.value)}>
                                     <option value="">Select…</option>
                                     {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                                 {errors.payment_method_id && <span className="mt-1 block text-xs text-accent-red">{errors.payment_method_id}</span>}
                             </label>
+                            {isBankMethod && (
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Bank Account</span>
+                                    <select className={input} value={data.bank_id} onChange={(e) => setData('bank_id', e.target.value)}>
+                                        <option value="">Select bank…</option>
+                                        {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                    {errors.bank_id && <span className="mt-1 block text-xs text-accent-red">{errors.bank_id}</span>}
+                                </label>
+                            )}
                             <button disabled={processing} className="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">Record Payment</button>
                         </form>
                     </Card>

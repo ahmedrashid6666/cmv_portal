@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 
 const input = 'rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
-export default function BulkPayment({ meta, filters, entries, paymentMethods }) {
+export default function BulkPayment({ meta, filters, entries, paymentMethods, banks = [] }) {
     const isBorrowed = meta.type === 'borrowed';
     const [search, setSearch] = useState(filters.search || '');
     const [selected, setSelected] = useState({});          // id -> true
@@ -20,10 +20,18 @@ export default function BulkPayment({ meta, filters, entries, paymentMethods }) 
         amount: '',
         payment_date: todayLocalISO(),
         payment_method_id: '',
+        bank_id: '',
         note: '',
         entry_ids: [],
         allocations: {},
     });
+
+    const selectedMethod = paymentMethods.find((m) => String(m.id) === String(data.payment_method_id));
+    const isBankMethod = selectedMethod?.type === 'bank';
+    const setPaymentMethod = (id) => {
+        const method = paymentMethods.find((m) => String(m.id) === String(id));
+        setData({ ...data, payment_method_id: id, bank_id: method?.type === 'bank' ? data.bank_id : '' });
+    };
 
     const doSearch = (e) => { e?.preventDefault(); router.get(route('bulk.index', meta.slug), { search }, { preserveState: true, replace: true }); };
     const toggle = (id) => setSelected((s) => ({ ...s, [id]: !s[id] }));
@@ -156,11 +164,21 @@ export default function BulkPayment({ meta, filters, entries, paymentMethods }) 
                             </label>
                             <label className="block">
                                 <span className="mb-1 block text-xs font-medium text-slate-600">Received / Paid Via</span>
-                                <select className={input + ' w-full'} value={data.payment_method_id} onChange={(e) => setData('payment_method_id', e.target.value)}>
+                                <select className={input + ' w-full'} value={data.payment_method_id} onChange={(e) => setPaymentMethod(e.target.value)}>
                                     <option value="">—</option>
                                     {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                             </label>
+                            {isBankMethod && (
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Bank Account</span>
+                                    <select className={input + ' w-full'} value={data.bank_id} onChange={(e) => setData('bank_id', e.target.value)}>
+                                        <option value="">Select bank…</option>
+                                        {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                    {errors.bank_id && <span className="mt-1 block text-xs text-accent-red">{errors.bank_id}</span>}
+                                </label>
+                            )}
                             <label className="block">
                                 <span className="mb-1 block text-xs font-medium text-slate-600">Note</span>
                                 <input className={input + ' w-full'} value={data.note} onChange={(e) => setData('note', e.target.value)} />

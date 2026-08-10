@@ -62,6 +62,7 @@ class TransactionWriter
             'vat_rate' => $data['vat_rate'] ?? 0,
             'currency' => $data['currency'] ?? 'AED',
             'payment_method_id' => $data['payment_method_id'],
+            'bank_id' => $data['bank_id'] ?? null,
             'credit_amount' => $data['credit_amount'] ?? 0,
             'contact_numbers' => ! empty($data['contact_numbers']) ? array_values($data['contact_numbers']) : null,
             'remarks' => $data['remarks'] ?? null,

@@ -15,7 +15,7 @@ const statusStyle = {
     unpaid: 'bg-red-100 text-accent-red-dark',
 };
 
-export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], align = null, totals = null, isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods }) {
+export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], align = null, totals = null, isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods, banks = [] }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const canBulkDelete = ['super_admin', 'admin'].includes(role);
@@ -85,7 +85,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
         router.post(route('operations.bulk-delete'), { type, ids: selected }, { preserveScroll: true, onSuccess: () => setSelected([]) });
     };
 
-    const pay = useForm({ mode: 'fifo', amount: '', payment_date: todayLocalISO(), payment_method_id: '', note: '', entry_ids: [] });
+    const pay = useForm({ mode: 'fifo', amount: '', payment_date: todayLocalISO(), payment_method_id: '', bank_id: '', note: '', entry_ids: [] });
     const submitPay = (e) => {
         e.preventDefault();
         router.post(route('bulk.store', type), { ...pay.data, entry_ids: selected }, {
@@ -93,14 +93,26 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
             onSuccess: () => { setPayOpen(false); setSelected([]); pay.reset(); },
         });
     };
+    const payMethod = paymentMethods.find((m) => String(m.id) === String(pay.data.payment_method_id));
+    const payIsBank = payMethod?.type === 'bank';
+    const setPayMethod = (id) => {
+        const method = paymentMethods.find((m) => String(m.id) === String(id));
+        pay.setData({ ...pay.data, payment_method_id: id, bank_id: method?.type === 'bank' ? pay.data.bank_id : '' });
+    };
 
     // Settle dialog (click a status badge): collect a payment, or edit the paid amount.
-    const rcv = useForm({ transaction_id: null, amount: '', payment_date: todayLocalISO(), payment_method_id: '', note: '' });
+    const rcv = useForm({ transaction_id: null, amount: '', payment_date: todayLocalISO(), payment_method_id: '', bank_id: '', note: '' });
     const led = useForm({ paid_amount: '' });
     const openSettle = (s) => {
         setSettleRow(s);
-        if (s.kind === 'credit') rcv.setData({ transaction_id: s.id, amount: s.outstanding > 0 ? s.outstanding : '', payment_date: todayLocalISO(), payment_method_id: '', note: '' });
+        if (s.kind === 'credit') rcv.setData({ transaction_id: s.id, amount: s.outstanding > 0 ? s.outstanding : '', payment_date: todayLocalISO(), payment_method_id: '', bank_id: '', note: '' });
         else led.setData({ paid_amount: s.paid });
+    };
+    const rcvMethod = paymentMethods.find((m) => String(m.id) === String(rcv.data.payment_method_id));
+    const rcvIsBank = rcvMethod?.type === 'bank';
+    const setRcvMethod = (id) => {
+        const method = paymentMethods.find((m) => String(m.id) === String(id));
+        rcv.setData({ ...rcv.data, payment_method_id: id, bank_id: method?.type === 'bank' ? rcv.data.bank_id : '' });
     };
     const closeSettle = () => setSettleRow(null);
     const submitReceive = (e) => { e.preventDefault(); rcv.post(route('credits.store'), { preserveScroll: true, onSuccess: closeSettle }); };
@@ -188,6 +200,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                             <tr className="border-b text-left text-xs uppercase text-slate-500 align-bottom">
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
                                 <th className="py-2 pr-3 leading-tight">Sl No</th>
+                                <th className="py-2 pr-1 leading-tight"></th>
                                 {columns.map((c, i) => (
                                     <th key={c} className={'py-2 pr-3 leading-tight ' + (isRight(i) ? 'text-right ' : '') + (c === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
                                         {sortKeys[i] ? (
@@ -202,11 +215,16 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.data.length === 0 && <tr><td colSpan={columns.length + 4} className="py-10 text-center text-slate-400">No records for this filter.</td></tr>}
+                            {rows.data.length === 0 && <tr><td colSpan={columns.length + 5} className="py-10 text-center text-slate-400">No records for this filter.</td></tr>}
                             {rows.data.map((r, ri) => (
                                 <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-200 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
                                     {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
                                     <td className="whitespace-nowrap py-2 pr-3 text-slate-400">{(rows.from || 1) + ri}</td>
+                                    <td className="whitespace-nowrap py-2 pr-1">
+                                        {r.bank_missing && (
+                                            <span title="Bank payment recorded without a bank selected — edit this row to pick the correct bank." className="text-amber-500">⚠</span>
+                                        )}
+                                    </td>
                                     {r.cells.map((cell, i) => <td key={i} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>{cell}</td>)}
                                     <td className="py-2 pr-3">
                                         {r.settle && canWrite ? (
@@ -275,12 +293,22 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 </label>
                                 <label className="block">
                                     <span className="mb-1 block text-xs font-medium text-slate-600">Via</span>
-                                    <select className={input + ' w-full'} value={pay.data.payment_method_id} onChange={(e) => pay.setData('payment_method_id', e.target.value)}>
+                                    <select className={input + ' w-full'} value={pay.data.payment_method_id} onChange={(e) => setPayMethod(e.target.value)}>
                                         <option value="">—</option>
                                         {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                                     </select>
                                 </label>
                             </div>
+                            {payIsBank && (
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Bank Account</span>
+                                    <select className={input + ' w-full'} value={pay.data.bank_id} onChange={(e) => pay.setData('bank_id', e.target.value)}>
+                                        <option value="">Select bank…</option>
+                                        {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                    {pay.errors.bank_id && <span className="mt-1 block text-xs text-accent-red">{pay.errors.bank_id}</span>}
+                                </label>
+                            )}
                             <label className="block">
                                 <span className="mb-1 block text-xs font-medium text-slate-600">Note</span>
                                 <input className={input + ' w-full'} value={pay.data.note} onChange={(e) => pay.setData('note', e.target.value)} />
@@ -321,13 +349,23 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                     </label>
                                     <label className="block">
                                         <span className="mb-1 block text-xs font-medium text-slate-600">Via</span>
-                                        <select className={input + ' w-full'} value={rcv.data.payment_method_id} onChange={(e) => rcv.setData('payment_method_id', e.target.value)}>
+                                        <select className={input + ' w-full'} value={rcv.data.payment_method_id} onChange={(e) => setRcvMethod(e.target.value)}>
                                             <option value="">—</option>
                                             {paymentMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                                         </select>
                                         {rcv.errors.payment_method_id && <span className="mt-1 block text-xs text-accent-red">{rcv.errors.payment_method_id}</span>}
                                     </label>
                                 </div>
+                                {rcvIsBank && (
+                                    <label className="block">
+                                        <span className="mb-1 block text-xs font-medium text-slate-600">Bank Account</span>
+                                        <select className={input + ' w-full'} value={rcv.data.bank_id} onChange={(e) => rcv.setData('bank_id', e.target.value)}>
+                                            <option value="">Select bank…</option>
+                                            {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                        </select>
+                                        {rcv.errors.bank_id && <span className="mt-1 block text-xs text-accent-red">{rcv.errors.bank_id}</span>}
+                                    </label>
+                                )}
                                 <button disabled={rcv.processing} className="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">Receive Payment</button>
                             </form>
                         )}
@@ -339,7 +377,10 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 <ul className="space-y-1 text-sm">
                                     {settleRow.payments.map((p) => (
                                         <li key={p.id} className="flex items-center justify-between rounded bg-slate-50 px-2 py-1">
-                                            <span>{p.date} · {money(p.amount, settleRow.currency)} <span className="text-xs text-slate-400">{p.method}</span></span>
+                                            <span>
+                                                {p.date} · {money(p.amount, settleRow.currency)} <span className="text-xs text-slate-400">{p.method}</span>
+                                                {p.bank_missing && <span title="No bank selected for this bank payment — reverse and re-record it with the correct bank." className="ml-1 text-amber-500">⚠</span>}
+                                            </span>
                                             <button onClick={() => reversePayment(p.id)} className="text-xs text-accent-red hover:underline">Reverse</button>
                                         </li>
                                     ))}

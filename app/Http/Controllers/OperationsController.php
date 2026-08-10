@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\Customer;
 use App\Models\LedgerEntry;
 use App\Models\OfficeExpense;
@@ -57,7 +58,8 @@ class OperationsController extends Controller
             'filters' => ['search' => $search, 'from' => $from, 'to' => $to, 'status' => $status],
             'sort' => ['by' => $sort, 'dir' => $dir],
             'isLedger' => in_array($type, ['daily-credit', 'borrowed'], true),
-            'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name']),
+            'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name', 'type']),
+            'banks' => Bank::orderBy('name')->get(['id', 'name']),
         ]));
     }
 
@@ -207,6 +209,7 @@ class OperationsController extends Controller
             'payments' => $t->creditPayments->map(fn ($p) => [
                 'id' => $p->id, 'date' => $p->payment_date->format('d-m-Y'),
                 'amount' => (float) $p->amount, 'method' => $p->paymentMethod?->name ?? '—',
+                'bank_missing' => $p->paymentMethod?->type === 'bank' && ! $p->bank_id,
             ])->values(),
         ];
     }
@@ -271,7 +274,7 @@ class OperationsController extends Controller
     private function transactions(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
     {
         $query = Transaction::query()
-            ->with(['customer:id,name', 'reference:id,name', 'paymentMethod:id,name', 'creditPayments.paymentMethod:id,name'])
+            ->with(['customer:id,name', 'reference:id,name', 'paymentMethod:id,name,type', 'creditPayments.paymentMethod:id,name,type'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
@@ -314,6 +317,7 @@ class OperationsController extends Controller
             return [
                 'id' => $t->id, 'status' => $t->invoiceStatus(),
                 'action_url' => route('transactions.edit', $t->id), 'settle' => $this->creditSettle($t),
+                'bank_missing' => $t->paymentMethod?->type === 'bank' && ! $t->bank_id,
                 'cells' => [
                     $t->transaction_date->format('d-m-Y'),
                     $t->invoice_no ?? '—',
@@ -390,7 +394,7 @@ class OperationsController extends Controller
     {
         $query = Transaction::query()
             ->where('credit_amount', '>', 0)
-            ->with(['customer:id,name', 'reference:id,name', 'creditPayments.paymentMethod:id,name'])
+            ->with(['customer:id,name', 'reference:id,name', 'creditPayments.paymentMethod:id,name,type'])
             ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
@@ -418,6 +422,7 @@ class OperationsController extends Controller
                 'id' => $t->id,
                 'status' => $out <= 0 ? 'paid' : ($out < (float) $t->credit_amount ? 'partial' : 'unpaid'),
                 'action_url' => route('credits.index'), 'settle' => $this->creditSettle($t),
+                'bank_missing' => $t->creditPayments->contains(fn ($p) => $p->paymentMethod?->type === 'bank' && ! $p->bank_id),
                 'cells' => [
                     $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $this->contactCell($t), $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
                     \App\Support\Money::display($t->credit_amount, $t->currency),
@@ -436,7 +441,7 @@ class OperationsController extends Controller
     private function officeExpenses(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
     {
         $query = OfficeExpense::query()
-            ->with(['category:id,name', 'paymentMethod:id,name'])
+            ->with(['category:id,name', 'paymentMethod:id,name,type'])
             ->when($from, fn ($q) => $q->whereDate('expense_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('expense_date', '<=', $to))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('description', 'like', "%{$search}%")
@@ -459,6 +464,7 @@ class OperationsController extends Controller
 
         $rows = $query->paginate($this->perPage)->withQueryString()->through(fn ($e) => [
             'id' => $e->id, 'status' => null, 'action_url' => route('office-expenses.edit', $e->id),
+            'bank_missing' => $e->paymentMethod?->type === 'bank' && ! $e->bank_id,
             'cells' => [
                 $e->expense_date->format('d-m-Y'),
                 $e->category?->name ?? '—',
@@ -481,6 +487,7 @@ class OperationsController extends Controller
         $modelType = $type === 'daily-credit' ? 'daily_credit' : 'borrowed';
 
         $query = LedgerEntry::ofType($modelType)
+            ->with('payments.paymentMethod:id,name,type')
             ->when($from, fn ($q) => $q->whereDate('entry_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('entry_date', '<=', $to))
             ->when($status, fn ($q) => $q->where('status', $status))
@@ -491,7 +498,7 @@ class OperationsController extends Controller
                 ->orWhereHas('payments.paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
 
         // Totals across the whole filtered set (not just the current page).
-        $totalsSource = clone $query;
+        $totalsSource = (clone $query)->setEagerLoads([]);
         $agg = (clone $totalsSource)->selectRaw('SUM(total_amount) total_amount, SUM(paid_amount) paid_amount, SUM(balance_amount) balance_amount')->first();
         $t = $this->moneyFormatter($totalsSource);
         $totals = ['', '', '', '', '', $t($agg->total_amount), $t($agg->paid_amount), $t($agg->balance_amount)];
@@ -505,6 +512,7 @@ class OperationsController extends Controller
         $rows = $query->paginate($this->perPage)->withQueryString()->through(fn ($e) => [
             'id' => $e->id, 'status' => $e->status, 'action_url' => route('ledger.index', $type),
             'settle' => ['kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name, 'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount, 'currency' => $e->currency ?: 'AED'],
+            'bank_missing' => $e->payments->contains(fn ($p) => $p->paymentMethod?->type === 'bank' && ! $p->bank_id),
             'cells' => [
                 $e->entry_date->format('d-m-Y'), $e->party_name, $this->contactCell($e), $e->reference ?? '—', $e->vehicle_number ?? '—',
                 \App\Support\Money::display($e->total_amount, $e->currency),
