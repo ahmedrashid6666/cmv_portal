@@ -54,6 +54,7 @@ class FinalCalculationController extends Controller
                     'id' => $c->id,
                     'date' => $c->calc_date->format('Y-m-d'),
                     'total_cash_balance' => (float) $c->liquid_cash,
+                    'cash_counted' => (float) $c->cash_counted,
                     'cash_extra' => (float) $c->cash_extra,
                 ]),
         ]);

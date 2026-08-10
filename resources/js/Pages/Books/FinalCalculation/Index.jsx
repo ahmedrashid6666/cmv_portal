@@ -174,16 +174,18 @@ export default function FinalCalculation({ date, data, totals, saved, savedId, d
                             <tr className="border-b text-left text-xs uppercase text-slate-500">
                                 <th className="py-2 pr-4">Date</th>
                                 <th className="py-2 pr-4 text-right">Total Cash Balance</th>
+                                <th className="py-2 pr-4 text-right">Cash Counted</th>
                                 <th className="py-2 pr-4 text-right">Cash Extra</th>
                                 <th className="py-2"></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {history.length === 0 && <tr><td colSpan="4" className="py-6 text-center text-slate-400">No snapshots saved yet.</td></tr>}
+                            {history.length === 0 && <tr><td colSpan="5" className="py-6 text-center text-slate-400">No snapshots saved yet.</td></tr>}
                             {history.map((h) => (
                                 <tr key={h.id} className="border-b last:border-0 hover:bg-slate-200">
                                     <td className="py-2 pr-4">{h.date}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums">{num(h.total_cash_balance)}</td>
+                                    <td className="py-2 pr-4 text-right tabular-nums">{num(h.cash_counted)}</td>
                                     <td className={'py-2 pr-4 text-right font-semibold tabular-nums ' + (h.cash_extra === 0 ? 'text-emerald-700' : h.cash_extra > 0 ? 'text-amber-600' : 'text-accent-red')}>
                                         {h.cash_extra > 0 ? '+' : ''}{num(h.cash_extra)}
                                     </td>
