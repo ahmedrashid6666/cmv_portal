@@ -15,11 +15,12 @@ const statusStyle = {
     unpaid: 'bg-red-100 text-accent-red-dark',
 };
 
-export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], align = null, totals = null, isLedger, statusOptions, actionLabel, bulkDeletable, paymentMethods, banks = [] }) {
+export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], align = null, totals = null, isLedger, statusOptions, actionLabel, bulkDeletable, bulkPayable, paymentMethods, banks = [] }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const canBulkDelete = ['super_admin', 'admin'].includes(role);
-    const showChecks = bulkDeletable && canWrite;
+    const isCreditPayable = bulkPayable && !isLedger; // Transactions / Credits tabs — bulk-collect outstanding credit
+    const showChecks = (bulkDeletable || bulkPayable) && canWrite;
     const isBorrowed = type === 'borrowed';
     const isRight = (i) => (align ? !!align[i] : i >= 4);
 
@@ -88,7 +89,9 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const pay = useForm({ mode: 'fifo', amount: '', payment_date: todayLocalISO(), payment_method_id: '', bank_id: '', note: '', entry_ids: [] });
     const submitPay = (e) => {
         e.preventDefault();
-        router.post(route('bulk.store', type), { ...pay.data, entry_ids: selected }, {
+        const url = isCreditPayable ? route('credits.bulk-store') : route('bulk.store', type);
+        const idsKey = isCreditPayable ? 'transaction_ids' : 'entry_ids';
+        router.post(url, { ...pay.data, [idsKey]: selected }, {
             preserveScroll: true,
             onSuccess: () => { setPayOpen(false); setSelected([]); pay.reset(); },
         });
@@ -182,7 +185,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
             {showChecks && selected.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-navy-800 px-4 py-2 text-sm text-white">
                     <span>{selected.length} selected</span>
-                    {isLedger && canWrite && (
+                    {(isLedger || isCreditPayable) && canWrite && (
                         <button onClick={() => setPayOpen(true)} className="rounded-lg bg-primary-500 px-3 py-1.5 font-semibold hover:bg-primary-400">
                             {isBorrowed ? 'Bulk Return' : 'Bulk Payment'}
                         </button>
@@ -278,8 +281,8 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
             {payOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                        <h3 className="text-lg font-semibold text-navy-800">{isBorrowed ? 'Bulk Return' : 'Bulk Payment'} — {selected.length} entries</h3>
-                        <p className="mt-1 text-xs text-slate-500">The amount is distributed across the selected entries, oldest first (FIFO).</p>
+                        <h3 className="text-lg font-semibold text-navy-800">{isBorrowed ? 'Bulk Return' : 'Bulk Payment'} — {selected.length} {isCreditPayable ? 'invoices' : 'entries'}</h3>
+                        <p className="mt-1 text-xs text-slate-500">The amount is distributed across the selected {isCreditPayable ? 'invoices' : 'entries'}, oldest first (FIFO). Rows with nothing outstanding are skipped automatically.</p>
                         <form onSubmit={submitPay} className="mt-4 space-y-3">
                             <label className="block">
                                 <span className="mb-1 block text-xs font-medium text-slate-600">Total {isBorrowed ? 'Return' : 'Payment'} Amount</span>

@@ -345,7 +345,7 @@ class OperationsController extends Controller
             'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
             'align' => [false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, false],
             'totals' => $totals,
-            'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true];
+            'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true, 'bulkPayable' => true];
     }
 
     private function invoices(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
@@ -435,7 +435,7 @@ class OperationsController extends Controller
             'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null],
             'align' => [false, false, false, false, false, false, false, true, true],
             'totals' => $totals,
-            'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false];
+            'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false, 'bulkPayable' => true];
     }
 
     private function officeExpenses(?string $from, ?string $to, string $search, ?string $sort, string $dir): array

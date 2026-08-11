@@ -128,6 +128,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('credits', [CreditPaymentController::class, 'index'])->name('credits.index');
     Route::middleware('role:super_admin,admin,accountant')->group(function () {
         Route::post('credits', [CreditPaymentController::class, 'store'])->name('credits.store');
+        Route::post('credits/bulk', [CreditPaymentController::class, 'bulkStore'])->name('credits.bulk-store');
         Route::delete('credits/payments/{creditPayment}', [CreditPaymentController::class, 'destroyPayment'])->name('credits.payment.destroy');
     });
 
