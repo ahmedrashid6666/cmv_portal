@@ -124,9 +124,27 @@ MAIL_MAILER=log
 Then `php artisan key:generate`. Never reuse the live `APP_KEY` — a leaked demo key must not
 decrypt anything on production.
 
-**4. Bring it up** — the same steps as section 5 above (`migrate`, `db:seed`, `storage:link`,
-cache warm). A fresh database seeds itself with the Hark Creation branding; upload a different
-logo in **Settings → Company** to demo for a specific prospect.
+**4. Bring it up** — `setup-instance.sh` does steps 2–4 and the document-root wiring in one go:
+
+```bash
+APP_DIR=~/domains/harkcreation.com/shipaccdemo_app \
+DOC_ROOT=~/domains/harkcreation.com/public_html/shippingaccountsdemo \
+APP_URL=https://shippingaccountsdemo.harkcreation.com \
+APP_NAME="Hark Creation Accounts" \
+DB_NAME=u925208630_shipaccdemo DB_USER=u925208630_shipaccdemo \
+./setup-instance.sh
+```
+
+It prompts for the database password so the secret never reaches shell history. A fresh database
+seeds itself with the Hark Creation branding; upload a different logo in **Settings → Company** to
+demo for a specific prospect.
+
+> The app is installed **outside** the subdomain folder. A Hostinger subdomain's document root is
+> the folder itself, so cloning the repo into it would publish `.env`, `storage/` and `vendor/`
+> over HTTP. The script puts the app one level up and points the subdomain folder at the app's
+> `public/` — by symlink where possible, otherwise via a small front controller.
+
+After the first install, updates use the normal `./deploy.sh` from `$APP_DIR`.
 
 **5. Keep it out of search results** — add a `noindex` header or `robots.txt` on the subdomain so
 the demo does not surface next to the real site.

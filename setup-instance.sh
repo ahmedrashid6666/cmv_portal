@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# First-time install of a new instance (demo, or a new client) on Hostinger.
+#
+# deploy.sh updates an instance that already exists; this creates one. Run it
+# over SSH, from anywhere:
+#
+#   APP_DIR=~/domains/harkcreation.com/shipaccdemo_app \
+#   DOC_ROOT=~/domains/harkcreation.com/public_html/shippingaccountsdemo \
+#   APP_URL=https://shippingaccountsdemo.harkcreation.com \
+#   APP_NAME="Hark Creation Accounts" \
+#   DB_NAME=u925208630_shipaccdemo DB_USER=u925208630_shipaccdemo \
+#   ./setup-instance.sh
+#
+# The script prompts for the database password unless DB_PASSWORD is already
+# exported, so the secret lands only in the instance's .env — never in this
+# file, and never in shell history if you let it prompt.
+#
+# The app is installed OUTSIDE the document root on purpose. If the repo were
+# cloned straight into the subdomain folder, .env, storage/ and vendor/ would
+# all be fetchable over HTTP.
+
+set -euo pipefail
+
+REPO="${REPO:-https://github.com/ahmedrashid6666/cmv_portal.git}"
+BRANCH="${BRANCH:-phase1-build}"
+
+: "${APP_DIR:?Set APP_DIR — where the application lives (must be outside the document root)}"
+: "${DOC_ROOT:?Set DOC_ROOT — the subdomain folder the web server serves}"
+: "${APP_URL:?Set APP_URL — e.g. https://shippingaccountsdemo.harkcreation.com}"
+: "${DB_NAME:?Set DB_NAME}"
+: "${DB_USER:?Set DB_USER}"
+APP_NAME="${APP_NAME:-Hark Creation Accounts}"
+DB_HOST="${DB_HOST:-localhost}"
+
+# The default `php` on CloudLinux often lags what composer.json requires.
+if [ -n "${PHP_BIN:-}" ]; then
+    :
+elif [ -x /opt/alt/php83/usr/bin/php ]; then
+    PHP_BIN=/opt/alt/php83/usr/bin/php
+else
+    PHP_BIN="$(command -v php)"
+fi
+[ -x "$PHP_BIN" ] || { echo "No usable PHP binary. Set PHP_BIN=... (try: ls -d /opt/alt/php*/usr/bin/php)" >&2; exit 1; }
+echo "==> PHP: $PHP_BIN ($("$PHP_BIN" -r 'echo PHP_VERSION;'))"
+
+case "$(readlink -f "$APP_DIR")/" in
+    "$(readlink -f "$DOC_ROOT")"/*)
+        echo "Refusing to install: APP_DIR is inside DOC_ROOT, which would expose .env over HTTP." >&2
+        exit 1
+        ;;
+esac
+
+# ---------------------------------------------------------------- code
+if [ -d "$APP_DIR/.git" ]; then
+    echo "==> Updating existing checkout at $APP_DIR"
+    git -C "$APP_DIR" fetch origin "$BRANCH"
+    git -C "$APP_DIR" checkout "$BRANCH"
+    git -C "$APP_DIR" pull origin "$BRANCH"
+else
+    echo "==> Cloning $BRANCH into $APP_DIR"
+    mkdir -p "$(dirname "$APP_DIR")"
+    git clone -b "$BRANCH" "$REPO" "$APP_DIR"
+fi
+
+cd "$APP_DIR"
+
+# vendor/ and public/build/ are committed, so this is a no-op refresh when
+# Composer is unavailable on the host.
+if command -v composer >/dev/null 2>&1; then
+    echo "==> Refreshing PHP dependencies"
+    "$PHP_BIN" "$(command -v composer)" install --no-dev --optimize-autoloader
+fi
+
+# ---------------------------------------------------------------- .env
+if [ -f .env ]; then
+    echo "==> .env already exists — leaving it untouched"
+else
+    echo "==> Creating .env"
+    if [ -z "${DB_PASSWORD:-}" ]; then
+        printf 'Database password for %s: ' "$DB_USER" >&2
+        read -rs DB_PASSWORD
+        echo >&2
+    fi
+
+    cat > .env <<ENV
+APP_NAME="${APP_NAME}"
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=${APP_URL}
+
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
+
+LOG_CHANNEL=stack
+LOG_LEVEL=error
+
+DB_CONNECTION=mysql
+DB_HOST=${DB_HOST}
+DB_PORT=3306
+DB_DATABASE=${DB_NAME}
+DB_USERNAME=${DB_USER}
+DB_PASSWORD="${DB_PASSWORD}"
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+
+MAIL_MAILER=log
+MAIL_FROM_ADDRESS="no-reply@harkcreation.com"
+MAIL_FROM_NAME="\${APP_NAME}"
+ENV
+    unset DB_PASSWORD
+    chmod 600 .env
+
+    "$PHP_BIN" artisan key:generate --force
+fi
+
+# ---------------------------------------------------------------- database
+echo "==> Running migrations"
+"$PHP_BIN" artisan migrate --force
+
+echo "==> Seeding defaults"
+"$PHP_BIN" artisan db:seed --class=DefaultDataSeeder --force
+
+"$PHP_BIN" artisan storage:link || true
+
+# ---------------------------------------------------------------- document root
+# The subdomain folder is fixed by the panel, so point it at the app's public/.
+# A symlink keeps future deploys free: new build assets appear with no copying.
+echo "==> Wiring $DOC_ROOT -> $APP_DIR/public"
+if [ -L "$DOC_ROOT" ]; then
+    ln -sfn "$APP_DIR/public" "$DOC_ROOT"
+elif [ -d "$DOC_ROOT" ] && [ -z "$(ls -A "$DOC_ROOT")" ]; then
+    rmdir "$DOC_ROOT" && ln -s "$APP_DIR/public" "$DOC_ROOT"
+else
+    # Panel-managed or non-empty directory: serve from inside it instead, with
+    # a front controller that boots the app from its real location.
+    echo "    (directory is not empty — installing a front controller instead of a symlink)"
+    cp -R "$APP_DIR/public/." "$DOC_ROOT/"
+    cat > "$DOC_ROOT/index.php" <<'PHPFRONT'
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+
+define('LARAVEL_START', microtime(true));
+
+// The application lives outside this document root — see setup-instance.sh.
+$base = require __DIR__.'/app-path.php';
+
+if (file_exists($maintenance = $base.'/storage/framework/maintenance.php')) {
+    require $maintenance;
+}
+
+require $base.'/vendor/autoload.php';
+
+/** @var Application $app */
+$app = require_once $base.'/bootstrap/app.php';
+
+$app->handleRequest(Request::capture());
+PHPFRONT
+    printf "<?php return '%s';\n" "$(readlink -f "$APP_DIR")" > "$DOC_ROOT/app-path.php"
+fi
+
+# ---------------------------------------------------------------- caches
+echo "==> Warming caches"
+"$PHP_BIN" artisan config:cache
+"$PHP_BIN" artisan route:cache
+"$PHP_BIN" artisan view:cache
+
+echo
+echo "==> Done. $APP_URL should now serve the app."
+echo "    Log in, then change the seeded admin password immediately."
