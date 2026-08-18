@@ -31,6 +31,9 @@ echo "==> Installing PHP dependencies..."
 echo "==> Running migrations..."
 "$PHP_BIN" artisan migrate --force
 
+# No-op unless the document root is a copy rather than a symlink (see .docroot).
+"$(dirname "$0")/sync-docroot.sh"
+
 echo "==> Refreshing caches..."
 "$PHP_BIN" artisan config:cache
 "$PHP_BIN" artisan route:cache

@@ -5,6 +5,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title inertia>{{ $appName }}</title>
+        {{-- Client-side page titles read this, so they follow the deployment. --}}
+        <meta name="app-name" content="{{ $appName }}">
 
         {{-- Favicons --}}
         <link rel="icon" type="image/svg+xml" href="{{ url($company['logo']) }}">

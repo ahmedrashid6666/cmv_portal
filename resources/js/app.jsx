@@ -5,10 +5,14 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+// Deliberately NOT import.meta.env.VITE_APP_NAME: Vite inlines env vars at
+// build time, so the committed bundle would carry the app name of whoever ran
+// `npm run build` onto every deployment. The server renders this meta tag per
+// request instead, which keeps the bundle brand-free.
+const appName = document.querySelector('meta[name="app-name"]')?.content ?? '';
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    title: (title) => (appName ? `${title} - ${appName}` : title),
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.jsx`,

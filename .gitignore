@@ -1,6 +1,7 @@
 *.log
 .DS_Store
 .env
+.docroot
 /.claude
 .env.backup
 .env.production

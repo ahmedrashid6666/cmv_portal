@@ -164,6 +164,33 @@ it('leaves no hardcoded company name in templates or components', function () {
     expect($offenders)->toBe([]);
 });
 
+it('ships a brand-free frontend bundle', function () {
+    // Vite inlines import.meta.env at build time, so a VITE_APP_NAME baked into
+    // the committed bundle would title every deployment after whoever last ran
+    // `npm run build`. This caught exactly that on the first demo deploy.
+    $assets = glob(public_path('build/assets/*.js'));
+
+    expect($assets)->not->toBeEmpty();
+
+    $offenders = array_values(array_filter(
+        $assets,
+        fn ($file) => str_contains(file_get_contents($file), 'CMV')
+    ));
+
+    expect(array_map('basename', $offenders))->toBe([]);
+});
+
+it('renders the app name for client-side page titles', function () {
+    config()->set('app.name', 'Gulf Freight Accounts');
+
+    $html = $this->actingAs(User::factory()->role(Role::ADMIN)->create())
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->toContain('<meta name="app-name" content="Gulf Freight Accounts">');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Existing deployments keep their branding

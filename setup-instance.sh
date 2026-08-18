@@ -177,32 +177,11 @@ else
 fi
 
 if [ "$DOCROOT_MODE" = copy ]; then
-    # public/index.php resolves the app via __DIR__/.. — wrong from here, so the
-    # copy gets a front controller that reads the real location from a file.
-    cat > "$DOC_ROOT/index.php" <<'PHPFRONT'
-<?php
-
-use Illuminate\Foundation\Application;
-use Illuminate\Http\Request;
-
-define('LARAVEL_START', microtime(true));
-
-// The application lives outside this document root — see setup-instance.sh.
-$base = require __DIR__.'/app-path.php';
-
-if (file_exists($maintenance = $base.'/storage/framework/maintenance.php')) {
-    require $maintenance;
-}
-
-require $base.'/vendor/autoload.php';
-
-/** @var Application $app */
-$app = require_once $base.'/bootstrap/app.php';
-
-$app->handleRequest(Request::capture());
-PHPFRONT
-    printf "<?php return '%s';\n" "$(readlink -f "$APP_DIR")" > "$DOC_ROOT/app-path.php"
-    rm -f "$DOC_ROOT/index.html" "$DOC_ROOT/index.htm" "$DOC_ROOT/default.html" "$DOC_ROOT/default.htm"
+    # Record the path so deploy.sh can refresh this copy on every future pull.
+    printf '%s\n' "$DOC_ROOT" > "$APP_DIR/.docroot"
+    "$APP_DIR/sync-docroot.sh" "$DOC_ROOT"
+else
+    rm -f "$APP_DIR/.docroot"
 fi
 
 # ---------------------------------------------------------------- caches
