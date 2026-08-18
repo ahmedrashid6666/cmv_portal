@@ -128,18 +128,57 @@ echo "==> Seeding defaults"
 "$PHP_BIN" artisan storage:link || true
 
 # ---------------------------------------------------------------- document root
-# The subdomain folder is fixed by the panel, so point it at the app's public/.
-# A symlink keeps future deploys free: new build assets appear with no copying.
+# The panel fixes the subdomain folder as the document root, so it has to end up
+# serving the app's public/ directory.
+#
+# A symlink is strongly preferred: it costs nothing on future deploys, because
+# new build assets appear the moment git pulls them. Copying works too, but then
+# every deploy has to re-sync the copy, which is easy to forget.
 echo "==> Wiring $DOC_ROOT -> $APP_DIR/public"
+
+# A brand-new subdomain ships with a placeholder page. Apache's DirectoryIndex
+# prefers index.html over index.php, so leaving one behind means the placeholder
+# is served instead of the app. These are the only names we will clear out.
+PLACEHOLDERS='index.html index.htm default.html default.htm index.php.bak .well-known'
+
+docroot_has_only_placeholders() {
+    local entry
+    for entry in "$DOC_ROOT"/* "$DOC_ROOT"/.[!.]*; do
+        [ -e "$entry" ] || continue
+        case " $PLACEHOLDERS " in
+            *" $(basename "$entry") "*) ;;
+            *) return 1 ;;
+        esac
+    done
+    return 0
+}
+
 if [ -L "$DOC_ROOT" ]; then
     ln -sfn "$APP_DIR/public" "$DOC_ROOT"
-elif [ -d "$DOC_ROOT" ] && [ -z "$(ls -A "$DOC_ROOT")" ]; then
-    rmdir "$DOC_ROOT" && ln -s "$APP_DIR/public" "$DOC_ROOT"
+    DOCROOT_MODE=symlink
+elif [ ! -e "$DOC_ROOT" ]; then
+    ln -s "$APP_DIR/public" "$DOC_ROOT"
+    DOCROOT_MODE=symlink
+elif [ -d "$DOC_ROOT" ] && docroot_has_only_placeholders; then
+    echo "    (clearing placeholder page, then linking)"
+    rm -rf "${DOC_ROOT:?}"/* "${DOC_ROOT:?}"/.[!.]* 2>/dev/null || true
+    if rmdir "$DOC_ROOT" 2>/dev/null && ln -s "$APP_DIR/public" "$DOC_ROOT" 2>/dev/null; then
+        DOCROOT_MODE=symlink
+    else
+        # Panel owns the directory and will not let it be replaced.
+        mkdir -p "$DOC_ROOT"
+        cp -R "$APP_DIR/public/." "$DOC_ROOT/"
+        DOCROOT_MODE=copy
+    fi
 else
-    # Panel-managed or non-empty directory: serve from inside it instead, with
-    # a front controller that boots the app from its real location.
-    echo "    (directory is not empty — installing a front controller instead of a symlink)"
+    echo "    (directory holds files I will not touch — copying instead of linking)"
     cp -R "$APP_DIR/public/." "$DOC_ROOT/"
+    DOCROOT_MODE=copy
+fi
+
+if [ "$DOCROOT_MODE" = copy ]; then
+    # public/index.php resolves the app via __DIR__/.. — wrong from here, so the
+    # copy gets a front controller that reads the real location from a file.
     cat > "$DOC_ROOT/index.php" <<'PHPFRONT'
 <?php
 
@@ -163,6 +202,7 @@ $app = require_once $base.'/bootstrap/app.php';
 $app->handleRequest(Request::capture());
 PHPFRONT
     printf "<?php return '%s';\n" "$(readlink -f "$APP_DIR")" > "$DOC_ROOT/app-path.php"
+    rm -f "$DOC_ROOT/index.html" "$DOC_ROOT/index.htm" "$DOC_ROOT/default.html" "$DOC_ROOT/default.htm"
 fi
 
 # ---------------------------------------------------------------- caches
