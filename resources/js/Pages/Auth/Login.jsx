@@ -4,9 +4,10 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 
 export default function Login({ status, canResetPassword }) {
+    const { demo } = usePage().props;
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -95,6 +96,22 @@ export default function Login({ status, canResetPassword }) {
                     </PrimaryButton>
                 </div>
             </form>
+
+            {demo?.enabled && (
+                <div className="mt-6 border-t border-slate-200 pt-5">
+                    <button
+                        type="button"
+                        onClick={() => router.post(route('demo.login'))}
+                        disabled={processing}
+                        className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+                    >
+                        Explore the demo
+                    </button>
+                    <p className="mt-2 text-center text-xs text-slate-500">
+                        Signs you straight in with sample data. No account needed.
+                    </p>
+                </div>
+            )}
         </GuestLayout>
     );
 }

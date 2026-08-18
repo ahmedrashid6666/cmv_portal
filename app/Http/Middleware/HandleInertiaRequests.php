@@ -42,6 +42,7 @@ class HandleInertiaRequests extends Middleware
                 'logo' => Branding::logo(),
                 'logoInvertOnDark' => Branding::all()['logo_invert_on_dark'],
             ],
+            'demo' => ['enabled' => (bool) config('demo.enabled')],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

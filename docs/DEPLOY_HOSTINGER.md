@@ -146,7 +146,37 @@ demo for a specific prospect.
 
 After the first install, updates use the normal `./deploy.sh` from `$APP_DIR`.
 
-**5. Keep it out of search results** — add a `noindex` header or `robots.txt` on the subdomain so
+**5. Sample books and one-click login** — a fresh install has no transactions, so every
+dashboard and chart is empty. Seed demo books and the demo account:
+
+```bash
+php artisan db:seed --class=DemoDataSeeder
+```
+
+Then add to the demo's `.env` and re-cache config:
+
+```
+DEMO_MODE=true
+```
+
+That puts an **Explore the demo** button on the login page which signs visitors straight in as
+`demo@harkcreation.com`, an **accountant** — they can enter and edit data, but Administration
+(users, settings, backups, recycle bin, activity log) is hidden *and* refused server-side. Only
+the seeded super admin sees it.
+
+`DEMO_MODE` is off by default and the route is not registered without it, so deploying this to a
+real installation leaves no passwordless way in.
+
+To clear whatever prospects have entered and start fresh, name the database explicitly:
+
+```bash
+DEMO_RESET=u925208630_shipaccdemo php artisan db:seed --class=DemoDataSeeder
+```
+
+The seeder refuses to run at all against a database that already holds transactions unless that
+name matches, so it cannot damage a live install.
+
+**6. Keep it out of search results** — add a `noindex` header or `robots.txt` on the subdomain so
 the demo does not surface next to the real site.
 
 > **Before running any artisan command in the demo folder, check `DB_DATABASE` points at the demo
