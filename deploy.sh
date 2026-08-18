@@ -22,8 +22,17 @@ if [ ! -x "$PHP_BIN" ]; then
     exit 1
 fi
 
-echo "==> Pulling $BRANCH..."
-git pull origin "$BRANCH"
+# The pull below can rewrite this very script. Bash reads a script lazily, by
+# byte offset, so carrying on afterwards can execute a mix of the old and new
+# file — which is how a deploy once skipped a step that had just been added.
+# Pull, then restart once from the updated copy.
+if [ -z "${DEPLOY_REEXEC:-}" ]; then
+    echo "==> Pulling $BRANCH..."
+    git pull origin "$BRANCH"
+
+    export DEPLOY_REEXEC=1
+    exec "$0" "$@"
+fi
 
 echo "==> Installing PHP dependencies..."
 "$PHP_BIN" "$(command -v composer)" install --no-dev --optimize-autoloader
