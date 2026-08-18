@@ -23,13 +23,17 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    // Passwordless sign-in for the sales demo. Registered ONLY when demo mode
-    // is on, so a real installation has no such route to reach.
-    if (config('demo.enabled')) {
-        Route::post('demo-login', DemoLoginController::class)
-            ->middleware('throttle:10,1')
-            ->name('demo.login');
-    }
+    // Passwordless sign-in for the sales demo. The controller 404s unless
+    // demo mode is on.
+    //
+    // Registered unconditionally on purpose: `route:cache` compiles this file
+    // once, so a config-conditional registration freezes whatever the flag was
+    // at cache time. That desyncs from config:cache — which is exactly how the
+    // button once rendered while its route 404'd. Gating in the controller is
+    // evaluated per request against live config, so the two cannot drift.
+    Route::post('demo-login', DemoLoginController::class)
+        ->middleware('throttle:10,1')
+        ->name('demo.login');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');

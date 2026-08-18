@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -26,13 +27,52 @@ function withDemoMode(bool $enabled, Closure $test): void
     }
 }
 
-it('does not register the demo route when demo mode is off', function () {
+it('404s the demo login when demo mode is off', function () {
     withDemoMode(false, function () {
-        expect(config('demo.enabled'))->toBeFalse()
-            ->and(Route::has('demo.login'))->toBeFalse();
+        expect(config('demo.enabled'))->toBeFalse();
 
-        // Not merely hidden — there is nothing there to reach.
         $this->post('/demo-login')->assertNotFound();
+        $this->assertGuest();
+    });
+});
+
+it('404s the demo login even when the route table was cached with demo mode on', function () {
+    // The route is registered unconditionally and gated in the controller
+    // precisely so this holds. A config-conditional registration would be
+    // frozen by route:cache and could not react to the flag changing —
+    // which once left the button rendering against a 404 route.
+    withDemoMode(true, function () {
+        Artisan::call('route:cache');
+
+        try {
+            putenv('DEMO_MODE=false');
+            test()->refreshApplication();
+            test()->artisan('migrate');
+
+            expect(config('demo.enabled'))->toBeFalse();
+            $this->post('/demo-login')->assertNotFound();
+            $this->assertGuest();
+        } finally {
+            Artisan::call('route:clear');
+        }
+    });
+});
+
+it('keeps the demo route in the cached table regardless of the flag', function () {
+    // The pair of assertions across this test and the one above is the whole
+    // fix: the route is always compiled in, and whether it does anything is
+    // decided per request. Previously the registration was config-conditional,
+    // so route:cache froze it — the button rendered from fresh config against
+    // a route that no longer existed, and clicking it did nothing.
+    withDemoMode(false, function () {
+        Artisan::call('route:cache');
+
+        try {
+            expect(Route::has('demo.login'))->toBeTrue()
+                ->and(config('demo.enabled'))->toBeFalse();
+        } finally {
+            Artisan::call('route:clear');
+        }
     });
 });
 
@@ -48,8 +88,6 @@ it('signs in the demo account when demo mode is on', function () {
     withDemoMode(true, function () {
         $this->seed(\Database\Seeders\DefaultDataSeeder::class);
         $this->seed(\Database\Seeders\DemoDataSeeder::class);
-
-        expect(Route::has('demo.login'))->toBeTrue();
 
         $this->post(route('demo.login'))->assertRedirect(route('dashboard', absolute: false));
 
