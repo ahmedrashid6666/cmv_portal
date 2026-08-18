@@ -19,7 +19,7 @@
 </head>
 <body>
     <div class="head">
-        <div class="company">CMV Shipping</div>
+        <div class="company">{{ $company['name'] }}</div>
         <div class="title">Bank Statement — {{ $statement['bank']['name'] }}</div>
         <div style="font-size:10px;color:#64748b;margin-top:2px;">Generated {{ now()->format('d-m-Y h:i A') }}</div>
     </div>

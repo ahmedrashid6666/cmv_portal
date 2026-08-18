@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Setting;
+use App\Support\Branding;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +26,38 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
         $this->applyConfiguredTimezone();
+        $this->shareBrandingWithViews();
+    }
+
+    /**
+     * PDFs and exports all print the company name and logo in their header.
+     * Binding it once here keeps every template white-label by default — no
+     * controller has to remember to pass it through.
+     */
+    private function shareBrandingWithViews(): void
+    {
+        // The Inertia root view needs the name and asset paths for the tab
+        // title, favicon and link preview.
+        View::composer('app', function ($view) {
+            $view->with('company', Branding::all())
+                ->with('appName', Branding::appName());
+        });
+
+        View::composer([
+            'exports.table',
+            'reports.pdf',
+            'invoices.pdf',
+            'final-calculation.pdf',
+            'cash-count.pdf',
+            'bank-statement.pdf',
+        ], function ($view) {
+            $view->with('company', [
+                ...Branding::all(),
+                // Only PDFs need the embedded copy; it is too heavy to ship
+                // to the browser on every Inertia response.
+                'logo_data_uri' => Branding::logoDataUri(),
+            ]);
+        });
     }
 
     /**

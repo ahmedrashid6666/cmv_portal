@@ -91,6 +91,59 @@ Schedule it daily. Keep the last ~14 files (add a `find ~/backups -mtime +14 -de
 
 ---
 
+## Setting up a demo instance
+
+A demo is a second, independent copy of this same app — new subdomain, new database, its own
+`.env`. No branch and no code changes: branding is data, so the demo simply has different rows in
+its `settings` table.
+
+**1. hPanel** — create the subdomain (e.g. `demo.example.com`) with its docroot at
+`~/domains/demo.example.com/app/public`, and create a *separate* MySQL database and user.
+
+**2. Code** — `git clone -b phase1-build <repo> app`. `vendor/` and `public/build/` are committed,
+so no Composer or Node step is needed to get it running.
+
+**3. `.env`** — its own file, and crucially its own `APP_KEY`:
+
+```
+APP_NAME="Hark Creation Accounts"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://demo.example.com
+
+DB_DATABASE=<demo db>
+DB_USERNAME=<demo user>
+DB_PASSWORD=<demo password>
+
+SEED_ADMIN_EMAIL=demo@harkcreation.com
+SEED_ADMIN_NAME="Demo Admin"
+SEED_ADMIN_PASSWORD=<demo password>
+MAIL_MAILER=log
+```
+
+Then `php artisan key:generate`. Never reuse the live `APP_KEY` — a leaked demo key must not
+decrypt anything on production.
+
+**4. Bring it up** — the same steps as section 5 above (`migrate`, `db:seed`, `storage:link`,
+cache warm). A fresh database seeds itself with the Hark Creation branding; upload a different
+logo in **Settings → Company** to demo for a specific prospect.
+
+**5. Keep it out of search results** — add a `noindex` header or `robots.txt` on the subdomain so
+the demo does not surface next to the real site.
+
+> **Before running any artisan command in the demo folder, check `DB_DATABASE` points at the demo
+> database.** `migrate:fresh` against the wrong one is unrecoverable.
+
+### Deploying the white-label change to an existing install
+
+Existing installs keep the branding they already had. The
+`2026_08_18_pin_existing_installs_to_current_branding` migration detects a database that already
+has settings and pins it to its current logo, link-preview image and sidebar treatment before the
+new default can apply — so a normal `./deploy.sh` is all that is needed, and nothing on screen
+changes. Snapshots of the previous assets live in `public/brand/`.
+
+---
+
 ## Updating later
 
 ```bash

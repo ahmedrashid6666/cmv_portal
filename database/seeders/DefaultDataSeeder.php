@@ -7,8 +7,8 @@ use App\Models\ExpenseCategory;
 use App\Models\PaymentMethod;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Branding;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DefaultDataSeeder extends Seeder
 {
@@ -36,18 +36,21 @@ class DefaultDataSeeder extends Seeder
             ExpenseCategory::updateOrCreate(['name' => $name]);
         }
 
-        // System settings
-        Setting::put('company_name', 'CMV Shipping');
-        Setting::put('currency', 'AED');
-        if (Setting::get('vat_rate') === null) {
-            Setting::put('vat_rate', 0);
-        }
-
-        // Company / invoice details (from cmvshipping.com — Dubai HQ)
+        // System settings and branding.
+        //
+        // Every value here is seed-if-absent: this seeder is re-run on each
+        // deploy, and an operator's edits in the Settings page must survive
+        // that. (company_name and currency used to be written unconditionally,
+        // which silently reverted them on every deploy.)
         foreach ([
-            'company_address' => 'Suhail Bin Ghedayer Building, Lehbab Second, Shop No 17, Dubai, UAE',
-            'company_phone' => '+971 58 94 34 366',
-            'company_email' => 'info@cmvshipping.com',
+            'company_name' => Branding::DEFAULT_NAME,
+            'company_logo' => Branding::DEFAULT_LOGO,
+            'company_og_image' => Branding::DEFAULT_OG_IMAGE,
+            'currency' => 'AED',
+            'vat_rate' => 0,
+            'company_address' => '',
+            'company_phone' => '+971 56 689 0484',
+            'company_email' => 'info@harkcreation.com',
             'company_trn' => '',
             'invoice_footer' => 'Thank you for your business.',
         ] as $key => $value) {
@@ -56,17 +59,30 @@ class DefaultDataSeeder extends Seeder
             }
         }
 
-        // Super admin (idempotent). Password only set on first creation.
+        $this->seedSuperAdmin();
+    }
+
+    /**
+     * Creates the first super admin, and only the first.
+     *
+     * Keyed on "does any super admin exist" rather than on a fixed email so
+     * that changing the seeded address can never mint a second privileged
+     * account (with a default password) on an install that already has one.
+     */
+    private function seedSuperAdmin(): void
+    {
+        if (User::query()->where('role', Role::SUPER_ADMIN->value)->exists()) {
+            return;
+        }
+
         // Pass the PLAIN password — the User model's `hashed` cast hashes it once.
         // (Do not pre-hash here, or it risks a double-hash.)
-        User::firstOrCreate(
-            ['email' => 'admin@cmvshipping.com'],
-            [
-                'name' => 'CMV Admin',
-                'password' => env('SEED_ADMIN_PASSWORD', 'cmv12345'),
-                'role' => Role::SUPER_ADMIN->value,
-                'email_verified_at' => now(),
-            ],
-        );
+        User::create([
+            'email' => env('SEED_ADMIN_EMAIL', 'admin@harkcreation.com'),
+            'name' => env('SEED_ADMIN_NAME', 'Administrator'),
+            'password' => env('SEED_ADMIN_PASSWORD', 'admin12345'),
+            'role' => Role::SUPER_ADMIN->value,
+            'email_verified_at' => now(),
+        ]);
     }
 }

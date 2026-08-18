@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { AED, fmtDate } from '@/lib/format';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 
 const statusStyle = {
     paid: 'bg-emerald-100 text-emerald-700',
@@ -9,6 +9,8 @@ const statusStyle = {
 };
 
 export default function InvoiceShow({ invoice }) {
+    const { branding } = usePage().props;
+
     return (
         <AuthenticatedLayout header={`Invoice ${invoice.invoice_no}`}>
             <Head title={`Invoice ${invoice.invoice_no}`} />
@@ -26,7 +28,7 @@ export default function InvoiceShow({ invoice }) {
                     {/* header */}
                     <div className="flex items-start justify-between border-b-4 border-primary-500 pb-5">
                         <div className="flex items-start gap-3">
-                            <img src="/logo.png" alt="CMV" className="h-16 w-16" />
+                            <img src={branding.logo} alt={branding.name} className="h-16 w-16" />
                             <div>
                                 <p className="text-2xl font-bold text-navy-800">{invoice.company.name}</p>
                                 <p className="mt-1 whitespace-pre-line text-xs text-slate-500">{invoice.company.address}</p>

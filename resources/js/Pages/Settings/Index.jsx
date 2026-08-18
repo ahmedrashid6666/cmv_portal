@@ -1,17 +1,36 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
 const input = 'w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
-export default function SettingsIndex({ company, timezones, database, flash }) {
+export default function SettingsIndex({ company, timezones, database, logoSettings, flash }) {
     const c = useForm({ ...company });
+    const [logoError, setLogoError] = useState(null);
     const d = useForm({
         host: database.host, port: database.port, database: database.database,
         username: database.username, password: '',
     });
 
     const saveCompany = (e) => { e.preventDefault(); c.put(route('settings.company')); };
+
+    const pickLogo = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        router.post(route('settings.logo'), { logo: file }, {
+            forceFormData: true,
+            preserveScroll: true,
+            onError: (errors) => setLogoError(errors.logo),
+            onSuccess: () => setLogoError(null),
+        });
+    };
+
+    const resetLogo = () => {
+        setLogoError(null);
+        router.delete(route('settings.logo.destroy'), { preserveScroll: true });
+    };
     const testDb = () => d.post(route('settings.database.test'), { preserveScroll: true });
     const saveDb = (e) => { e.preventDefault(); d.put(route('settings.database'), { preserveScroll: true }); };
 
@@ -22,6 +41,32 @@ export default function SettingsIndex({ company, timezones, database, flash }) {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Company */}
                 <Card title="Company & Accounting">
+                    <div className="mb-4 flex items-center gap-4 border-b pb-4">
+                        <img
+                            src={logoSettings.logo}
+                            alt={c.data.company_name}
+                            className="h-14 w-14 shrink-0 rounded-lg border border-slate-200 bg-white object-contain p-1"
+                        />
+                        <div className="min-w-0">
+                            <p className="text-xs font-medium text-slate-600">Company Logo</p>
+                            <p className="mt-0.5 text-[11px] text-slate-400">
+                                Shown in the sidebar, on invoices and in every PDF. PNG, JPG or WEBP, up to 2 MB.
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <label className="cursor-pointer rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                                    Upload logo
+                                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pickLogo} />
+                                </label>
+                                {logoSettings.is_custom && (
+                                    <button type="button" onClick={resetLogo} className="text-xs font-semibold text-slate-500 hover:text-accent-red hover:underline">
+                                        Reset to default
+                                    </button>
+                                )}
+                            </div>
+                            {logoError && <p className="mt-1 text-xs text-accent-red">{logoError}</p>}
+                        </div>
+                    </div>
+
                     <form onSubmit={saveCompany} className="space-y-3">
                         <Field label="Company Name" error={c.errors.company_name}>
                             <input className={input} value={c.data.company_name} onChange={(e) => c.setData('company_name', e.target.value)} />

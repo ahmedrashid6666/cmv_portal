@@ -1,8 +1,12 @@
+import { usePage } from '@inertiajs/react';
+
 export default function ApplicationLogo({ className, ...props }) {
+    const { branding } = usePage().props;
+
     return (
         <img
-            src="/logo.png"
-            alt="CMV Shipping"
+            src={branding.logo}
+            alt={branding.name}
             className={className}
             {...props}
         />

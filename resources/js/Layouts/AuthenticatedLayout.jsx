@@ -70,7 +70,10 @@ function NavGroup({ label, icon, active, open, onToggle, children }) {
 }
 
 export default function AuthenticatedLayout({ header, children }) {
-    const user = usePage().props.auth.user;
+    const { auth, branding } = usePage().props;
+    const user = auth.user;
+    // A logo drawn for a light background needs flipping to read on the navy sidebar.
+    const logoClass = 'h-9 w-9' + (branding.logoInvertOnDark ? ' brightness-0 invert' : '');
     const [open, setOpen] = useState(false);
     const current = (name) => route().current(name);
     const isSuperAdmin = user.role === 'super_admin';
@@ -185,9 +188,9 @@ export default function AuthenticatedLayout({ header, children }) {
             {/* Sidebar */}
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto bg-navy-800 px-3 py-4 lg:flex">
                 <div className="flex items-center gap-2 px-2 pb-4">
-                    <img src="/logo.png" alt="CMV" className="h-9 w-9 brightness-0 invert" />
+                    <img src={branding.logo} alt={branding.name} className={logoClass} />
                     <div className="leading-tight">
-                        <p className="text-sm font-bold text-white">CMV Shipping</p>
+                        <p className="text-sm font-bold text-white">{branding.name}</p>
                         <p className="text-[11px] text-navy-300">Accounts System</p>
                     </div>
                 </div>
@@ -201,8 +204,8 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
                     <aside className="absolute inset-y-0 left-0 flex w-64 flex-col overflow-y-auto bg-navy-800 px-3 py-4">
                         <div className="flex items-center gap-2 px-2 pb-4">
-                            <img src="/logo.png" alt="CMV" className="h-9 w-9 brightness-0 invert" />
-                            <p className="text-sm font-bold text-white">CMV Shipping</p>
+                            <img src={branding.logo} alt={branding.name} className={logoClass} />
+                            <p className="text-sm font-bold text-white">{branding.name}</p>
                         </div>
                         {nav}
                     </aside>

@@ -18,7 +18,7 @@
 </head>
 <body>
     <div class="head">
-        <div class="brand">CMV Shipping</div>
+        <div class="brand">{{ $company['name'] }}</div>
         <div class="title">{{ $title }}</div>
         <div class="muted">Generated {{ now()->format('d-m-Y h:i A') }} · {{ count($rows) - ($hasTotals ? 1 : 0) }} record(s){{ $range ? ' · '.$range : '' }}</div>
     </div>

@@ -1,0 +1,24 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Teal Circle -->
+  <circle cx="100" cy="100" r="75" fill="none" stroke="#1b9a9b" stroke-width="16"/>
+  
+  <!-- Red Checkmark M -->
+  <g fill="none" stroke="#E63946" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 60 110 L 85 135 L 135 75"/>
+  </g>
+  
+  <!-- Red Stars -->
+  <g fill="#E63946">
+    <circle cx="145" cy="65" r="8"/>
+    <circle cx="160" cy="50" r="8"/>
+  </g>
+  
+  <!-- Navy Triangles Bottom Left -->
+  <polygon points="70,155 85,175 55,175" fill="#1e3a5f"/>
+  
+  <!-- Navy Triangles Bottom Right -->
+  <polygon points="130,155 145,175 115,175" fill="#1e3a5f"/>
+  
+  <!-- Navy Triangle Down -->
+  <polygon points="100,175 90,155 110,155" fill="#1e3a5f"/>
+</svg>

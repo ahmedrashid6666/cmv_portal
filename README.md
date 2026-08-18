@@ -48,9 +48,22 @@ php artisan serve
 
 | Email | Password | Role |
 |-------|----------|------|
-| `admin@cmvshipping.com` | `cmv12345` | Super Admin |
+| `admin@harkcreation.com` | `admin12345` | Super Admin |
 
-> Change this immediately in production (set `SEED_ADMIN_PASSWORD` before seeding, or update via the app).
+> Change this immediately in production. Set `SEED_ADMIN_EMAIL`, `SEED_ADMIN_NAME` and
+> `SEED_ADMIN_PASSWORD` before seeding, or update via the app.
+>
+> The seeder creates this account **only when no super admin exists yet**, so re-running it on a
+> live install never adds a second privileged account.
+
+### Branding
+
+The app is white-label. Company name, logo, address, TRN, phone, email and invoice footer all live
+in the `settings` table and drive the sidebar, login screen, invoices, every PDF/export and the
+link preview. Set them in **Settings → Company**, including a logo upload (PNG/JPG/WEBP, max 2 MB).
+
+A fresh install defaults to Hark Creation. Nothing in the codebase hardcodes a company name —
+`tests/Feature/BrandingTest.php` fails the build if one creeps back in.
 
 ### Importing your workbook
 

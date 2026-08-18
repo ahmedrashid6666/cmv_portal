@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Support\Branding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class SettingsController extends Controller
@@ -17,7 +19,7 @@ class SettingsController extends Controller
 
         return Inertia::render('Settings/Index', [
             'company' => [
-                'company_name' => Setting::get('company_name', 'CMV Shipping'),
+                'company_name' => Branding::name(),
                 'currency' => Setting::get('currency', 'AED'),
                 'vat_rate' => (float) Setting::get('vat_rate', 0),
                 'cash_opening_balance' => (float) Setting::get('cash_opening_balance', 0),
@@ -29,6 +31,12 @@ class SettingsController extends Controller
                 'company_email' => Setting::get('company_email', ''),
                 'invoice_footer' => Setting::get('invoice_footer', 'Thank you for your business.'),
                 'timezone' => Setting::get('timezone', config('app.timezone')),
+            ],
+            // Not named 'branding': that key is already shared globally by
+            // HandleInertiaRequests, and a page prop would shadow it here.
+            'logoSettings' => [
+                'logo' => Branding::logo(),
+                'is_custom' => Setting::get('company_logo') !== Branding::DEFAULT_LOGO,
             ],
             'timezones' => \DateTimeZone::listIdentifiers(),
             'database' => [
@@ -64,10 +72,72 @@ class SettingsController extends Controller
             Setting::put($key, $value);
         }
 
+        // A renamed company must be visible on the response we are about to render.
+        Branding::forget();
+
         config(['app.timezone' => $data['timezone']]);
         date_default_timezone_set($data['timezone']);
 
         return back()->with('success', 'Company settings saved.');
+    }
+
+    /**
+     * Replace the company logo shown in the sidebar, on invoices and in PDFs.
+     *
+     * SVG is deliberately not accepted: it can carry script, and DomPDF cannot
+     * render it reliably in the PDF templates anyway.
+     */
+    public function updateLogo(Request $request)
+    {
+        $request->validate([
+            'logo' => ['required', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+        ], [
+            'logo.max' => 'The logo must be 2 MB or smaller.',
+            'logo.mimes' => 'The logo must be a PNG, JPG or WEBP image.',
+        ]);
+
+        $previous = Setting::get('company_logo');
+
+        $path = $request->file('logo')->store('branding', 'public');
+
+        Setting::put('company_logo', '/storage/'.$path);
+        // An uploaded logo is used exactly as supplied — never silhouetted.
+        Setting::put('company_logo_invert', '');
+        Branding::forget();
+
+        $this->deleteUploadedLogo($previous);
+
+        return back()->with('success', 'Logo updated.');
+    }
+
+    /**
+     * Drop a custom logo and fall back to the shipped default.
+     */
+    public function destroyLogo()
+    {
+        $previous = Setting::get('company_logo');
+
+        Setting::put('company_logo', Branding::DEFAULT_LOGO);
+        Setting::put('company_logo_invert', '');
+        Branding::forget();
+
+        $this->deleteUploadedLogo($previous);
+
+        return back()->with('success', 'Logo reset to the default.');
+    }
+
+    /**
+     * Remove a superseded upload. Only ever touches files this app wrote into
+     * the public disk's branding/ folder, so a path pointing at a committed
+     * asset under public/brand is left alone.
+     */
+    private function deleteUploadedLogo(?string $path): void
+    {
+        if (! $path || ! str_starts_with($path, '/storage/branding/')) {
+            return;
+        }
+
+        Storage::disk('public')->delete(substr($path, strlen('/storage/')));
     }
 
     /**

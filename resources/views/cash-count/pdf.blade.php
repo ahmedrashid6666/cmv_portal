@@ -42,7 +42,7 @@
 </style></head>
 <body>
     <div class="head">
-        <div class="company">CMV Shipping</div>
+        <div class="company">{{ $company['name'] }}</div>
         <div class="sub">Daily Cash Slip — {{ $count->count_date->format('d-m-Y') }}</div>
     </div>
 

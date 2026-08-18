@@ -173,6 +173,8 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('settings/company', [SettingsController::class, 'updateCompany'])->name('settings.company');
+        Route::post('settings/logo', [SettingsController::class, 'updateLogo'])->name('settings.logo');
+        Route::delete('settings/logo', [SettingsController::class, 'destroyLogo'])->name('settings.logo.destroy');
         Route::post('settings/database/test', [SettingsController::class, 'testDatabase'])->name('settings.database.test');
         Route::put('settings/database', [SettingsController::class, 'updateDatabase'])->name('settings.database');
     });

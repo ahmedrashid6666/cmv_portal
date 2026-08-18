@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#1b9a9b" rx="40"/>
+  <g transform="translate(50, 50) scale(1)">
+    <!-- Compass circle -->
+    <circle cx="50" cy="50" r="45" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+    <!-- N arrow -->
+    <path d="M50 15 L55 35 L50 32 L45 35 Z" fill="#FFFFFF"/>
+    <!-- E arrow -->
+    <path d="M85 50 L65 55 L68 50 L65 45 Z" fill="#FFFFFF"/>
+    <!-- S arrow -->
+    <path d="M50 85 L45 65 L50 68 L55 65 Z" fill="#FFFFFF"/>
+    <!-- W arrow -->
+    <path d="M15 50 L35 45 L32 50 L35 55 Z" fill="#FFFFFF"/>
+    <!-- Center dot -->
+    <circle cx="50" cy="50" r="4" fill="#FFFFFF"/>
+    <!-- Ship element -->
+    <path d="M30 70 L70 70 L75 80 L25 80 Z" fill="#E63946" opacity="0.8"/>
+  </g>
+</svg>

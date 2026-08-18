@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\Setting;
 use App\Models\Transaction;
+use App\Support\Branding;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -75,14 +75,8 @@ class InvoiceController extends Controller
 
         return [
             'id' => $t->id,
-            'company' => [
-                'name' => Setting::get('company_name', 'CMV Shipping'),
-                'address' => Setting::get('company_address', ''),
-                'trn' => Setting::get('company_trn', ''),
-                'phone' => Setting::get('company_phone', ''),
-                'email' => Setting::get('company_email', ''),
-            ],
-            'footer' => Setting::get('invoice_footer', 'Thank you for your business.'),
+            'company' => Branding::all(),
+            'footer' => Branding::all()['footer'],
             'currency' => $t->currency ?: 'AED',
             'invoice_no' => $t->invoice_no ?? ('TXN-'.$t->id),
             'date' => $t->transaction_date->format('Y-m-d'),

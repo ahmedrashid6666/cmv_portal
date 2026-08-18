@@ -47,7 +47,7 @@
     @endphp
 
     <div class="head">
-        <div class="company">CMV Shipping</div>
+        <div class="company">{{ $company['name'] }}</div>
         <div class="sub">Final Calculation — {{ $calc->calc_date->format('d-m-Y') }}</div>
     </div>
 

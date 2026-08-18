@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Branding;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -33,6 +34,13 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+            ],
+            // Every screen prints the company name or logo somewhere, so it
+            // rides along on the shared props rather than per-page.
+            'branding' => fn () => [
+                'name' => Branding::name(),
+                'logo' => Branding::logo(),
+                'logoInvertOnDark' => Branding::all()['logo_invert_on_dark'],
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
