@@ -2,13 +2,23 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Card } from '@/Components/ui/Card';
 import { money } from '@/lib/format';
 import { fmtDate } from '@/lib/format';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const input = 'rounded-lg border-slate-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500';
 
 export default function BankStatement({ statement, filters }) {
+    const role = usePage().props.auth.user.role;
+    const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
+    // Only the manual in/out rows belong to this statement; every other line is
+    // owned by the transaction / payment / expense that produced it and has to
+    // be removed there, so it stays consistent with the books.
+    const removable = (r) => canWrite && r.source === 'bank_entry';
     const [f, setF] = useState({ from: filters.from || '', to: filters.to || '' });
+    const remove = (r) => {
+        if (!confirm(`Remove this entry?\n\n${r.description}`)) return;
+        router.delete(route('bank-accounts.entries.destroy', r.source_id), { preserveScroll: true });
+    };
     const apply = (e) => { e?.preventDefault(); router.get(route('bank-accounts.statement', statement.bank.id), f, { preserveState: true, replace: true }); };
     const reset = () => router.get(route('bank-accounts.statement', statement.bank.id));
     const exportUrl = (format) => route('bank-accounts.statement.export', { bank: statement.bank.id, ...f, format });
@@ -61,14 +71,16 @@ export default function BankStatement({ statement, filters }) {
                                 <th className="py-2 pr-4 text-right">In</th>
                                 <th className="py-2 pr-4 text-right">Out</th>
                                 <th className="py-2 pr-4 text-right">Balance</th>
+                                {canWrite && <th className="py-2"></th>}
                             </tr>
                         </thead>
                         <tbody>
                             <tr className="border-b bg-slate-50 text-slate-500">
                                 <td className="py-2 pr-4" colSpan="5">Opening balance</td>
                                 <td className="py-2 pr-4 text-right font-semibold">{money(statement.opening, 'AED')}</td>
+                                {canWrite && <td></td>}
                             </tr>
-                            {statement.rows.length === 0 && <tr><td colSpan="6" className="py-8 text-center text-slate-400">No activity in this period.</td></tr>}
+                            {statement.rows.length === 0 && <tr><td colSpan={canWrite ? 7 : 6} className="py-8 text-center text-slate-400">No activity in this period.</td></tr>}
                             {statement.rows.map((r, i) => (
                                 <tr key={i} className="border-b last:border-0 hover:bg-slate-200">
                                     <td className="py-2 pr-4 whitespace-nowrap">{fmtDate(r.date)}</td>
@@ -77,6 +89,13 @@ export default function BankStatement({ statement, filters }) {
                                     <td className="py-2 pr-4 text-right tabular-nums text-emerald-700">{r.debit > 0 ? money(r.debit, 'AED') : '—'}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums text-accent-red">{r.credit > 0 ? '−' + money(r.credit, 'AED') : '—'}</td>
                                     <td className="py-2 pr-4 text-right tabular-nums font-medium">{money(r.balance, 'AED')}</td>
+                                    {canWrite && (
+                                        <td className="py-2 text-right whitespace-nowrap">
+                                            {removable(r)
+                                                ? <button onClick={() => remove(r)} className="text-xs text-accent-red hover:underline">Delete</button>
+                                                : <span title="This line comes from a transaction, payment or expense — delete it from that record." className="text-xs text-slate-300">—</span>}
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>

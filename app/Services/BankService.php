@@ -177,7 +177,7 @@ class BankService
                 ->with('customer:id,name')
                 ->get()
                 ->each(function ($t) use (&$events) {
-                    $events[] = $this->event($t->transaction_date, 'Customs fee — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->customs_fees);
+                    $events[] = $this->event($t->transaction_date, 'Customs fee — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->customs_fees, 'transaction', $t->id);
                 });
         }
 
@@ -188,7 +188,7 @@ class BankService
             ->with('customer:id,name')
             ->get()
             ->each(function ($t) use (&$events) {
-                $events[] = $this->event($t->transaction_date, 'Government fee — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->gov_fees);
+                $events[] = $this->event($t->transaction_date, 'Government fee — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->gov_fees, 'transaction', $t->id);
             });
 
         // "Other Amount" disbursements paid from this bank
@@ -198,7 +198,7 @@ class BankService
             ->with('customer:id,name')
             ->get()
             ->each(function ($t) use (&$events) {
-                $events[] = $this->event($t->transaction_date, 'Other amount — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->other_amount);
+                $events[] = $this->event($t->transaction_date, 'Other amount — '.($t->customer?->name ?? ''), $t->invoice_no, (float) $t->other_amount, 'transaction', $t->id);
             });
 
         // Office expenses paid from this bank
@@ -208,7 +208,7 @@ class BankService
             ->get()
             ->each(function ($e) use (&$events) {
                 $label = $e->description ?: $e->category?->name;
-                $events[] = $this->event($e->expense_date, $label ? 'Office expense — '.$label : 'Office expense', null, (float) $e->amount);
+                $events[] = $this->event($e->expense_date, $label ? 'Office expense — '.$label : 'Office expense', null, (float) $e->amount, 'office_expense', $e->id);
             });
 
         // Sale receipts landing directly in this bank
@@ -219,7 +219,7 @@ class BankService
             ->each(function ($t) use (&$events) {
                 $amount = round((float) $t->grand_total - (float) $t->credit_amount, 2);
                 if ($amount > 0) {
-                    $events[] = $this->debitEvent($t->transaction_date, 'Sale receipt — '.($t->customer?->name ?? ''), $t->invoice_no, $amount);
+                    $events[] = $this->debitEvent($t->transaction_date, 'Sale receipt — '.($t->customer?->name ?? ''), $t->invoice_no, $amount, 'transaction', $t->id);
                 }
             });
 
@@ -230,7 +230,7 @@ class BankService
             ->with(['transaction:id,invoice_no,customer_id', 'transaction.customer:id,name'])
             ->get()
             ->each(function ($p) use (&$events) {
-                $events[] = $this->debitEvent($p->payment_date, 'Credit repayment — '.($p->transaction?->customer?->name ?? ''), $p->transaction?->invoice_no, (float) $p->amount);
+                $events[] = $this->debitEvent($p->payment_date, 'Credit repayment — '.($p->transaction?->customer?->name ?? ''), $p->transaction?->invoice_no, (float) $p->amount, 'credit_payment', $p->id);
             });
 
         // Bulk Payment / Bulk Return settlements paid from this bank
@@ -240,7 +240,7 @@ class BankService
             ->get()
             ->each(function ($p) use (&$events) {
                 $label = $p->entry?->type === LedgerEntry::TYPE_BORROWED ? 'Loan return — ' : 'Credit settlement — ';
-                $events[] = $this->event($p->payment_date, $label.($p->entry?->party_name ?? ''), null, (float) $p->amount);
+                $events[] = $this->event($p->payment_date, $label.($p->entry?->party_name ?? ''), null, (float) $p->amount, 'ledger_payment', $p->id);
             });
 
         // Manual in/out movements: an "in" is a debit (adds), an "out" a credit (subtracts).
@@ -251,6 +251,10 @@ class BankService
                 'ref' => null,
                 'debit' => $e->direction === 'in' ? (float) $e->amount : 0.0,
                 'credit' => $e->direction === 'out' ? (float) $e->amount : 0.0,
+                // The only rows this statement owns outright — everything else
+                // belongs to the transaction / payment / expense that created it.
+                'source' => 'bank_entry',
+                'source_id' => $e->id,
             ];
         });
 
@@ -298,7 +302,7 @@ class BankService
     /**
      * @return array{date: string, description: string, ref: string|null, debit: float, credit: float}
      */
-    private function event($date, string $description, ?string $ref, float $amount): array
+    private function event($date, string $description, ?string $ref, float $amount, ?string $source = null, ?int $sourceId = null): array
     {
         return [
             'date' => $date instanceof Carbon ? $date->format('Y-m-d') : (string) $date,
@@ -306,13 +310,15 @@ class BankService
             'ref' => $ref,
             'debit' => 0.0,
             'credit' => round($amount, 2),
+            'source' => $source,
+            'source_id' => $sourceId,
         ];
     }
 
     /**
      * @return array{date: string, description: string, ref: string|null, debit: float, credit: float}
      */
-    private function debitEvent($date, string $description, ?string $ref, float $amount): array
+    private function debitEvent($date, string $description, ?string $ref, float $amount, ?string $source = null, ?int $sourceId = null): array
     {
         return [
             'date' => $date instanceof Carbon ? $date->format('Y-m-d') : (string) $date,
@@ -320,6 +326,8 @@ class BankService
             'ref' => $ref,
             'debit' => round($amount, 2),
             'credit' => 0.0,
+            'source' => $source,
+            'source_id' => $sourceId,
         ];
     }
 }

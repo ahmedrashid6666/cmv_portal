@@ -121,3 +121,54 @@ it('forbids a read-only user from adding an entry', function () {
 
     expect(BankEntry::count())->toBe(0);
 });
+
+it('tags a statement row with the record it came from', function () {
+    $entry = BankEntry::create(['bank_id' => $this->rak->id, 'entry_date' => '2026-07-10', 'item' => 'Deposit', 'direction' => 'in', 'amount' => 300]);
+
+    $customer = App\Models\Customer::factory()->create();
+    $method = App\Models\PaymentMethod::create(['name' => 'Bank', 'type' => 'bank']);
+    $tx = App\Models\Transaction::create([
+        'transaction_date' => '2026-07-11', 'invoice_no' => '9001', 'customer_id' => $customer->id,
+        'payment_method_id' => $method->id, 'bank_id' => $this->rak->id,
+        'customs_fees' => 0, 'gov_fees' => 0, 'profit' => 100, 'vat_rate' => 0, 'grand_total' => 100,
+    ]);
+    App\Models\CreditPayment::create([
+        'transaction_id' => $tx->id, 'payment_date' => '2026-07-12', 'amount' => 40,
+        'payment_method_id' => $method->id, 'bank_id' => $this->rak->id,
+    ]);
+
+    $rows = collect(app(BankService::class)->statement($this->rak)['rows']);
+
+    $manual = $rows->firstWhere('description', 'Deposit');
+    expect($manual['source'])->toBe('bank_entry')
+        ->and($manual['source_id'])->toBe($entry->id);
+
+    // A derived line names its own record, so the UI can refuse to delete it here.
+    $repayment = $rows->first(fn ($r) => str_starts_with($r['description'], 'Credit repayment'));
+    expect($repayment['source'])->toBe('credit_payment');
+});
+
+it('removes a manual row from the statement when it is deleted', function () {
+    $admin = User::factory()->role(Role::ADMIN)->create();
+    $entry = BankEntry::create(['bank_id' => $this->rak->id, 'entry_date' => '2026-07-10', 'item' => 'Deposit', 'direction' => 'in', 'amount' => 300]);
+
+    $statementUrl = route('bank-accounts.statement', $this->rak->id);
+
+    $this->actingAs($admin)->from($statementUrl)
+        ->delete(route('bank-accounts.entries.destroy', $entry->id))
+        ->assertRedirect($statementUrl);
+
+    $statement = app(BankService::class)->statement($this->rak);
+    expect($statement['rows'])->toBeEmpty()
+        ->and((float) $statement['closing'])->toBe(500.0);
+});
+
+it('forbids a read-only user from deleting an entry', function () {
+    $entry = BankEntry::create(['bank_id' => $this->rak->id, 'entry_date' => '2026-07-29', 'item' => 'Deposit', 'direction' => 'in', 'amount' => 300]);
+
+    $this->actingAs(User::factory()->role(Role::READ_ONLY)->create())
+        ->delete(route('bank-accounts.entries.destroy', $entry->id))
+        ->assertForbidden();
+
+    expect(BankEntry::count())->toBe(1);
+});
