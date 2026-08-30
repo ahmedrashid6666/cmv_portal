@@ -168,6 +168,71 @@ class LedgerEntryController extends Controller
     }
 
     /**
+     * One entry's own statement — its detail rows, the party details in the
+     * header, and the two column totals. This is the export offered from the
+     * entry form, where export() above (the whole filtered list) is the wrong
+     * grain. Reflects what is saved, not unsaved edits in the open form.
+     */
+    public function exportEntry(Request $request, string $slug, LedgerEntry $ledgerEntry)
+    {
+        $meta = $this->meta($slug);
+        abort_unless($ledgerEntry->type === $meta['type'], 404);
+
+        $ledgerEntry->load('details');
+        $currency = $ledgerEntry->currency ?: 'AED';
+        $creditWord = str_replace(' Amount', '', $meta['totalLabel']);
+        $paidWord = str_replace(' Amount', '', $meta['paidLabel']);
+
+        $details = $ledgerEntry->details->sortBy([['detail_date', 'asc'], ['id', 'asc']])->values();
+
+        // Entries saved before detail rows existed carry only their totals —
+        // show those as the single line rather than an empty statement.
+        $rows = $details->isNotEmpty()
+            ? $details->map(fn ($d) => [
+                $d->detail_date->format('d-m-Y'),
+                $d->description ?: '—',
+                (float) $d->amount,
+                (float) $d->returned_amount,
+            ])->all()
+            : [[
+                $ledgerEntry->entry_date->format('d-m-Y'),
+                $ledgerEntry->remarks ?: '—',
+                (float) $ledgerEntry->total_amount,
+                (float) $ledgerEntry->paid_amount,
+            ]];
+
+        $report = [
+            'type' => $slug,
+            'file' => $slug.'-'.\Illuminate\Support\Str::slug($ledgerEntry->party_name ?: 'entry'),
+            'title' => $meta['label'].' — '.$ledgerEntry->party_name,
+            'currency' => $currency,
+            'meta' => array_filter([
+                'Date' => $ledgerEntry->entry_date->format('d-m-Y'),
+                $meta['partyLabel'] => $ledgerEntry->party_name,
+                'Contact' => implode(', ', array_filter((array) ($ledgerEntry->contact_numbers ?? []))),
+                'Reference' => $ledgerEntry->reference,
+                'Vehicle' => $ledgerEntry->vehicle_number,
+                'Status' => ucfirst($ledgerEntry->status),
+                'Return Date' => $ledgerEntry->return_date?->format('d-m-Y'),
+            ], fn ($v) => $v !== null && $v !== ''),
+            'columns' => ['Date', 'Description', $creditWord, $paidWord],
+            // Amounts stay raw so the workbook holds real numbers (summable in
+            // Excel); the PDF and the sheet both format them on the way out.
+            'numericColumns' => [2, 3],
+            'rows' => $rows,
+            'totals' => [
+                'Total '.$creditWord => round((float) $ledgerEntry->total_amount, 2),
+                'Total '.$paidWord => round((float) $ledgerEntry->paid_amount, 2),
+                'Balance' => round((float) $ledgerEntry->balance_amount, 2),
+            ],
+        ];
+
+        return $request->string('format')->value() === 'pdf'
+            ? Pdf::loadView('reports.pdf', ['report' => $report])->download($report['file'].'.pdf')
+            : $this->xlsx($report);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validated(Request $request): array
@@ -231,23 +296,45 @@ class LedgerEntryController extends Controller
         $ss = new Spreadsheet();
         $sheet = $ss->getActiveSheet();
         $sheet->setCellValue('A1', $report['title']);
-        foreach ($report['columns'] as $i => $col) {
-            $sheet->setCellValue([$i + 1, 3], $col);
+
+        // Optional header block (a single entry's party details); the column
+        // headers start below whatever it takes up.
+        $row = 3;
+        foreach ($report['meta'] ?? [] as $label => $value) {
+            $sheet->setCellValue([1, $row], $label);
+            $sheet->setCellValue([2, $row], $value);
+            $row++;
         }
-        foreach ($report['rows'] as $r => $row) {
-            foreach ($row as $c => $val) {
-                $sheet->setCellValue([$c + 1, $r + 4], $val);
+        if (! empty($report['meta'])) {
+            $row++;
+        }
+
+        foreach ($report['columns'] as $i => $col) {
+            $sheet->setCellValue([$i + 1, $row], $col);
+        }
+        $numeric = $report['numericColumns'] ?? [];
+        foreach ($report['rows'] as $r => $line) {
+            foreach ($line as $c => $val) {
+                $cell = [$c + 1, $r + $row + 1];
+                $sheet->setCellValue($cell, in_array($c, $numeric, true) ? (float) $val : $val);
+                if (in_array($c, $numeric, true)) {
+                    $sheet->getStyle($sheet->getCell($cell)->getCoordinate())->getNumberFormat()->setFormatCode('#,##0.00');
+                }
             }
         }
-        $totalsRow = count($report['rows']) + 5;
+        $totalsRow = $row + count($report['rows']) + 2;
+        $currency = $report['currency'] ?? 'AED';
         $offset = 0;
         foreach ($report['totals'] as $label => $value) {
-            $sheet->setCellValue([1 + $offset, $totalsRow], $label.': '.number_format($value, 2));
+            $sheet->setCellValue([1 + $offset, $totalsRow], $label.': '.$currency.' '.number_format($value, 2));
             $offset++;
+        }
+        foreach (range(1, max(2, count($report['columns']))) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
         }
 
         return response()->streamDownload(function () use ($ss) {
             (new Xlsx($ss))->save('php://output');
-        }, $report['type'].'-report.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+        }, ($report['file'] ?? $report['type'].'-report').'.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 }

@@ -83,3 +83,74 @@ it('adds a new filled detail row alongside an existing one', function () {
 
     expect($entry->fresh()->details)->toHaveCount(2);
 });
+
+/** A borrowed entry with three detail rows, used by the per-entry export tests. */
+function exportableEntry(): LedgerEntry
+{
+    $entry = LedgerEntry::create([
+        'type' => 'borrowed', 'entry_date' => '2026-08-25', 'party_name' => 'JAWAD',
+        'reference' => 'JWD', 'currency' => 'AED',
+        'total_amount' => 9551, 'paid_amount' => 2500, 'balance_amount' => 7051, 'status' => 'partial',
+    ]);
+    $entry->details()->create(['detail_date' => '2026-08-04', 'description' => '', 'amount' => 6551, 'returned_amount' => 0]);
+    $entry->details()->create(['detail_date' => '2026-08-06', 'description' => '', 'amount' => 0, 'returned_amount' => 2500]);
+    $entry->details()->create(['detail_date' => '2026-08-07', 'description' => 'add cash', 'amount' => 3000, 'returned_amount' => 0]);
+
+    return $entry;
+}
+
+it('exports one ledger entry as a workbook of its detail rows', function () {
+    $entry = exportableEntry();
+
+    $response = $this->actingAs(User::factory()->role(Role::ADMIN)->create())
+        ->get(route('ledger.entry-export', ['borrowed', $entry->id]));
+    $response->assertOk();
+
+    $file = tempnam(sys_get_temp_dir(), 'ledger').'.xlsx';
+    file_put_contents($file, $response->streamedContent());
+    $rows = collect(PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getActiveSheet()->toArray(null, true, false));
+    unlink($file);
+
+    expect($rows->first()[0])->toBe('Borrowed Amount — JAWAD')
+        // header block carries the party details
+        ->and($rows->contains(fn ($r) => $r[0] === 'Person Name' && $r[1] === 'JAWAD'))->toBeTrue()
+        // the columns are named for this ledger type
+        ->and($rows->contains(fn ($r) => $r[2] === 'Borrowed' && $r[3] === 'Returned'))->toBeTrue()
+        // amounts are real numbers, so the sheet can sum them
+        ->and($rows->contains(fn ($r) => $r[1] === 'add cash' && (float) $r[2] === 3000.0))->toBeTrue()
+        ->and($rows->contains(fn ($r) => str_contains((string) $r[0], 'Total Borrowed: AED 9,551.00')))->toBeTrue();
+});
+
+it('exports one ledger entry as a PDF', function () {
+    $entry = exportableEntry();
+
+    $this->actingAs(User::factory()->role(Role::ADMIN)->create())
+        ->get(route('ledger.entry-export', ['borrowed', $entry->id, 'format' => 'pdf']))
+        ->assertOk()->assertHeader('content-type', 'application/pdf');
+});
+
+it('refuses to export an entry through the wrong ledger type', function () {
+    $entry = exportableEntry();
+
+    $this->actingAs(User::factory()->role(Role::ADMIN)->create())
+        ->get(route('ledger.entry-export', ['daily-credit', $entry->id]))
+        ->assertNotFound();
+});
+
+it('falls back to the entry totals when it has no detail rows', function () {
+    $entry = LedgerEntry::create([
+        'type' => 'daily_credit', 'entry_date' => '2026-08-25', 'party_name' => 'Legacy Row',
+        'currency' => 'AED', 'total_amount' => 400, 'paid_amount' => 150, 'balance_amount' => 250, 'status' => 'partial',
+        'remarks' => 'Saved before detail rows existed',
+    ]);
+
+    $response = $this->actingAs(User::factory()->role(Role::ADMIN)->create())
+        ->get(route('ledger.entry-export', ['daily-credit', $entry->id]));
+
+    $file = tempnam(sys_get_temp_dir(), 'ledger').'.xlsx';
+    file_put_contents($file, $response->streamedContent());
+    $rows = collect(PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getActiveSheet()->toArray(null, true, false));
+    unlink($file);
+
+    expect($rows->contains(fn ($r) => $r[1] === 'Saved before detail rows existed' && (float) $r[2] === 400.0))->toBeTrue();
+});

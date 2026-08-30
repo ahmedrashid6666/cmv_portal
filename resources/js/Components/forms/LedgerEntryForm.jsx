@@ -111,7 +111,16 @@ export default function LedgerEntryForm({ meta, entry, labels, onDone, customers
                 </select>
             </Field>
             <div>
-                <span className="mb-1 block text-xs font-medium text-slate-600">Details</span>
+                <div className="mb-1 flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-600">Details</span>
+                    {/* Exports what is saved, so only once the entry exists. */}
+                    {editing && (
+                        <span className="flex items-center gap-3 text-xs font-semibold">
+                            <a href={route('ledger.entry-export', [meta.slug, entry.id])} title="Download the saved entry as Excel" className="text-emerald-700 hover:underline">⤓ Excel</a>
+                            <a href={route('ledger.entry-export', { slug: meta.slug, ledgerEntry: entry.id, format: 'pdf' })} title="Download the saved entry as PDF" className="text-accent-red hover:underline">⤓ PDF</a>
+                        </span>
+                    )}
+                </div>
                 {data.details.length > 0 && (
                     <div className="space-y-2">
                         <div className="grid grid-cols-12 gap-2 text-center text-[11px] font-semibold text-primary-700">

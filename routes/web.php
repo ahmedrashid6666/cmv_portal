@@ -117,6 +117,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Daily Credit & Borrowed Amount (typed ledger)
     Route::get('ledger/{slug}/export', [LedgerEntryController::class, 'export'])->name('ledger.export');
+    Route::get('ledger/{slug}/{ledgerEntry}/export', [LedgerEntryController::class, 'exportEntry'])->name('ledger.entry-export');
     Route::get('ledger/{slug}', [LedgerEntryController::class, 'index'])->name('ledger.index');
     Route::middleware('role:super_admin,admin,accountant')->group(function () {
         Route::post('ledger/{slug}', [LedgerEntryController::class, 'store'])->name('ledger.store');
