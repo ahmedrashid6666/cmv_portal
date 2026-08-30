@@ -28,6 +28,9 @@ class OperationsController extends Controller
         'office-expenses' => 'Office Expenses',
     ];
 
+    /** The paid / partial / unpaid choices offered on the transaction-backed tabs. */
+    private const INVOICE_STATUSES = ['paid' => 'Paid', 'partial' => 'Partial', 'unpaid' => 'Unpaid'];
+
     /** Rows per page for the list; bumped high for a full export. */
     private int $perPage = 50;
 
@@ -45,11 +48,11 @@ class OperationsController extends Controller
         $dir = $request->string('dir')->value() === 'asc' ? 'asc' : 'desc';
 
         $payload = match ($type) {
-            'invoices' => $this->invoices($from, $to, $search, $sort, $dir),
-            'credits' => $this->credits($from, $to, $search, $sort, $dir),
+            'invoices' => $this->invoices($from, $to, $search, $status, $sort, $dir),
+            'credits' => $this->credits($from, $to, $search, $status, $sort, $dir),
             'daily-credit', 'borrowed' => $this->ledger($type, $from, $to, $search, $status, $sort, $dir),
             'office-expenses' => $this->officeExpenses($from, $to, $search, $sort, $dir),
-            default => $this->transactions($from, $to, $search, $sort, $dir),
+            default => $this->transactions($from, $to, $search, $status, $sort, $dir),
         };
 
         return Inertia::render('Operations/Index', array_merge($payload, [
@@ -85,11 +88,11 @@ class OperationsController extends Controller
         $this->perPage = 100000; // one page = the whole filtered set
 
         $payload = match ($type) {
-            'invoices' => $this->invoices($from, $to, $search, $sort, $dir),
-            'credits' => $this->credits($from, $to, $search, $sort, $dir),
+            'invoices' => $this->invoices($from, $to, $search, $status, $sort, $dir),
+            'credits' => $this->credits($from, $to, $search, $status, $sort, $dir),
             'daily-credit', 'borrowed' => $this->ledger($type, $from, $to, $search, $status, $sort, $dir),
             'office-expenses' => $this->officeExpenses($from, $to, $search, $sort, $dir),
-            default => $this->transactions($from, $to, $search, $sort, $dir),
+            default => $this->transactions($from, $to, $search, $status, $sort, $dir),
         };
 
         $columns = $payload['columns'];
@@ -193,6 +196,56 @@ class OperationsController extends Controller
         );
     }
 
+    /**
+     * SQL for a transaction's outstanding credit (credit_amount minus every
+     * credit payment made against it) — the same figure creditOutstanding()
+     * computes in PHP, rebuilt here so a status filter can run in the database
+     * and so the totals row keeps covering the whole filtered set, not a page.
+     */
+    private function outstandingSql(): string
+    {
+        return '(transactions.credit_amount - COALESCE((select sum(cp.amount) from credit_payments cp where cp.transaction_id = transactions.id), 0))';
+    }
+
+    /**
+     * Narrow a transactions query to one invoice status. Mirrors
+     * Transaction::invoiceStatus(): anything with nothing left to collect is
+     * paid, anything part-received (up front or through a later repayment) is
+     * partial, the rest is unpaid.
+     */
+    private function whereInvoiceStatus($query, string $status): void
+    {
+        $out = $this->outstandingSql();
+
+        match ($status) {
+            'paid' => $query->where(fn ($q) => $q->where('credit_amount', '<=', 0)->orWhereRaw("{$out} <= 0")),
+            'partial' => $query->where('credit_amount', '>', 0)->whereRaw("{$out} > 0")
+                ->where(fn ($q) => $q->whereRaw('transactions.grand_total - transactions.credit_amount > 0')
+                    ->orWhereRaw("{$out} < transactions.credit_amount")),
+            'unpaid' => $query->where('credit_amount', '>', 0)->whereRaw("{$out} > 0")
+                ->whereRaw('transactions.grand_total - transactions.credit_amount <= 0')
+                ->whereRaw("{$out} >= transactions.credit_amount"),
+            default => null,
+        };
+    }
+
+    /**
+     * The Credits tab judges a row purely on its credit line (the tab already
+     * excludes rows without one), so "partial" there means part of the credit
+     * itself was repaid — not that part of the sale was received up front.
+     */
+    private function whereCreditStatus($query, string $status): void
+    {
+        $out = $this->outstandingSql();
+
+        match ($status) {
+            'paid' => $query->whereRaw("{$out} <= 0"),
+            'partial' => $query->whereRaw("{$out} > 0")->whereRaw("{$out} < transactions.credit_amount"),
+            'unpaid' => $query->whereRaw("{$out} >= transactions.credit_amount"),
+            default => null,
+        };
+    }
+
     private function creditSettle(Transaction $t): ?array
     {
         if ((float) $t->credit_amount <= 0) {
@@ -209,6 +262,7 @@ class OperationsController extends Controller
             'payments' => $t->creditPayments->map(fn ($p) => [
                 'id' => $p->id, 'date' => $p->payment_date->format('d-m-Y'),
                 'amount' => (float) $p->amount, 'method' => $p->paymentMethod?->name ?? '—',
+                'note' => $p->note ?: null,
                 'bank_missing' => $p->paymentMethod?->type === 'bank' && ! $p->bank_id,
             ])->values(),
         ];
@@ -271,7 +325,7 @@ class OperationsController extends Controller
         return [$com1, $com2];
     }
 
-    private function transactions(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
+    private function transactions(?string $from, ?string $to, string $search, string $status, ?string $sort, string $dir): array
     {
         $query = Transaction::query()
             ->with(['customer:id,name', 'reference:id,name', 'paymentMethod:id,name,type', 'creditPayments.paymentMethod:id,name,type'])
@@ -284,6 +338,10 @@ class OperationsController extends Controller
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        if (in_array($status, array_keys(self::INVOICE_STATUSES), true)) {
+            $this->whereInvoiceStatus($query, $status);
+        }
 
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
@@ -345,10 +403,10 @@ class OperationsController extends Controller
             'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
             'align' => [false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, false],
             'totals' => $totals,
-            'statusOptions' => [], 'actionLabel' => 'Edit', 'bulkDeletable' => true, 'bulkPayable' => true];
+            'statusOptions' => self::INVOICE_STATUSES, 'actionLabel' => 'Edit', 'bulkDeletable' => true, 'bulkPayable' => true];
     }
 
-    private function invoices(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
+    private function invoices(?string $from, ?string $to, string $search, string $status, ?string $sort, string $dir): array
     {
         $query = Transaction::query()
             ->with(['customer:id,name'])
@@ -361,6 +419,10 @@ class OperationsController extends Controller
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        if (in_array($status, array_keys(self::INVOICE_STATUSES), true)) {
+            $this->whereInvoiceStatus($query, $status);
+        }
 
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
@@ -387,10 +449,10 @@ class OperationsController extends Controller
             'sortKeys' => ['transaction_date', 'invoice_no', 'customer', null, 'grand_total', null],
             'align' => [false, false, false, false, true, true],
             'totals' => $totals,
-            'statusOptions' => [], 'actionLabel' => 'View', 'bulkDeletable' => false];
+            'statusOptions' => self::INVOICE_STATUSES, 'actionLabel' => 'View', 'bulkDeletable' => false];
     }
 
-    private function credits(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
+    private function credits(?string $from, ?string $to, string $search, string $status, ?string $sort, string $dir): array
     {
         $query = Transaction::query()
             ->where('credit_amount', '>', 0)
@@ -404,6 +466,10 @@ class OperationsController extends Controller
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
+
+        if (in_array($status, array_keys(self::INVOICE_STATUSES), true)) {
+            $this->whereCreditStatus($query, $status);
+        }
 
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
@@ -435,7 +501,7 @@ class OperationsController extends Controller
             'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null],
             'align' => [false, false, false, false, false, false, false, true, true],
             'totals' => $totals,
-            'statusOptions' => [], 'actionLabel' => 'Receive', 'bulkDeletable' => false, 'bulkPayable' => true];
+            'statusOptions' => self::INVOICE_STATUSES, 'actionLabel' => 'Receive', 'bulkDeletable' => false, 'bulkPayable' => true];
     }
 
     private function officeExpenses(?string $from, ?string $to, string $search, ?string $sort, string $dir): array
@@ -511,7 +577,18 @@ class OperationsController extends Controller
 
         $rows = $query->paginate($this->perPage)->withQueryString()->through(fn ($e) => [
             'id' => $e->id, 'status' => $e->status, 'action_url' => route('ledger.index', $type),
-            'settle' => ['kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name, 'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount, 'currency' => $e->currency ?: 'AED'],
+            'settle' => [
+                'kind' => 'ledger', 'slug' => $type, 'id' => $e->id, 'label' => $e->party_name,
+                'total' => (float) $e->total_amount, 'paid' => (float) $e->paid_amount, 'currency' => $e->currency ?: 'AED',
+                // Payment history, so a note recorded here (or through the bulk
+                // dialog) is readable afterwards instead of being write-only.
+                'payments' => $e->payments->sortBy([['payment_date', 'asc'], ['id', 'asc']])->map(fn ($p) => [
+                    'id' => $p->id, 'date' => $p->payment_date->format('d-m-Y'),
+                    'amount' => (float) $p->amount, 'method' => $p->paymentMethod?->name ?? '—',
+                    'note' => $p->note ?: null,
+                    'bank_missing' => $p->paymentMethod?->type === 'bank' && ! $p->bank_id,
+                ])->values(),
+            ],
             'bank_missing' => $e->payments->contains(fn ($p) => $p->paymentMethod?->type === 'bank' && ! $p->bank_id),
             'cells' => [
                 $e->entry_date->format('d-m-Y'), $e->party_name, $this->contactCell($e), $e->reference ?? '—', $e->vehicle_number ?? '—',

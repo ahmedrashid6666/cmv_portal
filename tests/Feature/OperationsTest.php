@@ -218,3 +218,80 @@ it('sums total, paid and balance across the whole filtered set on the daily-cred
             ->where('totals.7', Money::display(600))
             ->etc());
 });
+
+it('filters the transactions tab by invoice status', function () {
+    $paid = opTx(today()->toDateString());
+    $unpaid = opTx(today()->toDateString());
+    $partial = opTx(today()->toDateString());
+    $unpaid->update(['grand_total' => 100, 'credit_amount' => 100]);   // nothing received up front
+    $partial->update(['grand_total' => 100, 'credit_amount' => 100]);
+    CreditPayment::create(['transaction_id' => $partial->id, 'payment_date' => today(), 'amount' => 40, 'payment_method_id' => $this->cash->id]);
+
+    $ids = fn ($status) => collect(
+        $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'transactions', 'status' => $status]))
+            ->viewData('page')['props']['rows']['data']
+    )->pluck('id')->all();
+
+    expect($ids('paid'))->toBe([$paid->id]);
+    expect($ids('unpaid'))->toBe([$unpaid->id]);
+    expect($ids('partial'))->toBe([$partial->id]);
+});
+
+it('filters the credits tab by how much of the credit is settled', function () {
+    $settled = opTx(today()->toDateString());
+    $untouched = opTx(today()->toDateString());
+    $part = opTx(today()->toDateString());
+    $settled->update(['credit_amount' => 100]);
+    $untouched->update(['credit_amount' => 100]);
+    $part->update(['credit_amount' => 100]);
+    CreditPayment::create(['transaction_id' => $settled->id, 'payment_date' => today(), 'amount' => 100, 'payment_method_id' => $this->cash->id]);
+    CreditPayment::create(['transaction_id' => $part->id, 'payment_date' => today(), 'amount' => 40, 'payment_method_id' => $this->cash->id]);
+
+    $ids = fn ($status) => collect(
+        $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits', 'status' => $status]))
+            ->viewData('page')['props']['rows']['data']
+    )->pluck('id')->all();
+
+    expect($ids('paid'))->toBe([$settled->id]);
+    expect($ids('unpaid'))->toBe([$untouched->id]);
+    expect($ids('partial'))->toBe([$part->id]);
+});
+
+it('offers status choices on every operations tab that has a status', function () {
+    foreach (['transactions', 'invoices', 'credits', 'daily-credit', 'borrowed'] as $type) {
+        $this->actingAs($this->admin)->get(route('operations.index', ['type' => $type]))
+            ->assertInertia(fn ($p) => $p->where('statusOptions', fn ($o) => count($o) === 3)->etc());
+    }
+});
+
+it('keeps the status filter on an export', function () {
+    $paid = opTx(today()->toDateString());
+    $unpaid = opTx(today()->toDateString());
+    $unpaid->update(['grand_total' => 100, 'credit_amount' => 100]);
+
+    $this->actingAs($this->admin)
+        ->get(route('operations.export', ['format' => 'xlsx', 'type' => 'transactions', 'status' => 'unpaid']))
+        ->assertOk()
+        ->assertDownload();
+});
+
+it('shows the note recorded against a credit payment', function () {
+    $tx = opTx(today()->toDateString());
+    $tx->update(['grand_total' => 100, 'credit_amount' => 100]);
+    CreditPayment::create(['transaction_id' => $tx->id, 'payment_date' => today(), 'amount' => 40, 'payment_method_id' => $this->cash->id, 'note' => 'Bulk run 22-08']);
+
+    $props = $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
+        ->viewData('page')['props'];
+
+    expect($props['rows']['data'][0]['settle']['payments'][0]['note'])->toBe('Bulk run 22-08');
+});
+
+it('shows the note recorded against a ledger payment', function () {
+    $entry = LedgerEntry::factory()->create(['total_amount' => 1000, 'paid_amount' => 0]);
+    App\Models\LedgerPayment::create(['ledger_entry_id' => $entry->id, 'payment_date' => today(), 'amount' => 250, 'payment_method_id' => $this->cash->id, 'note' => 'Part settlement']);
+
+    $props = $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'daily-credit']))
+        ->viewData('page')['props'];
+
+    expect($props['rows']['data'][0]['settle']['payments'][0]['note'])->toBe('Part settlement');
+});

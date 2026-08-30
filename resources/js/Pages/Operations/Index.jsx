@@ -86,6 +86,20 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
         router.post(route('operations.bulk-delete'), { type, ids: selected }, { preserveScroll: true, onSuccess: () => setSelected([]) });
     };
 
+    // What the selection actually adds up to, so the bulk dialog can say how
+    // much is collectable before an amount is typed. Rows with no settleable
+    // balance (a transaction sold without credit) carry no settle payload and
+    // so contribute nothing — the same ones the FIFO run skips.
+    const selectedSettles = rows.data.filter((r) => selected.includes(r.id) && r.settle).map((r) => r.settle);
+    const selectedCurrencies = [...new Set(selectedSettles.map((s) => s.currency || 'AED'))];
+    const selectedCurrency = selectedCurrencies.length === 1 ? selectedCurrencies[0] : 'AED';
+    const payTotals = selectedSettles.reduce((a, s) => {
+        const total = s.kind === 'ledger' ? s.total : s.credit;
+        const settled = s.kind === 'ledger' ? s.paid : s.credit - s.outstanding;
+        return { total: a.total + total, settled: a.settled + settled, outstanding: a.outstanding + Math.max(0, total - settled) };
+    }, { total: 0, settled: 0, outstanding: 0 });
+    const payableCount = selectedSettles.filter((s) => (s.kind === 'ledger' ? s.total - s.paid : s.outstanding) > 0).length;
+
     const pay = useForm({ mode: 'fifo', amount: '', payment_date: todayLocalISO(), payment_method_id: '', bank_id: '', note: '', entry_ids: [] });
     const submitPay = (e) => {
         e.preventDefault();
@@ -159,7 +173,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         <span className="mb-1 block text-[11px] font-medium text-slate-500">To</span>
                         <input type="date" className={input} value={f.to || ''} onChange={(e) => setF({ ...f, to: e.target.value })} />
                     </label>
-                    {isLedger && (
+                    {Object.keys(statusOptions || {}).length > 0 && (
                         <label className="block">
                             <span className="mb-1 block text-[11px] font-medium text-slate-500">Status</span>
                             <select className={input} value={f.status || ''} onChange={(e) => setF({ ...f, status: e.target.value })}>
@@ -284,6 +298,14 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
                         <h3 className="text-lg font-semibold text-navy-800">{isBorrowed ? 'Bulk Return' : 'Bulk Payment'} — {selected.length} {isCreditPayable ? 'invoices' : 'entries'}</h3>
                         <p className="mt-1 text-xs text-slate-500">The amount is distributed across the selected {isCreditPayable ? 'invoices' : 'entries'}, oldest first (FIFO). Rows with nothing outstanding are skipped automatically.</p>
+                        <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-2 text-center text-xs">
+                            <div><div className="text-slate-400">{isCreditPayable ? 'Credit' : 'Total'}</div><div className="font-semibold">{money(payTotals.total, selectedCurrency)}</div></div>
+                            <div><div className="text-slate-400">{isCreditPayable ? 'Received' : isBorrowed ? 'Returned' : 'Paid'}</div><div className="font-semibold text-emerald-700">{money(payTotals.settled, selectedCurrency)}</div></div>
+                            <div><div className="text-slate-400">{isCreditPayable ? 'Outstanding' : 'Balance'}</div><div className="font-semibold text-accent-red">{money(payTotals.outstanding, selectedCurrency)}</div></div>
+                        </div>
+                        {payableCount < selected.length && (
+                            <p className="mt-1 text-center text-[11px] text-slate-400">{payableCount} of {selected.length} selected {payableCount === 1 ? 'row carries' : 'rows carry'} a balance — the rest are already settled.</p>
+                        )}
                         <form onSubmit={submitPay} className="mt-4 space-y-3">
                             <label className="block">
                                 <span className="mb-1 block text-xs font-medium text-slate-600">Total {isBorrowed ? 'Return' : 'Payment'} Amount</span>
@@ -380,12 +402,13 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 <p className="mb-1 text-xs font-semibold uppercase text-slate-400">Payments received</p>
                                 <ul className="space-y-1 text-sm">
                                     {settleRow.payments.map((p) => (
-                                        <li key={p.id} className="flex items-center justify-between rounded bg-slate-50 px-2 py-1">
+                                        <li key={p.id} className="flex items-start justify-between gap-2 rounded bg-slate-50 px-2 py-1">
                                             <span>
                                                 {p.date} · {money(p.amount, settleRow.currency)} <span className="text-xs text-slate-400">{p.method}</span>
                                                 {p.bank_missing && <span title="No bank selected for this bank payment — reverse and re-record it with the correct bank." className="ml-1 text-amber-500">⚠</span>}
+                                                {p.note && <span className="mt-0.5 block text-xs italic text-slate-500">{p.note}</span>}
                                             </span>
-                                            <button onClick={() => reversePayment(p.id)} className="text-xs text-accent-red hover:underline">Reverse</button>
+                                            <button onClick={() => reversePayment(p.id)} className="shrink-0 text-xs text-accent-red hover:underline">Reverse</button>
                                         </li>
                                     ))}
                                 </ul>
@@ -417,6 +440,22 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 <button type="button" onClick={closeSettle} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
                             </div>
                         </form>
+
+                        {/* Payment history — read-only here; the amount above is the editable figure */}
+                        {settleRow.payments?.length > 0 && (
+                            <div className="mt-4">
+                                <p className="mb-1 text-xs font-semibold uppercase text-slate-400">{isBorrowed ? 'Returns recorded' : 'Payments received'}</p>
+                                <ul className="space-y-1 text-sm">
+                                    {settleRow.payments.map((p) => (
+                                        <li key={p.id} className="rounded bg-slate-50 px-2 py-1">
+                                            {p.date} · {money(p.amount, settleRow.currency)} <span className="text-xs text-slate-400">{p.method}</span>
+                                            {p.bank_missing && <span title="No bank selected for this bank payment." className="ml-1 text-amber-500">⚠</span>}
+                                            {p.note && <span className="mt-0.5 block text-xs italic text-slate-500">{p.note}</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
