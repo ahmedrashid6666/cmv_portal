@@ -87,3 +87,54 @@ it('forbids read-only users from saving', function () {
         ->post(route('cash-count.store'), ['count_date' => '2026-07-27', 'lines' => ['AED' => []]])
         ->assertForbidden();
 });
+
+it('splits the slip into IN and OUT totals alongside the balance', function () {
+    $extras = [
+        'AED' => [
+            ['label' => 'OLD BAL', 'amount' => 24685],   // IN  (index 0)
+            ['label' => 'car wash', 'amount' => 20],      // OUT (index 1)
+            ['label' => 'cash sale', 'amount' => 300],    // IN  (index 2)
+            ['label' => 'recharge', 'amount' => 20],       // OUT (index 3)
+        ],
+    ];
+
+    expect(App\Models\CashCount::extrasTotalsFor('AED', $extras))
+        ->toBe(['in' => 24985.0, 'out' => 40.0, 'balance' => 24945.0]);
+});
+
+it('prints the slip IN and OUT totals on the PDF', function () {
+    $c = CashCount::create([
+        'count_date' => '2026-07-27',
+        'lines' => ['AED' => [], 'OMR' => []],
+        'extras' => ['AED' => [['label' => 'OLD BAL', 'amount' => 500], ['label' => 'car wash', 'amount' => 120]], 'OMR' => []],
+        'total_aed' => 0, 'total_omr' => 0, 'expected_aed' => 0,
+    ]);
+
+    $html = view('cash-count.pdf', ['count' => $c, 'company' => ['name' => 'CMV']])->render();
+
+    expect($html)->toContain('>500.00<')      // IN total
+        ->and($html)->toContain('>120.00<')   // OUT total
+        ->and($html)->toContain('Balance Amount: 380.00');
+});
+
+it('exports a cash count workbook carrying the IN and OUT totals', function () {
+    $c = CashCount::create([
+        'count_date' => '2026-07-27',
+        'lines' => ['AED' => ['1000' => 1], 'OMR' => []],
+        'extras' => ['AED' => [['label' => 'OLD BAL', 'amount' => 500], ['label' => 'car wash', 'amount' => 120]], 'OMR' => []],
+        'total_aed' => 1000, 'total_omr' => 0, 'expected_aed' => 900,
+    ]);
+
+    $response = $this->actingAs($this->actor)->get(route('cash-count.xlsx', $c));
+    $response->assertOk();
+
+    $file = tempnam(sys_get_temp_dir(), 'slip').'.xlsx';
+    file_put_contents($file, $response->streamedContent());
+    $sheet = PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getSheetByName('AED');
+    $cells = collect($sheet->toArray())->map(fn ($r) => array_map(fn ($v) => (string) $v, $r));
+    unlink($file);
+
+    // The slip's totals row: Total | 500 | Total | 120
+    expect($cells->contains(fn ($r) => ($r[0] ?? '') === 'Total' && ($r[1] ?? '') === '500' && ($r[3] ?? '') === '120'))->toBeTrue()
+        ->and($cells->contains(fn ($r) => ($r[0] ?? '') === 'Balance Amount' && ($r[1] ?? '') === '380'))->toBeTrue();
+});

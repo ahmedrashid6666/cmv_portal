@@ -64,6 +64,7 @@ Route::middleware(['auth'])->group(function () {
     // Daily cash count (physical denomination count + reconciliation)
     Route::get('cash-count', [CashCountController::class, 'index'])->name('cash-count.index');
     Route::get('cash-count/{cashCount}/pdf', [CashCountController::class, 'pdf'])->name('cash-count.pdf');
+    Route::get('cash-count/{cashCount}/excel', [CashCountController::class, 'xlsx'])->name('cash-count.xlsx');
     Route::post('cash-count', [CashCountController::class, 'store'])
         ->middleware('role:super_admin,admin,accountant')->name('cash-count.store');
     Route::delete('cash-count/{cashCount}', [CashCountController::class, 'destroy'])

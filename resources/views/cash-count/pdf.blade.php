@@ -81,6 +81,7 @@
                 $slipRows = max((int) ceil(count($slipExtras) / 2), 1);
                 $slipIn = fn ($row) => $slipExtras[$row * 2] ?? null;
                 $slipOut = fn ($row) => $slipExtras[$row * 2 + 1] ?? null;
+                $slipTotals = \App\Models\CashCount::extrasTotalsFor($cur, $count->extras ?? []);
             @endphp
             @if($hasSlips)
                 <table class="den slip">
@@ -98,7 +99,11 @@
                             <td class="r">{{ $out && (float) ($out['amount'] ?? 0) !== 0.0 ? number_format((float) $out['amount'], 2) : '' }}</td>
                         </tr>
                     @endfor
-                    <tr class="tot"><td colspan="4">{{ $cur }} Balance Amount: {{ number_format(\App\Models\CashCount::extrasBalanceFor($cur, $count->extras ?? []), 2) }}</td></tr>
+                    <tr class="tot">
+                        <td class="r">Total</td><td class="r">{{ number_format($slipTotals['in'], 2) }}</td>
+                        <td class="r">Total</td><td class="r">{{ number_format($slipTotals['out'], 2) }}</td>
+                    </tr>
+                    <tr class="tot"><td colspan="4">{{ $cur }} Balance Amount: {{ number_format($slipTotals['balance'], 2) }}</td></tr>
                     </tbody>
                 </table>
             @endif

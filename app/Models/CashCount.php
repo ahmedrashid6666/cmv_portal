@@ -48,13 +48,14 @@ class CashCount extends Model
     }
 
     /**
-     * Net IN − OUT across the slip/extras list for a currency — the "Balance
-     * Amount" shown under each currency's Bundles/Slips table. Reference
-     * only, same as the slips themselves; not part of totalFor(). Extras
-     * alternate IN (even index) / OUT (odd index), mirroring the two-column
-     * layout on the Daily Cash Slip page.
+     * The IN total, OUT total and their net across the slip/extras list for a
+     * currency. Reference only, same as the slips themselves; not part of
+     * totalFor(). Extras alternate IN (even index) / OUT (odd index),
+     * mirroring the two-column layout on the Daily Cash Slip page.
+     *
+     * @return array{in: float, out: float, balance: float}
      */
-    public static function extrasBalanceFor(string $currency, array $extras): float
+    public static function extrasTotalsFor(string $currency, array $extras): array
     {
         $in = 0.0;
         $out = 0.0;
@@ -67,7 +68,16 @@ class CashCount extends Model
             }
         }
 
-        return round($in - $out, 2);
+        return ['in' => round($in, 2), 'out' => round($out, 2), 'balance' => round($in - $out, 2)];
+    }
+
+    /**
+     * Net IN − OUT — the "Balance Amount" shown under each currency's
+     * Bundles/Slips table.
+     */
+    public static function extrasBalanceFor(string $currency, array $extras): float
+    {
+        return self::extrasTotalsFor($currency, $extras)['balance'];
     }
 
     public function auditLabel(): string

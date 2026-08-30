@@ -193,6 +193,7 @@ export default function CashCount({ date, denominations, count, history }) {
                                     <td className="py-2 pr-4 text-right tabular-nums text-slate-600">{h.balance_omr > 0 ? '+' : ''}{num(h.balance_omr)}</td>
                                     <td className="py-2 text-right whitespace-nowrap">
                                         <a href={route('cash-count.pdf', h.id)} target="_blank" className="text-primary-600 hover:underline">PDF</a>
+                                        <a href={route('cash-count.xlsx', h.id)} className="ml-3 text-primary-600 hover:underline">Excel</a>
                                         <button onClick={() => changeDate(h.date)} className="ml-3 text-navy-600 hover:underline">Edit</button>
                                         {canWrite && <button onClick={() => deleteCount(h)} className="ml-3 text-accent-red hover:underline">Delete</button>}
                                     </td>
