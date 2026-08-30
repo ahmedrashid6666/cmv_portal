@@ -10,14 +10,30 @@ const input = 'rounded-lg border-slate-300 text-sm shadow-sm focus:border-primar
 export default function BankStatement({ statement, filters }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
-    // Only the manual in/out rows belong to this statement; every other line is
-    // owned by the transaction / payment / expense that produced it and has to
-    // be removed there, so it stays consistent with the books.
-    const removable = (r) => canWrite && r.source === 'bank_entry';
+    // A row can be removed from here when it maps one-to-one to a record this
+    // page can delete outright: the manual in/out entries, and a credit
+    // repayment (deleting it is the same reversal the Receive Payment dialog
+    // does). A transaction line is not one of them — one shipment produces
+    // several statement rows, so deleting it here would take the whole
+    // shipment with it — and a bulk settlement has no reversal endpoint yet.
+    const deletes = {
+        bank_entry: (r) => ({
+            url: route('bank-accounts.entries.destroy', r.source_id),
+            confirm: `Remove this entry?\n\n${r.description}`,
+        }),
+        credit_payment: (r) => ({
+            url: route('credits.payment.destroy', r.source_id),
+            confirm: 'Reverse this credit repayment?\n\n'
+                + `${r.description}${r.ref ? ` (invoice ${r.ref})` : ''}\n`
+                + `${money(r.debit, 'AED')} comes back out of this bank, and the invoice goes back to owing it.`,
+        }),
+    };
+    const removable = (r) => canWrite && !!deletes[r.source];
     const [f, setF] = useState({ from: filters.from || '', to: filters.to || '' });
     const remove = (r) => {
-        if (!confirm(`Remove this entry?\n\n${r.description}`)) return;
-        router.delete(route('bank-accounts.entries.destroy', r.source_id), { preserveScroll: true });
+        const action = deletes[r.source]?.(r);
+        if (!action || !confirm(action.confirm)) return;
+        router.delete(action.url, { preserveScroll: true });
     };
     const apply = (e) => { e?.preventDefault(); router.get(route('bank-accounts.statement', statement.bank.id), f, { preserveState: true, replace: true }); };
     const reset = () => router.get(route('bank-accounts.statement', statement.bank.id));
@@ -93,7 +109,7 @@ export default function BankStatement({ statement, filters }) {
                                         <td className="py-2 text-right whitespace-nowrap">
                                             {removable(r)
                                                 ? <button onClick={() => remove(r)} className="text-xs text-accent-red hover:underline">Delete</button>
-                                                : <span title="This line comes from a transaction, payment or expense — delete it from that record." className="text-xs text-slate-300">—</span>}
+                                                : <span title="This line comes from a shipment or a bulk settlement — remove it from that record, since one of those can produce several statement lines." className="text-xs text-slate-300">—</span>}
                                         </td>
                                     )}
                                 </tr>

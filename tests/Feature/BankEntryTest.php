@@ -172,3 +172,34 @@ it('forbids a read-only user from deleting an entry', function () {
 
     expect(BankEntry::count())->toBe(1);
 });
+
+it('reverses a credit repayment from the statement, restoring the invoice balance', function () {
+    $admin = User::factory()->role(Role::ADMIN)->create();
+    $customer = App\Models\Customer::factory()->create();
+    $method = App\Models\PaymentMethod::create(['name' => 'Bank', 'type' => 'bank']);
+    $tx = App\Models\Transaction::create([
+        'transaction_date' => '2026-07-11', 'invoice_no' => '58278', 'customer_id' => $customer->id,
+        'payment_method_id' => $method->id, 'customs_fees' => 0, 'gov_fees' => 0, 'profit' => 290,
+        'vat_rate' => 0, 'grand_total' => 290, 'credit_amount' => 290,
+    ]);
+    $payment = App\Models\CreditPayment::create([
+        'transaction_id' => $tx->id, 'payment_date' => '2026-07-12', 'amount' => 290,
+        'payment_method_id' => $method->id, 'bank_id' => $this->rak->id,
+    ]);
+
+    // Before: the repayment is on the statement and the invoice is settled.
+    $before = app(BankService::class)->statement($this->rak);
+    expect($before['rows'])->toHaveCount(1)
+        ->and((float) $before['closing'])->toBe(790.0)          // 500 opening + 290 in
+        ->and((float) $tx->fresh()->creditOutstanding())->toBe(0.0);
+
+    $statementUrl = route('bank-accounts.statement', $this->rak->id);
+    $this->actingAs($admin)->from($statementUrl)
+        ->delete(route('credits.payment.destroy', $payment->id))
+        ->assertRedirect($statementUrl);
+
+    $after = app(BankService::class)->statement($this->rak);
+    expect($after['rows'])->toBeEmpty()
+        ->and((float) $after['closing'])->toBe(500.0)            // back to opening
+        ->and((float) $tx->fresh()->creditOutstanding())->toBe(290.0); // owed again
+});
