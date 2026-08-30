@@ -295,3 +295,26 @@ it('shows the note recorded against a ledger payment', function () {
 
     expect($props['rows']['data'][0]['settle']['payments'][0]['note'])->toBe('Part settlement');
 });
+
+it('shows the last payment date as the paid date on the credits tab', function () {
+    $paid = opTx(today()->toDateString());
+    $paid->update(['grand_total' => 100, 'credit_amount' => 100]);
+    CreditPayment::create(['transaction_id' => $paid->id, 'payment_date' => today()->subDays(3), 'amount' => 40, 'payment_method_id' => $this->cash->id]);
+    CreditPayment::create(['transaction_id' => $paid->id, 'payment_date' => today()->subDay(), 'amount' => 60, 'payment_method_id' => $this->cash->id]);
+
+    $props = $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
+        ->viewData('page')['props'];
+
+    expect($props['columns'][9])->toBe('Paid Date')
+        ->and($props['rows']['data'][0]['cells'][9])->toBe(today()->subDay()->format('d-m-Y'));
+});
+
+it('leaves the paid date blank on a credit nothing has been received against', function () {
+    $tx = opTx(today()->toDateString());
+    $tx->update(['grand_total' => 100, 'credit_amount' => 100]);
+
+    $props = $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
+        ->viewData('page')['props'];
+
+    expect($props['rows']['data'][0]['cells'][9])->toBe('—');
+});

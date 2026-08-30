@@ -269,6 +269,18 @@ class OperationsController extends Controller
     }
 
     /**
+     * When the credit was last received against. Blank until something has
+     * actually been collected; for a part-paid credit it is the most recent
+     * repayment, and for a settled one that is the date it was cleared.
+     */
+    private function creditPaidDate(Transaction $t): string
+    {
+        $last = $t->creditPayments->max('payment_date');
+
+        return $last ? $last->format('d-m-Y') : '—';
+    }
+
+    /**
      * A "Com-1" commission is one whose label is Com-1 (or blank — the primary
      * slot). Everything else (Com-2, Com-3, …) belongs in the Com-2 column, so a
      * shipment whose only commission sat in the sheet's Com-2 column stays there.
@@ -474,7 +486,7 @@ class OperationsController extends Controller
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
         $t = $this->moneyFormatter($totalsSource);
-        $totals = ['', '', '', '', '', '', '', $t((clone $totalsSource)->sum('credit_amount')), $t($this->creditOutstandingTotal($totalsSource))];
+        $totals = ['', '', '', '', '', '', '', $t((clone $totalsSource)->sum('credit_amount')), $t($this->creditOutstandingTotal($totalsSource)), ''];
 
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
@@ -493,13 +505,14 @@ class OperationsController extends Controller
                     $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $this->contactCell($t), $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
                     \App\Support\Money::display($t->credit_amount, $t->currency),
                     \App\Support\Money::display($out, $t->currency),
+                    $this->creditPaidDate($t),
                 ],
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Contact', 'Reference', 'Vehicle No', 'Credit', 'Outstanding'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null],
-            'align' => [false, false, false, false, false, false, false, true, true],
+        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Contact', 'Reference', 'Vehicle No', 'Credit', 'Outstanding', 'Paid Date'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null, null],
+            'align' => [false, false, false, false, false, false, false, true, true, false],
             'totals' => $totals,
             'statusOptions' => self::INVOICE_STATUSES, 'actionLabel' => 'Receive', 'bulkDeletable' => false, 'bulkPayable' => true];
     }
