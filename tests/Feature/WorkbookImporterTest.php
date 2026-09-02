@@ -136,6 +136,63 @@ it('flags rows already in the system as duplicates in the preview', function () 
         ->and(collect($second['rows'])->firstWhere('invoice_no', '56732')['_duplicate'])->toBeTrue();
 });
 
+/**
+ * A workbook with a "Contact No" column holding one or several numbers
+ * (comma/slash separated), mirroring how CMV's sheets list multiple
+ * contacts in a single cell.
+ */
+function makeWorkbookWithContacts(): string
+{
+    $ss = new Spreadsheet();
+    $sheet = $ss->getActiveSheet();
+    $sheet->setTitle('01-07-2026');
+
+    $headers = ['Sl No.', 'Invoice No', 'Boe No.', 'Customer Name', 'Contact No', 'Reference', 'Vehicle No.',
+        'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT 0%', 'Total Amount', 'Payment Mode', 'Credit Amount'];
+    foreach ($headers as $i => $h) {
+        $sheet->setCellValue([$i + 1, 1], $h);
+    }
+
+    $r1 = [1, '56728', '2030026480926', 'ESQUBE INDUSTRIES LLC', '0501234567, 0559876543', 'JRY', '3512RA', 245, 0, 35, 0, 280, 'Cash', 0];
+    $r2 = [2, '56732', '2010029464726', 'BIG BRANDS PERFUMES', '0501112222', 'ROW-ZNY', '63655DXB', 295, 0, 50, 0, 345, 'Cash', 0];
+    $r3 = [3, '56999', '999', 'NO CONTACT LLC', '', '', '', 100, 0, 10, 0, 110, 'Cash', 0];
+
+    foreach ([$r1, $r2, $r3] as $ri => $row) {
+        foreach ($row as $ci => $val) {
+            if ($val !== '') {
+                $sheet->setCellValue([$ci + 1, 2 + $ri], $val);
+            }
+        }
+    }
+
+    $path = tempnam(sys_get_temp_dir(), 'wc').'.xlsx';
+    (new Xlsx($ss))->save($path);
+
+    return $path;
+}
+
+it('parses and persists contact numbers from a Contact column, splitting multi-number cells', function () {
+    $importer = app(WorkbookImporter::class);
+    $preview = $importer->parse(makeWorkbookWithContacts());
+
+    $multi = collect($preview['rows'])->firstWhere('invoice_no', '56728');
+    expect($multi['contact_numbers'])->toBe(['0501234567', '0559876543']);
+
+    $single = collect($preview['rows'])->firstWhere('invoice_no', '56732');
+    expect($single['contact_numbers'])->toBe(['0501112222']);
+
+    $none = collect($preview['rows'])->firstWhere('invoice_no', '56999');
+    expect($none['contact_numbers'])->toBe([]);
+
+    $importer->commit($preview);
+
+    $t = Transaction::where('invoice_no', '56728')->first();
+    expect($t->contact_numbers)->toBe(['0501234567', '0559876543']);
+
+    $t2 = Transaction::where('invoice_no', '56999')->first();
+    expect($t2->contact_numbers)->toBeNull();
+});
+
 it('commits rows idempotently', function () {
     $importer = app(WorkbookImporter::class);
     $path = makeWorkbook();

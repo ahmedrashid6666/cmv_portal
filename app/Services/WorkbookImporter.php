@@ -42,6 +42,9 @@ class WorkbookImporter
         'credit' => 'credit_amount',
         'expenses details' => 'expense_desc',
         'expense details' => 'expense_desc',
+        'contact' => 'contact_raw',
+        'mobile' => 'contact_raw',
+        'phone' => 'contact_raw',
         // Commission columns ("Com-1"/"Com-2" or plain "COMMISION") are matched
         // separately in mapColumns() so both spellings and duplicate headers work.
     ];
@@ -238,6 +241,7 @@ class WorkbookImporter
                     'customer_id' => $customer->id,
                     'reference_id' => $reference?->id,
                     'vehicle_number' => $vehicle?->number,
+                    'contact_numbers' => $row['contact_numbers'] ?? [],
                     'customs_fees' => (float) $row['customs_fees'],
                     'gov_fees' => (float) $row['gov_fees'],
                     'profit' => (float) $row['profit'],
@@ -350,6 +354,7 @@ class WorkbookImporter
             'customer' => $customer,
             'reference' => $this->str($get('reference')) === '-' ? null : $this->str($get('reference')),
             'vehicle' => $this->str($get('vehicle')),
+            'contact_numbers' => $this->splitContacts($get('contact_raw')),
             'customs_fees' => $customs,
             'gov_fees' => $get('gov_fees'),
             'profit' => $profit,
@@ -466,6 +471,24 @@ class WorkbookImporter
         $s = trim((string) $v);
 
         return $s === '' ? null : $s;
+    }
+
+    /**
+     * A workbook's "Contact"/"Mobile"/"Phone" cell often holds more than one
+     * number (comma, slash, semicolon, or newline separated). Split it into
+     * the array Transaction.contact_numbers expects, same shape as the web
+     * form's ContactNumbers input.
+     *
+     * @return array<int, string>
+     */
+    private function splitContacts(mixed $v): array
+    {
+        $s = trim((string) $v);
+        if ($s === '') {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', preg_split('/[,;\/\n]+/', $s)), fn ($n) => $n !== ''));
     }
 
     private function cleanBoe(mixed $v): ?string

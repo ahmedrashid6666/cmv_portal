@@ -93,6 +93,7 @@ export default function ImportIndex({ preview }) {
                                         <th className="whitespace-nowrap py-2 pr-4">Invoice No</th>
                                         <th className="whitespace-nowrap py-2 pr-4">Boe No</th>
                                         <th className="whitespace-nowrap py-2 pr-4">Customer Name</th>
+                                        <th className="whitespace-nowrap py-2 pr-4">Contact</th>
                                         <th className="whitespace-nowrap py-2 pr-4">Reference</th>
                                         <th className="whitespace-nowrap py-2 pr-4">Vehicle No</th>
                                         <th className="whitespace-nowrap py-2 pr-4 text-right">Customs Fees (CDR)</th>
@@ -118,6 +119,7 @@ export default function ImportIndex({ preview }) {
                                             <td className="whitespace-nowrap py-2 pr-4">{r.invoice_no || '—'}</td>
                                             <td className="whitespace-nowrap py-2 pr-4">{r.boe_no || '—'}</td>
                                             <td className="whitespace-nowrap py-2 pr-4">{r.customer}</td>
+                                            <td className="whitespace-nowrap py-2 pr-4">{r.contact_numbers?.length ? r.contact_numbers.join(', ') : '—'}</td>
                                             <td className="whitespace-nowrap py-2 pr-4">{r.reference || '—'}</td>
                                             <td className="whitespace-nowrap py-2 pr-4">{r.vehicle || '—'}</td>
                                             <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{num(r.customs_fees)}</td>
