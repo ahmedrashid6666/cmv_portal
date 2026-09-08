@@ -12,7 +12,7 @@ class Customer extends Model
 {
     use Auditable, HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'contact', 'notes', 'opening_balance'];
+    protected $fillable = ['name', 'contact', 'email', 'address', 'notes', 'opening_balance'];
 
     protected function casts(): array
     {

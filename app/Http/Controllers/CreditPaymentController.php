@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bank;
+use App\Models\CompanyBankDetail;
 use App\Models\CreditPayment;
+use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use App\Rules\RequiredBankForPaymentMethod;
+use App\Support\Branding;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -14,11 +18,16 @@ use Inertia\Inertia;
 
 class CreditPaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->string('search')->trim()->value();
+
         $outstanding = Transaction::query()
             ->where('credit_amount', '>', 0)
-            ->with(['customer:id,name', 'creditPayments'])
+            ->with(['customer:id,name', 'reference:id,name', 'creditPayments'])
+            ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))))
             ->latest('transaction_date')
             ->get()
             ->map(function ($t) {
@@ -27,7 +36,9 @@ class CreditPaymentController extends Controller
                     'id' => $t->id,
                     'date' => $t->transaction_date->format('Y-m-d'),
                     'invoice_no' => $t->invoice_no,
+                    'customer_id' => $t->customer_id,
                     'customer' => $t->customer?->name,
+                    'reference' => $t->reference?->name,
                     'credit_amount' => (float) $t->credit_amount,
                     'outstanding' => $out,
                 ];
@@ -37,9 +48,61 @@ class CreditPaymentController extends Controller
 
         return Inertia::render('Credits/Index', [
             'outstanding' => $outstanding,
+            'filters' => ['search' => $search],
             'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name', 'type']),
             'banks' => Bank::orderBy('name')->get(['id', 'name']),
+            'companyBanks' => CompanyBankDetail::orderByDesc('is_default')->orderBy('bank_name')->get(),
         ]);
+    }
+
+    /**
+     * A customer's Outstanding Statement — every outstanding credit invoice,
+     * with the selected company bank's payment details printed at the foot
+     * so the customer knows where to send payment.
+     */
+    public function statement(Request $request, Customer $customer)
+    {
+        $request->validate([
+            'bank_id' => ['nullable', 'exists:company_bank_details,id'],
+        ]);
+
+        $invoices = Transaction::query()
+            ->where('customer_id', $customer->id)
+            ->where('credit_amount', '>', 0)
+            ->with(['reference:id,name', 'creditPayments' => fn ($q) => $q->orderBy('payment_date')])
+            ->orderBy('transaction_date')
+            ->get()
+            ->map(fn ($t) => [
+                'date' => $t->transaction_date->format('d-m-Y'),
+                'invoice_no' => $t->invoice_no ?? ('TXN-'.$t->id),
+                'boe_no' => $t->boe_no,
+                'reference' => $t->reference?->name,
+                'vehicle' => $t->vehicle_number,
+                'currency' => $t->currency ?: 'AED',
+                'credit_amount' => (float) $t->credit_amount,
+                'paid' => (float) $t->creditPayments->sum('amount'),
+                'outstanding' => round((float) $t->creditOutstanding(), 2),
+                'last_payment' => $t->creditPayments->isNotEmpty()
+                    ? ['date' => $t->creditPayments->last()->payment_date->format('d-m-Y'), 'amount' => (float) $t->creditPayments->last()->amount]
+                    : null,
+            ])
+            ->filter(fn ($row) => $row['outstanding'] > 0)
+            ->values();
+
+        $bank = CompanyBankDetail::resolveFor($request);
+
+        $pdf = Pdf::loadView('credits.statement', [
+            'company' => Branding::all(),
+            'logoDataUri' => Branding::logoDataUri(),
+            'customer' => $customer,
+            'invoices' => $invoices,
+            'totalOutstanding' => round($invoices->sum('outstanding'), 2),
+            'currency' => $invoices->first()['currency'] ?? 'AED',
+            'bank' => $bank,
+            'statementDate' => now()->format('d-m-Y'),
+        ]);
+
+        return $pdf->download('outstanding-statement-'.\Illuminate\Support\Str::slug($customer->name).'.pdf');
     }
 
     public function store(Request $request)

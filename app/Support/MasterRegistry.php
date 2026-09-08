@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AccountHead;
 use App\Models\Bank;
+use App\Models\CompanyBankDetail;
 use App\Models\Customer;
 use App\Models\ExpenseCategory;
 use App\Models\PaymentMethod;
@@ -30,6 +31,8 @@ class MasterRegistry
                 'fields' => [
                     ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'required' => true],
                     ['name' => 'contact', 'label' => 'Contact', 'type' => 'text'],
+                    ['name' => 'email', 'label' => 'Email', 'type' => 'text'],
+                    ['name' => 'address', 'label' => 'Address', 'type' => 'textarea'],
                     ['name' => 'opening_balance', 'label' => 'Opening Balance', 'type' => 'number', 'default' => 0],
                     ['name' => 'notes', 'label' => 'Notes', 'type' => 'textarea'],
                 ],
@@ -94,6 +97,22 @@ class MasterRegistry
                 'fields' => [
                     ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'required' => true],
                     ['name' => 'type', 'label' => 'Type', 'type' => 'select', 'options' => ['asset', 'liability', 'income', 'expense', 'equity'], 'required' => true],
+                ],
+            ],
+            'company-bank-details' => [
+                'model' => CompanyBankDetail::class,
+                'label' => 'Bank Payment Details',
+                'singular' => 'Bank Detail',
+                'columns' => ['bank_name' => 'Bank', 'account_name' => 'Account Name', 'account_number' => 'Account No', 'iban' => 'IBAN'],
+                'fields' => [
+                    ['name' => 'bank_name', 'label' => 'Bank Name', 'type' => 'text', 'required' => true],
+                    ['name' => 'account_name', 'label' => 'Account Name', 'type' => 'text', 'required' => true],
+                    ['name' => 'account_number', 'label' => 'Account Number', 'type' => 'text', 'required' => true],
+                    ['name' => 'iban', 'label' => 'IBAN', 'type' => 'text'],
+                    ['name' => 'swift_code', 'label' => 'SWIFT / BIC Code', 'type' => 'text'],
+                    ['name' => 'branch', 'label' => 'Branch', 'type' => 'text'],
+                    ['name' => 'currency', 'label' => 'Currency', 'type' => 'text', 'default' => 'AED'],
+                    ['name' => 'is_default', 'label' => 'Default — shown automatically on a new statement', 'type' => 'checkbox', 'default' => false],
                 ],
             ],
         ];

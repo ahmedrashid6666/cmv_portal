@@ -49,7 +49,7 @@ class FinalCalculationController extends Controller
                 'bundles' => $count->bundles ?? ['AED' => [], 'OMR' => []],
                 'remarks' => $count->remarks,
             ] : null,
-            'history' => FinalCalculation::latest('calc_date')->limit(20)->get()
+            'history' => FinalCalculation::latest('calc_date')->get()
                 ->map(fn ($c) => [
                     'id' => $c->id,
                     'date' => $c->calc_date->format('Y-m-d'),

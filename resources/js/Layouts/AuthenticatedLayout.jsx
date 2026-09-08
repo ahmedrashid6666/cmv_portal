@@ -85,6 +85,7 @@ export default function AuthenticatedLayout({ header, children }) {
         ['expense-categories', 'Expense Categories', '⬓'],
         ['payment-methods', 'Payment Methods', '⬔'],
         ['banks', 'Banks', '⛁'],
+        ['company-bank-details', 'Bank Payment Details', '🏦'],
     ];
 
     const groups = [

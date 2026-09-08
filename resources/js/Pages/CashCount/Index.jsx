@@ -174,10 +174,10 @@ export default function CashCount({ date, denominations, count, history }) {
 
             {/* History */}
             <Card title="Recent Counts" className="mt-4">
-                <div className="overflow-x-auto">
+                <div className="max-h-[480px] overflow-y-auto overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b text-left text-xs uppercase text-slate-500">
+                            <tr className="sticky top-0 z-10 border-b bg-white text-left text-xs uppercase text-slate-500">
                                 <th className="py-2 pr-4">Date</th>
                                 <th className="py-2 pr-4 text-right">AED Balance</th>
                                 <th className="py-2 pr-4 text-right">OMR Balance</th>
