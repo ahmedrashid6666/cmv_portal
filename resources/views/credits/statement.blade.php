@@ -8,6 +8,8 @@
     .wrap { padding: 4px; }
     .top { width: 100%; border-bottom: 3px solid #1b9a9b; padding-bottom: 12px; margin-bottom: 16px; }
     .top td { vertical-align: top; }
+    .top td.brand { width: 66%; padding-right: 12px; }
+    .top td.doc { width: 34%; }
     .logo { width: 64px; }
     .company { font-size: 20px; font-weight: bold; color: #1e3a5f; }
     .muted { color: #64748b; font-size: 10px; line-height: 1.5; }
@@ -35,7 +37,7 @@
 <div class="wrap">
     <table class="top">
         <tr>
-            <td>
+            <td class="brand">
                 @if ($logoDataUri)
                     <img class="logo" src="{{ $logoDataUri }}" alt="">
                 @endif
@@ -47,7 +49,7 @@
                     @if($company['trn'])<br>TRN: {{ $company['trn'] }}@endif
                 </div>
             </td>
-            <td style="text-align:right;">
+            <td class="doc" style="text-align:right;">
                 <div class="doc-title">OUTSTANDING STATEMENT</div>
                 <div class="muted">Statement Date: {{ $statementDate }}</div>
             </td>

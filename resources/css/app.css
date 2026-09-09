@@ -13,3 +13,29 @@
         -moz-appearance: textfield;
     }
 }
+
+@layer utilities {
+    /* A wide, horizontally-scrollable table (Operations etc.) whose scrollbar
+       stays visible instead of relying on the OS's hover/scroll-to-reveal
+       behavior — otherwise there's no visual cue that there's more to the
+       right, or where to grab to scroll there. */
+    .scroll-x-visible {
+        overflow-x: auto;
+        scrollbar-width: auto;
+        scrollbar-color: #94a3b8 #e2e8f0;
+    }
+    .scroll-x-visible::-webkit-scrollbar {
+        height: 10px;
+    }
+    .scroll-x-visible::-webkit-scrollbar-track {
+        background: #e2e8f0;
+        border-radius: 9999px;
+    }
+    .scroll-x-visible::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 9999px;
+    }
+    .scroll-x-visible::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+}

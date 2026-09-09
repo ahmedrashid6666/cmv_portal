@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bank;
+use App\Models\CompanyBankDetail;
 use App\Models\Customer;
 use App\Models\LedgerEntry;
 use App\Models\OfficeExpense;
@@ -63,6 +64,7 @@ class OperationsController extends Controller
             'isLedger' => in_array($type, ['daily-credit', 'borrowed'], true),
             'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'bank'])->orderBy('name')->get(['id', 'name', 'type']),
             'banks' => Bank::orderBy('name')->get(['id', 'name']),
+            'companyBanks' => CompanyBankDetail::orderByDesc('is_default')->orderBy('bank_name')->get(),
         ]));
     }
 
@@ -501,6 +503,8 @@ class OperationsController extends Controller
                 'status' => $out <= 0 ? 'paid' : ($out < (float) $t->credit_amount ? 'partial' : 'unpaid'),
                 'action_url' => route('credits.index'), 'settle' => $this->creditSettle($t),
                 'bank_missing' => $t->creditPayments->contains(fn ($p) => $p->paymentMethod?->type === 'bank' && ! $p->bank_id),
+                'customer_id' => $t->customer_id,
+                'customer' => $t->customer?->name,
                 'cells' => [
                     $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $this->contactCell($t), $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
                     \App\Support\Money::display($t->credit_amount, $t->currency),

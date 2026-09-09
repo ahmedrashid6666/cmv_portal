@@ -15,7 +15,7 @@ const statusStyle = {
     unpaid: 'bg-red-100 text-accent-red-dark',
 };
 
-export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], align = null, totals = null, isLedger, statusOptions, actionLabel, bulkDeletable, bulkPayable, paymentMethods, banks = [] }) {
+export default function Operations({ tabs, type, columns, rows, filters, sort, sortKeys = [], align = null, totals = null, isLedger, statusOptions, actionLabel, bulkDeletable, bulkPayable, paymentMethods, banks = [], companyBanks = [] }) {
     const role = usePage().props.auth.user.role;
     const canWrite = ['super_admin', 'admin', 'accountant'].includes(role);
     const canBulkDelete = ['super_admin', 'admin'].includes(role);
@@ -28,8 +28,26 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const [selected, setSelected] = useState([]);
     const [payOpen, setPayOpen] = useState(false);
     const [settleRow, setSettleRow] = useState(null); // row.settle {kind:'credit'|'ledger', ...}
+    const [statementFor, setStatementFor] = useState(null); // { customer_id, customer } — Credits tab only
+    const [statementBankId, setStatementBankId] = useState(companyBanks.find((b) => b.is_default)?.id ?? companyBanks[0]?.id ?? '');
     const debounceTimer = useRef(null);
     const skipNextAutoSearch = useRef(true); // don't re-fire on mount (e.g. a pagination/sort click just navigated here)
+
+    // A top scrollbar mirroring the table's own — on a long list the bottom
+    // one (below every row) is too far away to be useful for scrolling right.
+    const topScrollRef = useRef(null);
+    const tableScrollRef = useRef(null);
+    const [tableWidth, setTableWidth] = useState(0);
+    useEffect(() => {
+        const el = tableScrollRef.current;
+        if (!el) return;
+        const measure = () => setTableWidth(el.scrollWidth);
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [rows, columns, type]);
+    const syncScroll = (from, to) => { if (to.current && from.current) to.current.scrollLeft = from.current.scrollLeft; };
 
     const go = (params) => router.get(route('operations.index'), { type, ...f, sort: sort?.by, dir: sort?.dir, ...params }, { preserveState: true, replace: true, onSuccess: () => setSelected([]) });
 
@@ -137,6 +155,13 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const submitLedgerSettle = (e) => { e.preventDefault(); led.put(route('ledger.settle', [settleRow.slug, settleRow.id]), { preserveScroll: true, onSuccess: closeSettle }); };
     const ledBalance = Math.max(0, (settleRow?.total || 0) - (parseFloat(led.data.paid_amount) || 0));
 
+    const openStatement = (row) => setStatementFor(row);
+    // Always include bank_id, even empty — that's how the backend tells "no bank
+    // section, deliberately chosen" apart from "not specified, use the default".
+    const statementUrl = statementFor
+        ? route('credits.statement', { customer: statementFor.customer_id, bank_id: statementBankId })
+        : '#';
+
     return (
         <AuthenticatedLayout header="Operations">
             <Head title="Operations" />
@@ -211,7 +236,10 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
 
             {/* Table */}
             <Card>
-                <div className="overflow-x-auto">
+                <div ref={topScrollRef} className="scroll-x-visible" onScroll={() => syncScroll(topScrollRef, tableScrollRef)}>
+                    <div style={{ width: tableWidth, height: 1 }} />
+                </div>
+                <div ref={tableScrollRef} className="scroll-x-visible" onScroll={() => syncScroll(tableScrollRef, topScrollRef)}>
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b text-left text-xs uppercase text-slate-500 align-bottom">
@@ -228,6 +256,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                     </th>
                                 ))}
                                 <th className="py-2 pr-3 leading-tight">Status</th>
+                                {type === 'credits' && <th className="py-2 pr-3"></th>}
                                 {canWrite && <th className="py-2"></th>}
                             </tr>
                         </thead>
@@ -255,6 +284,11 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                             <span className="text-slate-300">—</span>
                                         )}
                                     </td>
+                                    {type === 'credits' && (
+                                        <td className="py-2 pr-3 whitespace-nowrap text-right">
+                                            <button onClick={() => openStatement(r)} className="text-navy-600 hover:underline">Statement</button>
+                                        </td>
+                                    )}
                                     {canWrite && (
                                         <td className="py-2 whitespace-nowrap text-right">
                                             {type === 'credits'
@@ -277,6 +311,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                     <td className="py-3 pr-1"></td>
                                     {totals.map((cell, i) => <td key={i} className={'whitespace-nowrap py-3 pr-3 ' + (isRight(i) ? 'text-right tabular-nums' : '')}>{cell}</td>)}
                                     <td className="py-3 pr-3"></td>
+                                    {type === 'credits' && <td className="py-3 pr-3"></td>}
                                     {canWrite && <td className="py-3"></td>}
                                 </tr>
                             </tfoot>
@@ -456,6 +491,37 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 </ul>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {statementFor && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+                        <h3 className="text-lg font-semibold text-navy-800">Download Outstanding Statement</h3>
+                        <p className="mt-1 text-sm text-slate-500">{statementFor.customer}</p>
+
+                        <label className="mt-4 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">Show bank details for</span>
+                            <select className={input + ' w-full'} value={statementBankId} onChange={(e) => setStatementBankId(e.target.value)}>
+                                <option value="">No bank details</option>
+                                {companyBanks.map((b) => <option key={b.id} value={b.id}>{b.bank_name} — {b.account_name}{b.is_default ? ' (default)' : ''}</option>)}
+                            </select>
+                            {companyBanks.length === 0 && (
+                                <span className="mt-1 block text-xs text-slate-400">
+                                    No bank accounts saved yet. Add them under Master Data → Bank Payment Details.
+                                </span>
+                            )}
+                        </label>
+
+                        <div className="mt-4 flex gap-2">
+                            <a href={statementUrl} target="_blank" rel="noopener noreferrer"
+                                onClick={() => setStatementFor(null)}
+                                className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-center text-sm font-semibold text-white shadow hover:bg-primary-700">
+                                Download PDF
+                            </a>
+                            <button type="button" onClick={() => setStatementFor(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+                        </div>
                     </div>
                 </div>
             )}
