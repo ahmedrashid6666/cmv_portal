@@ -90,14 +90,18 @@ class CreditPaymentController extends Controller
             ->values();
 
         $bank = CompanyBankDetail::resolveFor($request);
+        $totalOutstanding = round($invoices->sum('outstanding'), 2);
+        $currency = $invoices->first()['currency'] ?? 'AED';
 
         $pdf = Pdf::loadView('credits.statement', [
             'company' => Branding::all(),
             'logoDataUri' => Branding::logoDataUri(),
             'customer' => $customer,
+            'references' => $invoices->pluck('reference')->filter()->unique()->values(),
             'invoices' => $invoices,
-            'totalOutstanding' => round($invoices->sum('outstanding'), 2),
-            'currency' => $invoices->first()['currency'] ?? 'AED',
+            'totalOutstanding' => $totalOutstanding,
+            'amountInWords' => \App\Support\AmountInWords::convert($totalOutstanding, $currency),
+            'currency' => $currency,
             'bank' => $bank,
             'statementDate' => now()->format('d-m-Y'),
         ]);

@@ -61,9 +61,10 @@
             <td>
                 <div class="label">Bill To</div>
                 <strong>{{ $customer->name }}</strong>
-                @if($customer->address)<br><span class="muted">{{ $customer->address }}</span>@endif
-                @if($customer->contact)<br><span class="muted">{{ $customer->contact }}</span>@endif
-                @if($customer->email)<br><span class="muted">{{ $customer->email }}</span>@endif
+                @if($customer->address)<br><span class="muted">Address: {{ $customer->address }}</span>@endif
+                @if($customer->contact)<br><span class="muted">Contact No: {{ $customer->contact }}</span>@endif
+                @if($customer->email)<br><span class="muted">Email: {{ $customer->email }}</span>@endif
+                @if($references->isNotEmpty())<br><span class="muted">Reference: {{ $references->join(', ') }}</span>@endif
             </td>
             <td>
                 <div class="label">Summary</div>
@@ -80,44 +81,39 @@
     <table class="items">
         <thead>
             <tr>
+                <th>S.No</th>
                 <th>Date</th>
                 <th>Invoice No</th>
                 <th>Boe No</th>
-                <th>Reference</th>
                 <th>Vehicle No</th>
-                <th class="r">Credit Amount</th>
-                <th class="r">Paid</th>
-                <th class="r">Outstanding</th>
+                <th class="r">Amount</th>
             </tr>
         </thead>
         <tbody>
             @forelse($invoices as $inv)
                 <tr>
+                    <td>{{ $loop->iteration }}</td>
                     <td>{{ $inv['date'] }}</td>
                     <td>{{ $inv['invoice_no'] }}</td>
                     <td>{{ $inv['boe_no'] ?: '—' }}</td>
-                    <td>{{ $inv['reference'] ?: '—' }}</td>
                     <td>{{ $inv['vehicle'] ?: '—' }}</td>
-                    <td class="r">{{ number_format($inv['credit_amount'], 2) }}</td>
-                    <td class="r">
-                        {{ number_format($inv['paid'], 2) }}
-                        @if($inv['last_payment'])
-                            <div class="sub">last: {{ $inv['last_payment']['date'] }} ({{ number_format($inv['last_payment']['amount'], 2) }})</div>
-                        @endif
-                    </td>
                     <td class="r">{{ number_format($inv['outstanding'], 2) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="8" style="text-align:center;color:#64748b;padding:16px;">No outstanding invoices.</td></tr>
+                <tr><td colspan="6" style="text-align:center;color:#64748b;padding:16px;">No outstanding invoices.</td></tr>
             @endforelse
             @if($invoices->isNotEmpty())
                 <tr class="total">
-                    <td colspan="7">Total Outstanding</td>
+                    <td colspan="5">Total Outstanding</td>
                     <td class="r">{{ $currency }} {{ number_format($totalOutstanding, 2) }}</td>
                 </tr>
             @endif
         </tbody>
     </table>
+
+    @if($invoices->isNotEmpty())
+        <p style="margin-top:8px; font-size:10.5px;"><span class="label">Amount In Words:</span> {{ $amountInWords }}</p>
+    @endif
 
     @if($bank)
         <div class="bank">
@@ -135,8 +131,11 @@
     @endif
 
     <div class="foot">
-        {{ $company['footer'] }}<br>
-        This is a system-generated statement and does not require a signature. Generated on {{ now()->format('d/m/Y H:i') }}.
+        This is a system-generated statement and does not require a signature. Generated on {{ now()->format('d/m/Y H:i') }}.<br>
+        <strong>{{ $company['name'] }}</strong>
+        @if($company['address']) &middot; {{ $company['address'] }}@endif
+        @if($company['phone']) &middot; Tel: {{ $company['phone'] }}@endif
+        @if($company['email']) &middot; Email: {{ $company['email'] }}@endif
     </div>
 </div>
 </body>
