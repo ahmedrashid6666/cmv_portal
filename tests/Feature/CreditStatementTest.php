@@ -67,6 +67,49 @@ it('searches the outstanding credit list by reference', function () {
         ->assertInertia(fn ($p) => $p->where('outstanding', fn ($rows) => count($rows) === 1 && $rows[0]['invoice_no'] === 'STMT-1'));
 });
 
+it('downloads a combined statement for a single-reference, multi-customer filter (the "Company Name" branch)', function () {
+    $esqube = $this->customer;
+    $other = Customer::create(['name' => 'OTHER LLC']);
+    creditInvoice($esqube->id, '2026-08-01', 500, 'STMT-1', 'ZNY');
+    creditInvoice($other->id, '2026-08-02', 300, 'STMT-2', 'ZNY');
+
+    $this->actingAs($this->actor)
+        ->get(route('credits.statement.filtered', ['search' => 'ZNY']))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+it('downloads a combined statement scoped to a date range (the "period" line)', function () {
+    creditInvoice($this->customer->id, '2026-08-01', 500, 'STMT-1');
+
+    $this->actingAs($this->actor)
+        ->get(route('credits.statement.filtered', ['from' => '2026-08-01', 'to' => '2026-08-31']))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+it('downloads a combined statement with no filters at all (the generic "All Outstanding" branch)', function () {
+    $other = Customer::create(['name' => 'OTHER LLC']);
+    creditInvoice($this->customer->id, '2026-08-01', 500, 'STMT-1', 'JRY');
+    creditInvoice($other->id, '2026-08-02', 300, 'STMT-2', 'ZNY');
+
+    $this->actingAs($this->actor)
+        ->get(route('credits.statement.filtered'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+it('respects the status filter on the combined statement', function () {
+    $paid = creditInvoice($this->customer->id, '2026-08-01', 300, 'PAID-1');
+    CreditPayment::create(['transaction_id' => $paid->id, 'payment_date' => '2026-08-02', 'amount' => 300, 'payment_method_id' => $this->method->id]);
+    creditInvoice($this->customer->id, '2026-08-03', 200, 'OPEN-1');
+
+    $this->actingAs($this->actor)
+        ->get(route('credits.statement.filtered', ['status' => 'unpaid']))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
 it('lets an admin manage company bank details, keeping only one default', function () {
     $admin = User::factory()->role(Role::ADMIN)->create();
 

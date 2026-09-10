@@ -53,7 +53,19 @@
                 </td>
                 <td class="doc" style="text-align:right;">
                     <div class="doc-title">OUTSTANDING STATEMENT</div>
-                    <div class="muted">Statement Date: {{ $statementDate }}</div>
+                    <div class="muted">
+                        Statement Date: {{ $statementDate }}
+                        @if($period)
+                            <br>Period:
+                            @if($period['from'] && $period['to'])
+                                {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }} to {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                            @elseif($period['from'])
+                                from {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }}
+                            @else
+                                until {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                            @endif
+                        @endif
+                    </div>
                 </td>
             </tr>
         </table>
@@ -74,7 +86,19 @@
                 </td>
                 <td class="doc" style="text-align:right;">
                     <div class="doc-title">OUTSTANDING STATEMENT</div>
-                    <div class="muted">Statement Date: {{ $statementDate }}</div>
+                    <div class="muted">
+                        Statement Date: {{ $statementDate }}
+                        @if($period)
+                            <br>Period:
+                            @if($period['from'] && $period['to'])
+                                {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }} to {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                            @elseif($period['from'])
+                                from {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }}
+                            @else
+                                until {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                            @endif
+                        @endif
+                    </div>
                 </td>
             </tr>
         </table>
@@ -84,11 +108,10 @@
         <tr>
             <td>
                 <div class="label">Bill To</div>
-                <strong>{{ $customer->name }}</strong>
-                @if($customer->address)<br><span class="muted">Address: {{ $customer->address }}</span>@endif
-                @if($customer->contact)<br><span class="muted">Contact No: {{ $customer->contact }}</span>@endif
-                @if($customer->email)<br><span class="muted">Email: {{ $customer->email }}</span>@endif
-                @if($references->isNotEmpty())<br><span class="muted">Reference: {{ $references->join(', ') }}</span>@endif
+                <strong>{{ $billTo['name'] }}</strong>
+                @foreach($billTo['lines'] as $line)
+                    <br><span class="muted">{{ $line }}</span>
+                @endforeach
             </td>
             <td>
                 <div class="label">Summary</div>
@@ -109,6 +132,7 @@
                 <th>Date</th>
                 <th>Invoice No</th>
                 <th>Boe No</th>
+                @if($showCompany)<th>Company Name</th>@endif
                 <th>Vehicle No</th>
                 <th class="r">Amount</th>
             </tr>
@@ -120,15 +144,16 @@
                     <td>{{ $inv['date'] }}</td>
                     <td>{{ $inv['invoice_no'] }}</td>
                     <td>{{ $inv['boe_no'] ?: '—' }}</td>
+                    @if($showCompany)<td>{{ $inv['company'] ?: '—' }}</td>@endif
                     <td>{{ $inv['vehicle'] ?: '—' }}</td>
                     <td class="r">{{ number_format($inv['outstanding'], 2) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6" style="text-align:center;color:#64748b;padding:16px;">No outstanding invoices.</td></tr>
+                <tr><td colspan="{{ $showCompany ? 7 : 6 }}" style="text-align:center;color:#64748b;padding:16px;">No outstanding invoices.</td></tr>
             @endforelse
             @if($invoices->isNotEmpty())
                 <tr class="total">
-                    <td colspan="5">Total Outstanding</td>
+                    <td colspan="{{ $showCompany ? 6 : 5 }}">Total Outstanding</td>
                     <td class="r">{{ $currency }} {{ number_format($totalOutstanding, 2) }}</td>
                 </tr>
             @endif

@@ -7,12 +7,15 @@ use App\Models\CompanyBankDetail;
 use App\Models\CreditPayment;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
+use App\Models\Reference;
 use App\Models\Transaction;
 use App\Rules\RequiredBankForPaymentMethod;
+use App\Support\AmountInWords;
 use App\Support\Branding;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -76,19 +79,126 @@ class CreditPaymentController extends Controller
                 'date' => $t->transaction_date->format('d-m-Y'),
                 'invoice_no' => $t->invoice_no ?? ('TXN-'.$t->id),
                 'boe_no' => $t->boe_no,
+                'company' => $customer->name,
                 'reference' => $t->reference?->name,
                 'vehicle' => $t->vehicle_number,
                 'currency' => $t->currency ?: 'AED',
-                'credit_amount' => (float) $t->credit_amount,
-                'paid' => (float) $t->creditPayments->sum('amount'),
                 'outstanding' => round((float) $t->creditOutstanding(), 2),
-                'last_payment' => $t->creditPayments->isNotEmpty()
-                    ? ['date' => $t->creditPayments->last()->payment_date->format('d-m-Y'), 'amount' => (float) $t->creditPayments->last()->amount]
-                    : null,
             ])
             ->filter(fn ($row) => $row['outstanding'] > 0)
             ->values();
 
+        $references = $invoices->pluck('reference')->filter()->unique()->values();
+        $billTo = [
+            'name' => $customer->name,
+            'lines' => array_values(array_filter([
+                $customer->address ? 'Address: '.$customer->address : null,
+                $customer->contact ? 'Contact No: '.$customer->contact : null,
+                $customer->email ? 'Email: '.$customer->email : null,
+                $references->isNotEmpty() ? 'Reference: '.$references->join(', ') : null,
+            ])),
+        ];
+
+        return $this->renderStatementPdf($request, $invoices, $billTo, false, null, 'outstanding-statement-'.Str::slug($customer->name).'.pdf');
+    }
+
+    /**
+     * A combined Outstanding Statement for the currently filtered set of
+     * credit invoices (same search/date/status filters as Operations →
+     * Credits) — covering every matching customer at once, not just one.
+     * Used by the "Statement" button next to the filters, as opposed to the
+     * per-row one on `statement()` above, which is scoped to one customer.
+     */
+    public function filteredStatement(Request $request)
+    {
+        $request->validate([
+            'bank_id' => ['nullable', 'exists:company_bank_details,id'],
+        ]);
+
+        $from = $request->input('from') ?: null;
+        $to = $request->input('to') ?: null;
+        $search = $request->string('search')->trim()->value();
+        $status = $request->string('status')->value();
+
+        // Mirrors OperationsController::whereCreditStatus() — the Credits tab
+        // judges a row purely on its own credit line, not the sale's other totals.
+        $out = '(transactions.credit_amount - COALESCE((select sum(cp.amount) from credit_payments cp where cp.transaction_id = transactions.id), 0))';
+
+        $transactions = Transaction::query()
+            ->where('credit_amount', '>', 0)
+            ->with(['customer:id,name', 'reference:id,name', 'creditPayments'])
+            ->when($from, fn ($q) => $q->whereDate('transaction_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('transaction_date', '<=', $to))
+            ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
+                ->orWhere('boe_no', 'like', "%{$search}%")
+                ->orWhere('vehicle_number', 'like', "%{$search}%")
+                ->orWhere('contact_numbers', 'like', "%{$search}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))))
+            ->when(in_array($status, ['paid', 'partial', 'unpaid'], true), fn ($q) => match ($status) {
+                'paid' => $q->whereRaw("{$out} <= 0"),
+                'partial' => $q->whereRaw("{$out} > 0")->whereRaw("{$out} < transactions.credit_amount"),
+                'unpaid' => $q->whereRaw("{$out} >= transactions.credit_amount"),
+            })
+            ->orderBy('transaction_date')
+            ->get();
+
+        $invoices = $transactions->map(fn ($t) => [
+            'date' => $t->transaction_date->format('d-m-Y'),
+            'invoice_no' => $t->invoice_no ?? ('TXN-'.$t->id),
+            'boe_no' => $t->boe_no,
+            'company' => $t->customer?->name,
+            'reference' => $t->reference?->name,
+            'vehicle' => $t->vehicle_number,
+            'currency' => $t->currency ?: 'AED',
+            'outstanding' => round((float) $t->creditOutstanding(), 2),
+        ])->filter(fn ($row) => $row['outstanding'] > 0)->values();
+
+        $customerIds = $transactions->pluck('customer_id')->unique()->filter();
+        $referenceNames = $invoices->pluck('reference')->filter()->unique();
+
+        if ($customerIds->count() === 1) {
+            $customer = Customer::find($customerIds->first());
+            $billTo = [
+                'name' => $customer->name,
+                'lines' => array_values(array_filter([
+                    $customer->address ? 'Address: '.$customer->address : null,
+                    $customer->contact ? 'Contact No: '.$customer->contact : null,
+                    $customer->email ? 'Email: '.$customer->email : null,
+                    $referenceNames->isNotEmpty() ? 'Reference: '.$referenceNames->join(', ') : null,
+                ])),
+            ];
+        } elseif ($referenceNames->count() === 1) {
+            $reference = Reference::where('name', $referenceNames->first())->first();
+            $billTo = [
+                'name' => $reference?->name ?? $referenceNames->first(),
+                'lines' => array_values(array_filter([
+                    $reference?->company ? 'Company: '.$reference->company : null,
+                    $reference?->contact ? 'Contact: '.$reference->contact : null,
+                ])),
+            ];
+        } else {
+            $billTo = [
+                'name' => 'All Outstanding Credit Invoices',
+                'lines' => array_values(array_filter([
+                    $search ? 'Filter: "'.$search.'"' : null,
+                ])),
+            ];
+        }
+
+        $period = ($from || $to) ? ['from' => $from, 'to' => $to] : null;
+
+        return $this->renderStatementPdf($request, $invoices, $billTo, true, $period, 'outstanding-statement-'.now()->format('Y-m-d').'.pdf');
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $invoices
+     * @param  array{name: string, lines: array<int, string>}  $billTo
+     * @param  array{from: ?string, to: ?string}|null  $period
+     */
+    private function renderStatementPdf(Request $request, $invoices, array $billTo, bool $showCompany, ?array $period, string $filename)
+    {
         $bank = CompanyBankDetail::resolveFor($request);
         $totalOutstanding = round($invoices->sum('outstanding'), 2);
         $currency = $invoices->first()['currency'] ?? 'AED';
@@ -97,17 +207,18 @@ class CreditPaymentController extends Controller
             'company' => Branding::all(),
             'logoDataUri' => Branding::logoDataUri(),
             'headerBannerDataUri' => Branding::headerBannerDataUri(),
-            'customer' => $customer,
-            'references' => $invoices->pluck('reference')->filter()->unique()->values(),
+            'billTo' => $billTo,
+            'showCompany' => $showCompany,
             'invoices' => $invoices,
             'totalOutstanding' => $totalOutstanding,
-            'amountInWords' => \App\Support\AmountInWords::convert($totalOutstanding, $currency),
+            'amountInWords' => AmountInWords::convert($totalOutstanding, $currency),
             'currency' => $currency,
             'bank' => $bank,
             'statementDate' => now()->format('d-m-Y'),
+            'period' => $period,
         ]);
 
-        return $pdf->download('outstanding-statement-'.\Illuminate\Support\Str::slug($customer->name).'.pdf');
+        return $pdf->download($filename);
     }
 
     public function store(Request $request)

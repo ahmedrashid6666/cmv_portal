@@ -156,10 +156,18 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const ledBalance = Math.max(0, (settleRow?.total || 0) - (parseFloat(led.data.paid_amount) || 0));
 
     const openStatement = (row) => setStatementFor(row);
+    // The top-of-page button statements the CURRENT filtered set (any customer,
+    // possibly many) rather than one row's customer — a different endpoint.
+    const openFilteredStatement = () => setStatementFor({ filtered: true, customer: 'Current search results' });
     // Always include bank_id, even empty — that's how the backend tells "no bank
     // section, deliberately chosen" apart from "not specified, use the default".
     const statementUrl = statementFor
-        ? route('credits.statement', { customer: statementFor.customer_id, bank_id: statementBankId })
+        ? (statementFor.filtered
+            // `filters` (the applied, server-confirmed search/date/status), not
+            // `f` (still-being-typed local state) — so the PDF always matches
+            // exactly what's currently on screen, not a pending unsent edit.
+            ? route('credits.statement.filtered', { ...filters, bank_id: statementBankId })
+            : route('credits.statement', { customer: statementFor.customer_id, bank_id: statementBankId }))
         : '#';
 
     return (
@@ -208,6 +216,11 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         </label>
                     )}
                     <button type="button" onClick={reset} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">Reset</button>
+                    {type === 'credits' && (
+                        <button type="button" onClick={openFilteredStatement} className="ml-auto rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800">
+                            ⬇ Statement (filtered results)
+                        </button>
+                    )}
                 </form>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-slate-400">Quick:</span>
@@ -500,6 +513,13 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
                         <h3 className="text-lg font-semibold text-navy-800">Download Outstanding Statement</h3>
                         <p className="mt-1 text-sm text-slate-500">{statementFor.customer}</p>
+                        {statementFor.filtered && (filters.search || filters.from || filters.to || filters.status) && (
+                            <p className="mt-1 text-xs text-slate-400">
+                                {filters.search && <>Search: “{filters.search}” </>}
+                                {(filters.from || filters.to) && <>· {filters.from || '…'} → {filters.to || '…'} </>}
+                                {filters.status && <>· Status: {statusOptions[filters.status] || filters.status}</>}
+                            </p>
+                        )}
 
                         <label className="mt-4 block">
                             <span className="mb-1 block text-xs font-medium text-slate-600">Show bank details for</span>
