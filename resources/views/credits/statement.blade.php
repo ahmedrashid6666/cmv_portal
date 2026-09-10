@@ -10,6 +10,8 @@
     .top td { vertical-align: top; }
     .top td.brand { width: 66%; padding-right: 12px; }
     .top td.doc { width: 34%; }
+    .banner { width: 100%; margin-bottom: 10px; }
+    .banner img { width: 100%; }
     .logo { width: 64px; }
     .company { font-size: 20px; font-weight: bold; color: #1e3a5f; }
     .muted { color: #64748b; font-size: 10px; line-height: 1.5; }
@@ -35,26 +37,48 @@
 </head>
 <body>
 <div class="wrap">
-    <table class="top">
-        <tr>
-            <td class="brand">
-                @if ($logoDataUri)
-                    <img class="logo" src="{{ $logoDataUri }}" alt="">
-                @endif
-                <div class="company">{{ $company['name'] }}</div>
-                <div class="muted">
-                    @if($company['address']){{ $company['address'] }}<br>@endif
-                    @if($company['phone']){{ $company['phone'] }} @endif
-                    @if($company['email']) &middot; {{ $company['email'] }}@endif
-                    @if($company['trn'])<br>TRN: {{ $company['trn'] }}@endif
-                </div>
-            </td>
-            <td class="doc" style="text-align:right;">
-                <div class="doc-title">OUTSTANDING STATEMENT</div>
-                <div class="muted">Statement Date: {{ $statementDate }}</div>
-            </td>
-        </tr>
-    </table>
+    @if ($headerBannerDataUri)
+        <div class="banner">
+            <img src="{{ $headerBannerDataUri }}" alt="{{ $company['name'] }}">
+        </div>
+        <table class="top" style="border-top: none;">
+            <tr>
+                <td class="brand">
+                    <div class="muted">
+                        @if($company['address']){{ $company['address'] }}<br>@endif
+                        @if($company['phone']){{ $company['phone'] }} @endif
+                        @if($company['email']) &middot; {{ $company['email'] }}@endif
+                        @if($company['trn'])<br>TRN: {{ $company['trn'] }}@endif
+                    </div>
+                </td>
+                <td class="doc" style="text-align:right;">
+                    <div class="doc-title">OUTSTANDING STATEMENT</div>
+                    <div class="muted">Statement Date: {{ $statementDate }}</div>
+                </td>
+            </tr>
+        </table>
+    @else
+        <table class="top">
+            <tr>
+                <td class="brand">
+                    @if ($logoDataUri)
+                        <img class="logo" src="{{ $logoDataUri }}" alt="">
+                    @endif
+                    <div class="company">{{ $company['name'] }}</div>
+                    <div class="muted">
+                        @if($company['address']){{ $company['address'] }}<br>@endif
+                        @if($company['phone']){{ $company['phone'] }} @endif
+                        @if($company['email']) &middot; {{ $company['email'] }}@endif
+                        @if($company['trn'])<br>TRN: {{ $company['trn'] }}@endif
+                    </div>
+                </td>
+                <td class="doc" style="text-align:right;">
+                    <div class="doc-title">OUTSTANDING STATEMENT</div>
+                    <div class="muted">Statement Date: {{ $statementDate }}</div>
+                </td>
+            </tr>
+        </table>
+    @endif
 
     <table class="cols">
         <tr>

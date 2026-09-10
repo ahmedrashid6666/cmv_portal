@@ -96,6 +96,7 @@ class CreditPaymentController extends Controller
         $pdf = Pdf::loadView('credits.statement', [
             'company' => Branding::all(),
             'logoDataUri' => Branding::logoDataUri(),
+            'headerBannerDataUri' => Branding::headerBannerDataUri(),
             'customer' => $customer,
             'references' => $invoices->pluck('reference')->filter()->unique()->values(),
             'invoices' => $invoices,

@@ -51,6 +51,10 @@ class Branding
         return self::$cache = [
             'name' => Setting::get('company_name') ?: self::DEFAULT_NAME,
             'logo' => Setting::get('company_logo') ?: self::DEFAULT_LOGO,
+            // A wide letterhead banner (bilingual name + logo in one image) for
+            // print documents — optional; unset for installs without one, in
+            // which case PDFs fall back to the logo + name/address text header.
+            'header_banner' => Setting::get('company_header_banner', ''),
             'og_image' => Setting::get('company_og_image') ?: self::DEFAULT_OG_IMAGE,
             'logo_invert_on_dark' => (bool) Setting::get('company_logo_invert', false),
             'address' => Setting::get('company_address', ''),
@@ -117,6 +121,31 @@ class Branding
         return null;
     }
 
+    /**
+     * The wide letterhead banner as a base64 data URI for DomPDF, or null if
+     * this install has none configured (PDFs then use the text header).
+     */
+    public static function headerBannerDataUri(): ?string
+    {
+        $path = self::all()['header_banner'];
+        if (! $path || str_ends_with(strtolower($path), '.svg')) {
+            return null;
+        }
+
+        $file = public_path(ltrim($path, '/'));
+        if (! is_file($file) || ($contents = @file_get_contents($file)) === false) {
+            return null;
+        }
+
+        $mime = match (strtolower(pathinfo($file, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
+
+        return 'data:'.$mime.';base64,'.base64_encode($contents);
+    }
+
     /** Drops the memo so a settings save is visible to the next read in the same request. */
     public static function forget(): void
     {
@@ -128,6 +157,7 @@ class Branding
         return [
             'name' => self::DEFAULT_NAME,
             'logo' => self::DEFAULT_LOGO,
+            'header_banner' => '',
             'og_image' => self::DEFAULT_OG_IMAGE,
             'logo_invert_on_dark' => false,
             'address' => '',
