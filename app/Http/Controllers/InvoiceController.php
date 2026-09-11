@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use App\Support\Branding;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class InvoiceController extends Controller
@@ -50,7 +51,11 @@ class InvoiceController extends Controller
     {
         $pdf = Pdf::loadView('invoices.pdf', ['invoice' => $this->build($transaction)]);
 
-        return $pdf->download('invoice-'.($transaction->invoice_no ?? $transaction->id).'.pdf');
+        $customerName = $transaction->customer?->name;
+        $filename = 'invoice-'.($transaction->invoice_no ?? $transaction->id)
+            .($customerName ? '-'.Str::slug($customerName) : '').'.pdf';
+
+        return $pdf->download($filename);
     }
 
     /**
