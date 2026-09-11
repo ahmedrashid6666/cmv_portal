@@ -30,6 +30,9 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const [settleRow, setSettleRow] = useState(null); // row.settle {kind:'credit'|'ledger', ...}
     const [statementFor, setStatementFor] = useState(null); // { customer_id, customer } — Credits tab only
     const [statementBankId, setStatementBankId] = useState(companyBanks.find((b) => b.is_default)?.id ?? companyBanks[0]?.id ?? '');
+    const [statementDate, setStatementDate] = useState(todayLocalISO());
+    const [statementInvoiceNo, setStatementInvoiceNo] = useState('');
+    const [statementPaymentMode, setStatementPaymentMode] = useState('');
     const debounceTimer = useRef(null);
     const skipNextAutoSearch = useRef(true); // don't re-fire on mount (e.g. a pagination/sort click just navigated here)
 
@@ -161,13 +164,14 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const openFilteredStatement = () => setStatementFor({ filtered: true, customer: 'Current search results' });
     // Always include bank_id, even empty — that's how the backend tells "no bank
     // section, deliberately chosen" apart from "not specified, use the default".
+    const statementExtra = { bank_id: statementBankId, date: statementDate, invoice_no: statementInvoiceNo, payment_mode: statementPaymentMode };
     const statementUrl = statementFor
         ? (statementFor.filtered
             // `filters` (the applied, server-confirmed search/date/status), not
             // `f` (still-being-typed local state) — so the PDF always matches
             // exactly what's currently on screen, not a pending unsent edit.
-            ? route('credits.statement.filtered', { ...filters, bank_id: statementBankId })
-            : route('credits.statement', { customer: statementFor.customer_id, bank_id: statementBankId }))
+            ? route('credits.statement.filtered', { ...filters, ...statementExtra })
+            : route('credits.statement', { customer: statementFor.customer_id, ...statementExtra }))
         : '#';
 
     return (
@@ -522,6 +526,25 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                         )}
 
                         <label className="mt-4 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">Date</span>
+                            <input type="date" className={input + ' w-full'} value={statementDate} onChange={(e) => setStatementDate(e.target.value)} />
+                        </label>
+
+                        <label className="mt-3 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">Invoice No (optional)</span>
+                            <input className={input + ' w-full'} value={statementInvoiceNo} onChange={(e) => setStatementInvoiceNo(e.target.value)} />
+                        </label>
+
+                        <label className="mt-3 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">Mode of Payment</span>
+                            <select className={input + ' w-full'} value={statementPaymentMode} onChange={(e) => setStatementPaymentMode(e.target.value)}>
+                                <option value="">—</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Account">Account</option>
+                            </select>
+                        </label>
+
+                        <label className="mt-3 block">
                             <span className="mb-1 block text-xs font-medium text-slate-600">Show bank details for</span>
                             <select className={input + ' w-full'} value={statementBankId} onChange={(e) => setStatementBankId(e.target.value)}>
                                 <option value="">No bank details</option>

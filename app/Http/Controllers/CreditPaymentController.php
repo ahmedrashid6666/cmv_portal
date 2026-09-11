@@ -172,9 +172,9 @@ class CreditPaymentController extends Controller
         } elseif ($referenceNames->count() === 1) {
             $reference = Reference::where('name', $referenceNames->first())->first();
             $billTo = [
-                'name' => $reference?->name ?? $referenceNames->first(),
+                'name' => $reference?->company ?: ($reference?->name ?? $referenceNames->first()),
                 'lines' => array_values(array_filter([
-                    $reference?->company ? 'Company: '.$reference->company : null,
+                    $reference?->company ? 'Reference: '.($reference->name ?? $referenceNames->first()) : null,
                     $reference?->contact ? 'Contact: '.$reference->contact : null,
                 ])),
             ];
@@ -214,8 +214,10 @@ class CreditPaymentController extends Controller
             'amountInWords' => AmountInWords::convert($totalOutstanding, $currency),
             'currency' => $currency,
             'bank' => $bank,
-            'statementDate' => now()->format('d-m-Y'),
+            'statementDate' => $request->date('date')?->format('d-m-Y') ?? now()->format('d-m-Y'),
             'period' => $period,
+            'invoiceNo' => $request->input('invoice_no'),
+            'paymentMode' => $request->input('payment_mode'),
         ]);
 
         return $pdf->download($filename);

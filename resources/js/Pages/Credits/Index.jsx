@@ -14,6 +14,9 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
     const [search, setSearch] = useState(filters.search || '');
     const [statementFor, setStatementFor] = useState(null); // { customer_id, customer }
     const [statementBankId, setStatementBankId] = useState(companyBanks.find((b) => b.is_default)?.id ?? companyBanks[0]?.id ?? '');
+    const [statementDate, setStatementDate] = useState(todayLocalISO());
+    const [statementInvoiceNo, setStatementInvoiceNo] = useState('');
+    const [statementPaymentMode, setStatementPaymentMode] = useState('');
     const { data, setData, post, processing, errors, reset } = useForm({
         transaction_id: null,
         payment_date: todayLocalISO(),
@@ -45,7 +48,7 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
     // Always include bank_id, even empty — that's how the backend tells "no bank
     // section, deliberately chosen" apart from "not specified, use the default".
     const statementUrl = statementFor
-        ? route('credits.statement', { customer: statementFor.customer_id, bank_id: statementBankId })
+        ? route('credits.statement', { customer: statementFor.customer_id, bank_id: statementBankId, date: statementDate, invoice_no: statementInvoiceNo, payment_mode: statementPaymentMode })
         : '#';
 
     const total = outstanding.reduce((s, r) => s + Number(r.outstanding), 0);
@@ -159,6 +162,25 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
                         <p className="mt-1 text-sm text-slate-500">{statementFor.customer}</p>
 
                         <label className="mt-4 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">Date</span>
+                            <input type="date" className={input} value={statementDate} onChange={(e) => setStatementDate(e.target.value)} />
+                        </label>
+
+                        <label className="mt-3 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">Invoice No (optional)</span>
+                            <input className={input} value={statementInvoiceNo} onChange={(e) => setStatementInvoiceNo(e.target.value)} />
+                        </label>
+
+                        <label className="mt-3 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">Mode of Payment</span>
+                            <select className={input} value={statementPaymentMode} onChange={(e) => setStatementPaymentMode(e.target.value)}>
+                                <option value="">—</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Account">Account</option>
+                            </select>
+                        </label>
+
+                        <label className="mt-3 block">
                             <span className="mb-1 block text-xs font-medium text-slate-600">Show bank details for</span>
                             <select className={input} value={statementBankId} onChange={(e) => setStatementBankId(e.target.value)}>
                                 <option value="">No bank details</option>

@@ -4,35 +4,35 @@
 <meta charset="utf-8">
 <style>
     * { font-family: DejaVu Sans, sans-serif; }
-    body { font-size: 12px; color: #10222f; margin: 0; }
+    body { font-size: 11px; color: #10222f; margin: 0; }
     .wrap { padding: 4px; }
-    .top { width: 100%; border-bottom: 3px solid #1b9a9b; padding-bottom: 12px; margin-bottom: 16px; }
+    .top { width: 100%; border-bottom: 2px solid #1b9a9b; padding-bottom: 6px; margin-bottom: 8px; }
     .top td { vertical-align: top; }
     .top td.brand { width: 66%; padding-right: 12px; }
     .top td.doc { width: 34%; }
-    .banner { width: 100%; margin-bottom: 10px; }
-    .banner img { width: 100%; }
-    .logo { width: 64px; }
-    .company { font-size: 20px; font-weight: bold; color: #1e3a5f; }
-    .muted { color: #64748b; font-size: 10px; line-height: 1.5; }
-    .doc-title { font-size: 24px; font-weight: bold; color: #1b9a9b; text-align: right; }
-    .cols { width: 100%; margin: 8px 0 14px; }
-    .cols td { vertical-align: top; width: 50%; font-size: 11px; }
-    .label { color: #64748b; font-size: 9px; text-transform: uppercase; }
-    .notice { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 6px;
-        padding: 8px 12px; font-size: 11px; font-weight: bold; margin-bottom: 14px; }
-    table.items { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    table.items th { background: #1e3a5f; color: #fff; text-align: left; padding: 7px 8px; font-size: 9px; text-transform: uppercase; }
+    .banner { width: 100%; margin-bottom: 4px; }
+    .banner img { width: 100%; max-height: 60px; }
+    .logo { width: 48px; }
+    .company { font-size: 16px; font-weight: bold; color: #1e3a5f; }
+    .muted { color: #64748b; font-size: 9px; line-height: 1.3; }
+    .doc-title { font-size: 18px; font-weight: bold; color: #1b9a9b; text-align: right; }
+    .cols { width: 100%; margin: 4px 0 6px; }
+    .cols td { vertical-align: top; width: 50%; font-size: 10px; }
+    .label { color: #64748b; font-size: 8px; text-transform: uppercase; }
+    .notice { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 4px;
+        padding: 4px 10px; font-size: 10px; font-weight: bold; margin-bottom: 6px; }
+    table.items { width: 100%; border-collapse: collapse; margin-top: 2px; }
+    table.items th { background: #1e3a5f; color: #fff; text-align: left; padding: 4px 6px; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
     table.items th.r, table.items td.r { text-align: right; }
-    table.items td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 10.5px; }
-    table.items .sub { color: #64748b; font-size: 8.5px; }
-    table.items tr.total td { border-top: 2px solid #1e3a5f; border-bottom: none; font-weight: bold; font-size: 12px; color: #b91c1c; padding-top: 8px; }
-    .bank { margin-top: 22px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; background: #f8fafc; }
-    .bank .label { margin-bottom: 4px; }
+    table.items td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; }
+    table.items .sub { color: #64748b; font-size: 8px; }
+    table.items tr.total td { border-top: 2px solid #1e3a5f; border-bottom: none; font-weight: bold; font-size: 11px; color: #b91c1c; padding-top: 5px; }
+    .bank { margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background: #f8fafc; }
+    .bank .label { margin-bottom: 2px; }
     .bank table { width: 100%; }
-    .bank td { padding: 2px 0; font-size: 11px; vertical-align: top; }
-    .bank td.k { color: #64748b; width: 110px; }
-    .foot { clear: both; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; color: #64748b; font-size: 9.5px; text-align: center; }
+    .bank td { padding: 1px 0; font-size: 10px; vertical-align: top; }
+    .bank td.k { color: #64748b; width: 100px; }
+    .foot { clear: both; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 5px; color: #64748b; font-size: 8.5px; text-align: center; }
 </style>
 </head>
 <body>
@@ -54,7 +54,9 @@
                 <td class="doc" style="text-align:right;">
                     <div class="doc-title">OUTSTANDING STATEMENT</div>
                     <div class="muted">
+                        @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
                         Statement Date: {{ $statementDate }}
+                        @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif
                         @if($period)
                             <br>Period:
                             @if($period['from'] && $period['to'])
@@ -87,7 +89,9 @@
                 <td class="doc" style="text-align:right;">
                     <div class="doc-title">OUTSTANDING STATEMENT</div>
                     <div class="muted">
+                        @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
                         Statement Date: {{ $statementDate }}
+                        @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif
                         @if($period)
                             <br>Period:
                             @if($period['from'] && $period['to'])
@@ -122,7 +126,7 @@
     </table>
 
     <div class="notice">
-        The amount below is OUTSTANDING and pending clearance. Kindly settle at your earliest convenience.
+        The amount below is OUTSTANDING. Kindly settle at your earliest convenience.
     </div>
 
     <table class="items">
