@@ -38,6 +38,9 @@
     .bank td { padding: 1px 0; font-size: 10px; vertical-align: top; }
     .bank td.k { color: #64748b; width: 100px; }
     .foot { clear: both; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 5px; color: #64748b; font-size: 8.5px; text-align: center; }
+    @if($letterheadDataUri)
+        .foot { position: fixed; bottom: 0; left: 0; width: 186mm; margin-top: 0; }
+    @endif
 </style>
 </head>
 <body>

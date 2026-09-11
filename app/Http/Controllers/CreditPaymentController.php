@@ -174,7 +174,6 @@ class CreditPaymentController extends Controller
             $billTo = [
                 'name' => $reference?->company ?: ($reference?->name ?? $referenceNames->first()),
                 'lines' => array_values(array_filter([
-                    $reference?->company ? 'Reference: '.($reference->name ?? $referenceNames->first()) : null,
                     $reference?->contact ? 'Contact: '.$reference->contact : null,
                 ])),
             ];
@@ -189,7 +188,7 @@ class CreditPaymentController extends Controller
 
         $period = ($from || $to) ? ['from' => $from, 'to' => $to] : null;
 
-        return $this->renderStatementPdf($request, $invoices, $billTo, true, $period, 'outstanding-statement-'.now()->format('Y-m-d').'.pdf');
+        return $this->renderStatementPdf($request, $invoices, $billTo, true, $period, 'outstanding-statement-'.Str::slug($billTo['name']).'-'.now()->format('Y-m-d').'.pdf');
     }
 
     /**

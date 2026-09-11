@@ -46,6 +46,8 @@ class MasterRegistry
                     ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'required' => true],
                     ['name' => 'company', 'label' => 'Company', 'type' => 'text'],
                     ['name' => 'contact', 'label' => 'Contact', 'type' => 'text'],
+                    ['name' => 'email', 'label' => 'Email', 'type' => 'text'],
+                    ['name' => 'address', 'label' => 'Address', 'type' => 'textarea'],
                 ],
             ],
             'vehicles' => [
