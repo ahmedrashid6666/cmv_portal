@@ -46,29 +46,24 @@
 @endif
 <div class="wrap">
     @if ($letterheadDataUri)
-        <table class="top" style="border-top: none; border-bottom: none;">
-            <tr>
-                <td class="brand"></td>
-                <td class="doc" style="text-align:right;">
-                    <div class="doc-title">OUTSTANDING STATEMENT</div>
-                    <div class="muted">
-                        @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
-                        Statement Date: {{ $statementDate }}
-                        @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif
-                        @if($period)
-                            <br>Period:
-                            @if($period['from'] && $period['to'])
-                                {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }} to {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
-                            @elseif($period['from'])
-                                from {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }}
-                            @else
-                                until {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
-                            @endif
-                        @endif
-                    </div>
-                </td>
-            </tr>
-        </table>
+        <div style="text-align:center; border-top: none; border-bottom: none;">
+            <div class="doc-title" style="text-align:center;">OUTSTANDING STATEMENT</div>
+            <div class="muted" style="text-align:center;">
+                @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
+                Statement Date: {{ $statementDate }}
+                @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif
+                @if($period)
+                    <br>Period:
+                    @if($period['from'] && $period['to'])
+                        {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }} to {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                    @elseif($period['from'])
+                        from {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }}
+                    @else
+                        until {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                    @endif
+                @endif
+            </div>
+        </div>
     @elseif ($headerBannerDataUri)
         <div class="banner">
             <img src="{{ $headerBannerDataUri }}" alt="{{ $company['name'] }}">
