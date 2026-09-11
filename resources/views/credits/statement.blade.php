@@ -144,7 +144,7 @@
                     <br><span class="muted">{{ $line }}</span>
                 @endforeach
             </td>
-            <td>
+            <td style="text-align:right;">
                 <div class="label">Summary</div>
                 Invoices Outstanding: {{ $invoices->count() }}<br>
                 Total Outstanding: <strong>{{ $currency }} {{ number_format($totalOutstanding, 2) }}</strong>
