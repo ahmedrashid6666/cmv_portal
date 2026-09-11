@@ -146,6 +146,19 @@ class Branding
         return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 
+    /** Full-page A4 letterhead (header + footer bands, transparent middle) for statement-style PDFs. */
+    public const LETTERHEAD = '/brand/cmv-letterhead.png';
+
+    public static function letterheadDataUri(): ?string
+    {
+        $file = public_path(ltrim(self::LETTERHEAD, '/'));
+        if (! is_file($file) || ($contents = @file_get_contents($file)) === false) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode($contents);
+    }
+
     /** Drops the memo so a settings save is visible to the next read in the same request. */
     public static function forget(): void
     {

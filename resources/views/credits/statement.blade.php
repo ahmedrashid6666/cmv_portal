@@ -6,6 +6,11 @@
     * { font-family: DejaVu Sans, sans-serif; }
     body { font-size: 11px; color: #10222f; margin: 0; }
     .wrap { padding: 4px; }
+    @if($letterheadDataUri)
+        @page { margin: 34mm 12mm 26mm 12mm; }
+        .letterhead { position: fixed; top: -34mm; left: -12mm; width: 210mm; height: 297mm; z-index: -1; }
+        .letterhead img { width: 210mm; height: 297mm; }
+    @endif
     .top { width: 100%; border-bottom: 2px solid #1b9a9b; padding-bottom: 6px; margin-bottom: 8px; }
     .top td { vertical-align: top; }
     .top td.brand { width: 66%; padding-right: 12px; }
@@ -36,8 +41,35 @@
 </style>
 </head>
 <body>
+@if($letterheadDataUri)
+    <div class="letterhead"><img src="{{ $letterheadDataUri }}" alt=""></div>
+@endif
 <div class="wrap">
-    @if ($headerBannerDataUri)
+    @if ($letterheadDataUri)
+        <table class="top" style="border-top: none; border-bottom: none;">
+            <tr>
+                <td class="brand"></td>
+                <td class="doc" style="text-align:right;">
+                    <div class="doc-title">OUTSTANDING STATEMENT</div>
+                    <div class="muted">
+                        @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
+                        Statement Date: {{ $statementDate }}
+                        @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif
+                        @if($period)
+                            <br>Period:
+                            @if($period['from'] && $period['to'])
+                                {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }} to {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                            @elseif($period['from'])
+                                from {{ \Illuminate\Support\Carbon::parse($period['from'])->format('d-m-Y') }}
+                            @else
+                                until {{ \Illuminate\Support\Carbon::parse($period['to'])->format('d-m-Y') }}
+                            @endif
+                        @endif
+                    </div>
+                </td>
+            </tr>
+        </table>
+    @elseif ($headerBannerDataUri)
         <div class="banner">
             <img src="{{ $headerBannerDataUri }}" alt="{{ $company['name'] }}">
         </div>
@@ -184,11 +216,13 @@
     @endif
 
     <div class="foot">
-        This is a system-generated statement and does not require a signature. Generated on {{ now()->format('d/m/Y H:i') }}.<br>
-        <strong>{{ $company['name'] }}</strong>
-        @if($company['address']) &middot; {{ $company['address'] }}@endif
-        @if($company['phone']) &middot; Tel: {{ $company['phone'] }}@endif
-        @if($company['email']) &middot; Email: {{ $company['email'] }}@endif
+        This is a system-generated statement and does not require a signature. Generated on {{ now()->format('d/m/Y H:i') }}.
+        @unless($letterheadDataUri)
+            <br><strong>{{ $company['name'] }}</strong>
+            @if($company['address']) &middot; {{ $company['address'] }}@endif
+            @if($company['phone']) &middot; Tel: {{ $company['phone'] }}@endif
+            @if($company['email']) &middot; Email: {{ $company['email'] }}@endif
+        @endunless
     </div>
 </div>
 </body>

@@ -207,6 +207,7 @@ class CreditPaymentController extends Controller
             'company' => Branding::all(),
             'logoDataUri' => Branding::logoDataUri(),
             'headerBannerDataUri' => Branding::headerBannerDataUri(),
+            'letterheadDataUri' => Branding::letterheadDataUri(),
             'billTo' => $billTo,
             'showCompany' => $showCompany,
             'invoices' => $invoices,
