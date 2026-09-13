@@ -31,7 +31,7 @@
     table.items th { background: #1e3a5f; color: #fff; text-align: left; padding: 4px 6px; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
     table.items th.r, table.items td.r { text-align: right; }
     table.items td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; white-space: nowrap; }
-    table.items td.company { white-space: normal; }
+    table.items td.company { white-space: normal; font-size: 9.5px; font-weight: normal; color: #10222f; }
     table.items .sub { color: #64748b; font-size: 8px; }
     table.items tr.total td { border-top: 2px solid #1e3a5f; border-bottom: none; font-weight: bold; font-size: 11px; color: #b91c1c; padding-top: 5px; }
     .bank { margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background: #f8fafc; }
@@ -53,7 +53,7 @@
     @if ($letterheadDataUri)
         <div style="text-align:center; border-top: none; border-bottom: none;">
             <div class="doc-title" style="text-align:center;">OUTSTANDING STATEMENT</div>
-            <div class="muted" style="text-align:center;">
+            <div class="muted doc-meta" style="text-align:center;">
                 @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
                 Statement Date: {{ $statementDate }}
                 @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif

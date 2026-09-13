@@ -158,7 +158,16 @@ class CreditPaymentController extends Controller
         $customerIds = $transactions->pluck('customer_id')->unique()->filter();
         $referenceNames = $invoices->pluck('reference')->filter()->unique();
 
-        if ($customerIds->count() === 1) {
+        // A search that names a Reference (e.g. "SBT") should bill to that
+        // reference's own company, even when every matching invoice happens
+        // to belong to a single customer — the search says "reference", so
+        // the reference's company, not the customer, is the correct Bill To.
+        $searchedReference = $search ? Reference::where('name', 'like', "%{$search}%")->first() : null;
+        $preferReference = $searchedReference
+            && $referenceNames->count() === 1
+            && $referenceNames->first() === $searchedReference->name;
+
+        if (! $preferReference && $customerIds->count() === 1) {
             $customer = Customer::find($customerIds->first());
             $billTo = [
                 'name' => $customer->name,
@@ -180,7 +189,9 @@ class CreditPaymentController extends Controller
             $billTo = [
                 'name' => $reference?->company ?: ($reference?->name ?? $referenceNames->first()),
                 'lines' => array_values(array_filter([
+                    $reference?->address ? 'Address: '.$reference->address : null,
                     $reference?->contact ? 'Contact: '.$reference->contact : null,
+                    $reference?->email ? 'Email: '.$reference->email : null,
                 ])),
             ];
         } else {
