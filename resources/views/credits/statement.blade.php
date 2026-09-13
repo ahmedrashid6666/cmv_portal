@@ -21,6 +21,7 @@
     .company { font-size: 16px; font-weight: bold; color: #1e3a5f; }
     .muted { color: #64748b; font-size: 9px; line-height: 1.3; }
     .doc-title { font-size: 18px; font-weight: bold; color: #1b9a9b; text-align: right; }
+    .doc-meta { font-weight: bold; }
     .cols { width: 100%; margin: 4px 0 6px; }
     .cols td { vertical-align: top; width: 50%; font-size: 10px; }
     .label { color: #64748b; font-size: 8px; text-transform: uppercase; }
@@ -29,7 +30,8 @@
     table.items { width: 100%; border-collapse: collapse; margin-top: 2px; }
     table.items th { background: #1e3a5f; color: #fff; text-align: left; padding: 4px 6px; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
     table.items th.r, table.items td.r { text-align: right; }
-    table.items td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; }
+    table.items td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; white-space: nowrap; }
+    table.items td.company { white-space: normal; }
     table.items .sub { color: #64748b; font-size: 8px; }
     table.items tr.total td { border-top: 2px solid #1e3a5f; border-bottom: none; font-weight: bold; font-size: 11px; color: #b91c1c; padding-top: 5px; }
     .bank { margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background: #f8fafc; }
@@ -39,7 +41,7 @@
     .bank td.k { color: #64748b; width: 100px; }
     .foot { clear: both; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 5px; color: #64748b; font-size: 8.5px; text-align: center; }
     @if($letterheadDataUri)
-        .foot { position: fixed; bottom: 0; left: 0; width: 186mm; margin-top: 0; }
+        .foot { position: fixed; bottom: -6mm; left: 0; width: 186mm; margin-top: 0; }
     @endif
 </style>
 </head>
@@ -83,7 +85,7 @@
                 </td>
                 <td class="doc" style="text-align:right;">
                     <div class="doc-title">OUTSTANDING STATEMENT</div>
-                    <div class="muted">
+                    <div class="muted doc-meta">
                         @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
                         Statement Date: {{ $statementDate }}
                         @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif
@@ -118,7 +120,7 @@
                 </td>
                 <td class="doc" style="text-align:right;">
                     <div class="doc-title">OUTSTANDING STATEMENT</div>
-                    <div class="muted">
+                    <div class="muted doc-meta">
                         @if($invoiceNo)Invoice No: {{ $invoiceNo }}<br>@endif
                         Statement Date: {{ $statementDate }}
                         @if($paymentMode)<br>Mode of Payment: {{ $paymentMode }}@endif
@@ -178,7 +180,7 @@
                     <td>{{ $inv['date'] }}</td>
                     <td>{{ $inv['invoice_no'] }}</td>
                     <td>{{ $inv['boe_no'] ?: '—' }}</td>
-                    @if($showCompany)<td>{{ $inv['company'] ?: '—' }}</td>@endif
+                    @if($showCompany)<td class="company">{{ $inv['company'] ?: '—' }}</td>@endif
                     <td>{{ $inv['vehicle'] ?: '—' }}</td>
                     <td class="r">{{ number_format($inv['outstanding'], 2) }}</td>
                 </tr>

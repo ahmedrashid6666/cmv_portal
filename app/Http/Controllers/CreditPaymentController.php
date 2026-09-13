@@ -170,6 +170,12 @@ class CreditPaymentController extends Controller
                 ])),
             ];
         } elseif ($referenceNames->count() === 1) {
+            // The search matched invoices under one reference, but a broad
+            // OR-search (invoice/boe/vehicle/etc.) can also catch a handful of
+            // unrelated rows for other references — drop those so a reference
+            // statement only ever lists that reference's own companies.
+            $invoices = $invoices->where('reference', $referenceNames->first())->values();
+
             $reference = Reference::where('name', $referenceNames->first())->first();
             $billTo = [
                 'name' => $reference?->company ?: ($reference?->name ?? $referenceNames->first()),
