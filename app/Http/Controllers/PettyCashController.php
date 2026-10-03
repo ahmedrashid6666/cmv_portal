@@ -38,6 +38,7 @@ class PettyCashController extends Controller
             'totals' => [
                 'Total In' => round((float) $entries->sum('in_amount'), 2),
                 'Total Out' => round((float) $entries->sum('out_amount'), 2),
+                'Total Balance' => round((float) $entries->sum('in_amount') - (float) $entries->sum('out_amount'), 2),
             ],
         ];
 

@@ -68,7 +68,7 @@
             <td>
                 <div class="label">Details</div>
                 @if($invoice['boe_no'])BOE No: {{ $invoice['boe_no'] }}<br>@endif
-                @if($invoice['vehicle'])Vehicle: {{ $invoice['vehicle'] }}<br>@endif
+                @if($invoice['vehicle'])VEH/CONT NO: {{ $invoice['vehicle'] }}<br>@endif
                 @if($invoice['reference'])Reference: {{ $invoice['reference'] }}<br>@endif
                 Payment: {{ $invoice['payment_method'] }}
             </td>

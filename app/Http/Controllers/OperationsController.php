@@ -413,7 +413,7 @@ class OperationsController extends Controller
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Contact', 'Reference', 'Vehicle No', 'Customs Fees (CDR)', 'Gov.Fees', 'Other Amount', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
+        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Contact', 'Reference', 'VEH/CONT NO', 'Customs Fees (CDR)', 'Gov.Fees', 'Other Amount', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
             'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
             'align' => [false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, false],
             'totals' => $totals,
@@ -514,7 +514,7 @@ class OperationsController extends Controller
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Contact', 'Reference', 'Vehicle No', 'Credit', 'Outstanding', 'Paid Date'], 'rows' => $rows,
+        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Contact', 'Reference', 'VEH/CONT NO', 'Credit', 'Outstanding', 'Paid Date'], 'rows' => $rows,
             'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null, null],
             'align' => [false, false, false, false, false, false, false, true, true, false],
             'totals' => $totals,
@@ -616,7 +616,7 @@ class OperationsController extends Controller
         ]);
 
         return [
-            'columns' => ['Date', $type === 'borrowed' ? 'Person' : 'Customer', 'Contact', 'Reference', 'Vehicle', 'Total', $type === 'borrowed' ? 'Returned' : 'Paid', 'Balance'],
+            'columns' => ['Date', $type === 'borrowed' ? 'Person' : 'Customer', 'Contact', 'Reference', 'VEH/CONT NO', 'Total', $type === 'borrowed' ? 'Returned' : 'Paid', 'Balance'],
             'rows' => $rows,
             'sortKeys' => ['entry_date', 'party_name', null, 'reference', 'vehicle_number', 'total_amount', 'paid_amount', 'balance_amount'],
             'align' => [false, false, false, false, false, true, true, true],

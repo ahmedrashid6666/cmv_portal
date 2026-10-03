@@ -90,7 +90,7 @@ export default function LedgerIndex({ meta, summary, entries, filters, customers
                                     <tr className="border-b text-left text-xs uppercase text-slate-500">
                                         <th className="py-2 pr-3">Date</th>
                                         <th className="py-2 pr-3">{meta.partyLabel}</th>
-                                        <th className="py-2 pr-3">Vehicle</th>
+                                        <th className="py-2 pr-3">VEH/CONT NO</th>
                                         <th className="py-2 pr-3 text-right">Total</th>
                                         <th className="py-2 pr-3 text-right">{meta.paidLabel}</th>
                                         <th className="py-2 pr-3 text-right">Balance</th>

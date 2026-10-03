@@ -169,7 +169,7 @@
                 <th>Invoice No</th>
                 <th>Boe No</th>
                 @if($showCompany)<th>Company Name</th>@endif
-                <th>Vehicle No</th>
+                <th>VEH/CONT NO</th>
                 <th class="r">Amount</th>
             </tr>
         </thead>

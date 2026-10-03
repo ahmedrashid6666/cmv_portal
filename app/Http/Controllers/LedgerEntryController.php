@@ -148,7 +148,7 @@ class LedgerEntryController extends Controller
         $report = [
             'type' => $slug,
             'title' => $meta['label'].' Report',
-            'columns' => ['Date', $meta['partyLabel'], 'Reference', 'Vehicle', 'Total', $meta['paidLabel'], 'Balance', 'Status', 'Return Date'],
+            'columns' => ['Date', $meta['partyLabel'], 'Reference', 'VEH/CONT NO', 'Total', $meta['paidLabel'], 'Balance', 'Status', 'Return Date'],
             'rows' => $entries->map(fn ($e) => [
                 $e->entry_date->format('d-m-Y'), $e->party_name, $e->reference ?? '—', $e->vehicle_number ?? '—',
                 number_format((float) $e->total_amount, 2), number_format((float) $e->paid_amount, 2),
@@ -211,7 +211,7 @@ class LedgerEntryController extends Controller
                 $meta['partyLabel'] => $ledgerEntry->party_name,
                 'Contact' => implode(', ', array_filter((array) ($ledgerEntry->contact_numbers ?? []))),
                 'Reference' => $ledgerEntry->reference,
-                'Vehicle' => $ledgerEntry->vehicle_number,
+                'VEH/CONT NO' => $ledgerEntry->vehicle_number,
                 'Status' => ucfirst($ledgerEntry->status),
                 'Return Date' => $ledgerEntry->return_date?->format('d-m-Y'),
             ], fn ($v) => $v !== null && $v !== ''),

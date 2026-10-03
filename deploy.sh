@@ -28,10 +28,23 @@ fi
 # Pull, then restart once from the updated copy.
 if [ -z "${DEPLOY_REEXEC:-}" ]; then
     echo "==> Pulling $BRANCH..."
-    git pull origin "$BRANCH"
+    git pull --ff-only origin "$BRANCH"
+
+    if [ -n "${EXPECTED_REVISION:-}" ]; then
+        actual_revision="$(git rev-parse HEAD)"
+        if [ "$actual_revision" != "$EXPECTED_REVISION" ]; then
+            echo "Expected revision $EXPECTED_REVISION, but the server checked out $actual_revision." >&2
+            exit 1
+        fi
+    fi
 
     export DEPLOY_REEXEC=1
     exec "$0" "$@"
+fi
+
+if [ -n "${EXPECTED_REVISION:-}" ] && [ "$(git rev-parse HEAD)" != "$EXPECTED_REVISION" ]; then
+    echo "Server revision changed before deployment could continue." >&2
+    exit 1
 fi
 
 echo "==> Installing PHP dependencies..."

@@ -65,7 +65,7 @@ export default function TransactionsIndex({ transactions, filters, customers, pa
                                 <th className="py-2 pr-4">Invoice</th>
                                 <th className="py-2 pr-4">BOE</th>
                                 <th className="py-2 pr-4">Customer</th>
-                                <th className="py-2 pr-4">Vehicle</th>
+                                <th className="py-2 pr-4">VEH/CONT NO</th>
                                 <th className="py-2 pr-4">Method</th>
                                 <th className="py-2 pr-4 text-right">Total</th>
                                 <th className="py-2 pr-4 text-right">Grand Total</th>

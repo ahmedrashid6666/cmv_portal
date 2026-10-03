@@ -56,7 +56,7 @@ export default function InvoiceShow({ invoice }) {
                         <div className="text-sm text-slate-600">
                             <p className="text-xs uppercase text-slate-400">Details</p>
                             {invoice.boe_no && <p>BOE No: {invoice.boe_no}</p>}
-                            {invoice.vehicle && <p>Vehicle: {invoice.vehicle}</p>}
+                            {invoice.vehicle && <p>VEH/CONT NO: {invoice.vehicle}</p>}
                             {invoice.reference && <p>Reference: {invoice.reference}</p>}
                             <p>Payment: {invoice.payment_method}</p>
                         </div>
