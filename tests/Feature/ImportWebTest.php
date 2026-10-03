@@ -40,17 +40,20 @@ function uploadedWorkbook(): UploadedFile
 it('previews an uploaded workbook and then commits it', function () {
     $admin = User::factory()->role(Role::ADMIN)->create();
 
+    $before = Storage::disk('local')->files('imports');
+
     // preview
     $this->actingAs($admin)
         ->post(route('import.preview'), ['file' => uploadedWorkbook()])
         ->assertOk();
 
-    // grab the stored token from the newest import file and commit
-    $files = Storage::disk('local')->files('imports');
-    expect($files)->not->toBeEmpty();
+    // Commit the exact file created by this preview. The imports directory can
+    // contain files from other tests, so its first entry is not reliable.
+    $created = array_values(array_diff(Storage::disk('local')->files('imports'), $before));
+    expect($created)->toHaveCount(1);
 
     $this->actingAs($admin)
-        ->post(route('import.commit'), ['token' => $files[0]])
+        ->post(route('import.commit'), ['token' => $created[0]])
         ->assertRedirect(route('operations.index', ['type' => 'transactions']));
 
     expect(Transaction::count())->toBe(1)
@@ -67,14 +70,17 @@ it('imports when a customer/reference/vehicle was previously soft-deleted', func
     Reference::create(['name' => 'JRY'])->delete();
     Vehicle::create(['number' => '3512RA'])->delete();
 
+    $before = Storage::disk('local')->files('imports');
+
     $this->actingAs($admin)
         ->post(route('import.preview'), ['file' => uploadedWorkbook()])
         ->assertOk();
 
-    $files = Storage::disk('local')->files('imports');
+    $created = array_values(array_diff(Storage::disk('local')->files('imports'), $before));
+    expect($created)->toHaveCount(1);
 
     $this->actingAs($admin)
-        ->post(route('import.commit'), ['token' => $files[0]])
+        ->post(route('import.commit'), ['token' => $created[0]])
         ->assertRedirect(route('operations.index', ['type' => 'transactions']));
 
     // Import succeeded and reused the soft-deleted masters (no duplicates, restored).
