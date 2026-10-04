@@ -32,7 +32,7 @@
     table.items th.r, table.items td.r { text-align: right; }
     table.items td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; white-space: nowrap; }
     table.items td.company, table.items td.remark { white-space: normal; font-size: 9.5px; font-weight: normal; color: #10222f; }
-    table.items td.remark { width: 20%; }
+    table.items td.remark { width: 11%; }
     table.items .sub { color: #64748b; font-size: 8px; }
     table.items tr.total td { border-top: 2px solid #1e3a5f; border-bottom: none; font-weight: bold; font-size: 11px; color: #b91c1c; padding-top: 5px; }
     .bank { margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background: #f8fafc; }
@@ -170,8 +170,8 @@
                 <th>Invoice No</th>
                 <th>Boe No</th>
                 @if($showCompany)<th>Company Name</th>@endif
-                <th>VEH/CONT NO</th>
                 <th>Remark</th>
+                <th>VEH/CONT NO</th>
                 <th class="r">Amount</th>
             </tr>
         </thead>
@@ -183,8 +183,8 @@
                     <td>{{ $inv['invoice_no'] }}</td>
                     <td>{{ $inv['boe_no'] ?: '—' }}</td>
                     @if($showCompany)<td class="company">{{ $inv['company'] ?: '—' }}</td>@endif
-                    <td>{{ $inv['vehicle'] ?: '—' }}</td>
                     <td class="remark">{{ $inv['remarks'] ?: '—' }}</td>
+                    <td>{{ $inv['vehicle'] ?: '—' }}</td>
                     <td class="r">{{ number_format($inv['outstanding'], 2) }}</td>
                 </tr>
             @empty

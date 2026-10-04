@@ -288,7 +288,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                             <span title="Bank payment recorded without a bank selected — edit this row to pick the correct bank." className="text-amber-500">⚠</span>
                                         )}
                                     </td>
-                                    {r.cells.map((cell, i) => <td key={i} className={(columns[i] === 'Remark' ? 'min-w-48 max-w-80 whitespace-normal ' : 'whitespace-nowrap ') + 'py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>{cell}</td>)}
+                                    {r.cells.map((cell, i) => <td key={i} className={(columns[i] === 'Remark' ? 'w-24 max-w-24 whitespace-normal break-words ' : 'whitespace-nowrap ') + 'py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>{cell}</td>)}
                                     <td className="py-2 pr-3">
                                         {r.settle && canWrite ? (
                                             <button onClick={() => openSettle(r.settle)} title="Click to collect / pay / edit paid amount"
