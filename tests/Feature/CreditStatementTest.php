@@ -67,6 +67,33 @@ it('searches the outstanding credit list by reference', function () {
         ->assertInertia(fn ($p) => $p->where('outstanding', fn ($rows) => count($rows) === 1 && $rows[0]['invoice_no'] === 'STMT-1'));
 });
 
+it('shows and searches transaction remarks in the outstanding credit list', function () {
+    $invoice = creditInvoice($this->customer->id, '2026-08-01', 500, 'STMT-1', 'JRY');
+    $invoice->update(['remarks' => 'Original documents pending']);
+    $other = Customer::create(['name' => 'OTHER LLC']);
+    creditInvoice($other->id, '2026-08-01', 400, 'STMT-2', 'ZNY');
+
+    $this->actingAs($this->actor)->get(route('credits.index', ['search' => 'documents pending']))
+        ->assertOk()
+        ->assertInertia(fn ($p) => $p->where('outstanding', fn ($rows) => count($rows) === 1
+            && $rows[0]['invoice_no'] === 'STMT-1'
+            && $rows[0]['remarks'] === 'Original documents pending'));
+});
+
+it('saves a remark entered while receiving a credit payment', function () {
+    $invoice = creditInvoice($this->customer->id, '2026-08-01', 500, 'STMT-1');
+
+    $this->actingAs($this->actor)->post(route('credits.store'), [
+        'transaction_id' => $invoice->id,
+        'payment_date' => '2026-08-03',
+        'amount' => 100,
+        'payment_method_id' => $this->method->id,
+        'note' => 'Received against cheque 42',
+    ])->assertRedirect();
+
+    expect(CreditPayment::first()->note)->toBe('Received against cheque 42');
+});
+
 it('downloads a combined statement for a single-reference, multi-customer filter (the "Company Name" branch)', function () {
     $esqube = $this->customer;
     $other = Customer::create(['name' => 'OTHER LLC']);

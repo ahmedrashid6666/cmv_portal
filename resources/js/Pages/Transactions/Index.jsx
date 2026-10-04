@@ -38,7 +38,7 @@ export default function TransactionsIndex({ transactions, filters, customers, pa
 
             <Card className="mb-4">
                 <form onSubmit={apply} className="grid grid-cols-2 gap-3 md:grid-cols-6">
-                    <input className={input} placeholder="Search invoice/BOE/customer" value={f.search || ''} onChange={(e) => setF({ ...f, search: e.target.value })} />
+                    <input className={input} placeholder="Search invoice/BOE/customer/remark" value={f.search || ''} onChange={(e) => setF({ ...f, search: e.target.value })} />
                     <input type="date" className={input} value={f.from || ''} onChange={(e) => setF({ ...f, from: e.target.value })} />
                     <input type="date" className={input} value={f.to || ''} onChange={(e) => setF({ ...f, to: e.target.value })} />
                     <select className={input} value={f.customer_id || ''} onChange={(e) => setF({ ...f, customer_id: e.target.value })}>
@@ -65,6 +65,7 @@ export default function TransactionsIndex({ transactions, filters, customers, pa
                                 <th className="py-2 pr-4">Invoice</th>
                                 <th className="py-2 pr-4">BOE</th>
                                 <th className="py-2 pr-4">Customer</th>
+                                <th className="py-2 pr-4">Remark</th>
                                 <th className="py-2 pr-4">VEH/CONT NO</th>
                                 <th className="py-2 pr-4">Method</th>
                                 <th className="py-2 pr-4 text-right">Total</th>
@@ -75,7 +76,7 @@ export default function TransactionsIndex({ transactions, filters, customers, pa
                         </thead>
                         <tbody>
                             {transactions.data.length === 0 && (
-                                <tr><td colSpan="10" className="py-10 text-center text-slate-400">No transactions found.</td></tr>
+                                <tr><td colSpan={canWrite ? 11 : 10} className="py-10 text-center text-slate-400">No transactions found.</td></tr>
                             )}
                             {transactions.data.map((t) => (
                                 <tr key={t.id} className="border-b last:border-0 hover:bg-slate-200">
@@ -86,6 +87,7 @@ export default function TransactionsIndex({ transactions, filters, customers, pa
                                         <div>{t.customer?.name}</div>
                                         {t.contact_numbers?.length > 0 && <div className="text-xs text-slate-500">{t.contact_numbers.join(', ')}</div>}
                                     </td>
+                                    <td className="max-w-64 whitespace-normal py-2 pr-4 text-slate-600">{t.remarks || '—'}</td>
                                     <td className="py-2 pr-4">{t.vehicle_number || '—'}</td>
                                     <td className="py-2 pr-4">{t.payment_method?.name}</td>
                                     <td className="py-2 pr-4 text-right">{AED(t.total_amount)}</td>

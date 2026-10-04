@@ -245,7 +245,7 @@ export default function TransactionEntryForm({
                         <Field label="Credit Amount" error={errors.credit_amount}>
                             <input type="number" step="0.01" className={input} value={data.credit_amount} onChange={(e) => setData('credit_amount', e.target.value)} />
                         </Field>
-                        <Field label="Remarks" error={errors.remarks}>
+                        <Field label="Remark" error={errors.remarks}>
                             <textarea rows="2" className={input} value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} />
                         </Field>
                     </div>

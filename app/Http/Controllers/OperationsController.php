@@ -349,6 +349,7 @@ class OperationsController extends Controller
                 ->orWhere('boe_no', 'like', "%{$search}%")
                 ->orWhere('vehicle_number', 'like', "%{$search}%")
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
+                ->orWhere('remarks', 'like', "%{$search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
@@ -368,7 +369,7 @@ class OperationsController extends Controller
         $currencies = (clone $totalsSource)->distinct()->pluck('currency')->map(fn ($c) => $c ?: 'AED')->unique();
         $tCur = $currencies->count() === 1 ? $currencies->first() : 'AED';
         $t = fn ($v) => \App\Support\Money::display($v, $tCur);
-        $totals = ['', '', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->other_amount), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
+        $totals = ['', '', '', '', '', '', '', '', $t($agg->customs), $t($agg->gov), $t($agg->other_amount), $t($agg->profit), $t($agg->vat), $t($agg->total_amount), $t($com1Total), $t($com2Total), $t($agg->grand_total), $t($agg->credit_amount), ''];
 
         $query->with(['commissions' => fn ($q) => $q->orderBy('id')]);
 
@@ -395,6 +396,7 @@ class OperationsController extends Controller
                     $t->invoice_no ?? '—',
                     $t->boe_no ?? '—',
                     $t->customer?->name,
+                    $t->remarks ?: '—',
                     $this->contactCell($t),
                     $t->reference?->name ?? '—',
                     $t->vehicle_number ?? '—',
@@ -413,9 +415,9 @@ class OperationsController extends Controller
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Contact', 'Reference', 'VEH/CONT NO', 'Customs Fees (CDR)', 'Gov.Fees', 'Other Amount', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
-            'align' => [false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, false],
+        return ['columns' => ['Date', 'Invoice No', 'Boe No', 'Customer Name', 'Remark', 'Contact', 'Reference', 'VEH/CONT NO', 'Customs Fees (CDR)', 'Gov.Fees', 'Other Amount', 'Profit', 'VAT', 'Total Amount', 'Com-1', 'Com-2', 'Grand Total', 'Credit Amount', 'Method'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, null, null, null, null, null, null, null, null, 'grand_total', null, 'method'],
+            'align' => [false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, false],
             'totals' => $totals,
             'statusOptions' => self::INVOICE_STATUSES, 'actionLabel' => 'Edit', 'bulkDeletable' => true, 'bulkPayable' => true];
     }
@@ -477,6 +479,7 @@ class OperationsController extends Controller
                 ->orWhere('boe_no', 'like', "%{$search}%")
                 ->orWhere('vehicle_number', 'like', "%{$search}%")
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
+                ->orWhere('remarks', 'like', "%{$search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))));
@@ -488,7 +491,7 @@ class OperationsController extends Controller
         // Totals across the whole filtered set (not just the current page).
         $totalsSource = (clone $query)->setEagerLoads([]);
         $t = $this->moneyFormatter($totalsSource);
-        $totals = ['', '', '', '', '', '', '', $t((clone $totalsSource)->sum('credit_amount')), $t($this->creditOutstandingTotal($totalsSource)), ''];
+        $totals = ['', '', '', '', '', '', '', '', $t((clone $totalsSource)->sum('credit_amount')), $t($this->creditOutstandingTotal($totalsSource)), ''];
 
         $this->sort($query, $sort, $dir, [
             'transaction_date' => 'transaction_date', 'invoice_no' => 'invoice_no',
@@ -506,7 +509,7 @@ class OperationsController extends Controller
                 'customer_id' => $t->customer_id,
                 'customer' => $t->customer?->name,
                 'cells' => [
-                    $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $this->contactCell($t), $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
+                    $t->transaction_date->format('d-m-Y'), $t->invoice_no ?? '—', $t->boe_no ?? '—', $t->customer?->name, $t->remarks ?: '—', $this->contactCell($t), $t->reference?->name ?? '—', $t->vehicle_number ?? '—',
                     \App\Support\Money::display($t->credit_amount, $t->currency),
                     \App\Support\Money::display($out, $t->currency),
                     $this->creditPaidDate($t),
@@ -514,9 +517,9 @@ class OperationsController extends Controller
             ];
         });
 
-        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Contact', 'Reference', 'VEH/CONT NO', 'Credit', 'Outstanding', 'Paid Date'], 'rows' => $rows,
-            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, 'credit_amount', null, null],
-            'align' => [false, false, false, false, false, false, false, true, true, false],
+        return ['columns' => ['Date', 'Invoice', 'Boe No', 'Customer', 'Remark', 'Contact', 'Reference', 'VEH/CONT NO', 'Credit', 'Outstanding', 'Paid Date'], 'rows' => $rows,
+            'sortKeys' => ['transaction_date', 'invoice_no', null, 'customer', null, null, null, null, 'credit_amount', null, null],
+            'align' => [false, false, false, false, false, false, false, false, true, true, false],
             'totals' => $totals,
             'statusOptions' => self::INVOICE_STATUSES, 'actionLabel' => 'Receive', 'bulkDeletable' => false, 'bulkPayable' => true];
     }

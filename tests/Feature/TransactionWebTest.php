@@ -23,6 +23,7 @@ function fullPayload(): array
         'payment_method_id' => test()->method->id,
         'customs_fees' => 295, 'gov_fees' => 0, 'other_amount' => 0, 'profit' => 50, 'vat_rate' => 0,
         'credit_amount' => 0,
+        'remarks' => 'Cleared for delivery',
         'expenses' => [['expense_category_id' => test()->category->id, 'description' => 'Fuel', 'amount' => 27]],
         'commissions' => [['label' => 'Com-1', 'amount' => 25, 'type' => 'charged_to_customer']],
     ];
@@ -37,6 +38,7 @@ it('lets an accountant create a transaction with correct computed totals', funct
     expect((float) $t->total_amount)->toBe(345.0)
         ->and((float) $t->grand_total)->toBe(370.0)
         ->and((float) $t->net_profit)->toBe(23.0)   // 50 - 27
+        ->and($t->remarks)->toBe('Cleared for delivery')
         ->and($t->expenses)->toHaveCount(1)
         ->and($t->commissions)->toHaveCount(1);
 });
@@ -56,9 +58,10 @@ it('validates required fields', function () {
 });
 
 it('shows the transactions list to a read-only user', function () {
-    Transaction::factory()->create();
+    Transaction::factory()->create(['remarks' => 'Urgent release']);
 
     $this->actingAs(User::factory()->role(Role::READ_ONLY)->create())
         ->get(route('transactions.index'))
-        ->assertOk();
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('transactions.data.0.remarks', 'Urgent release'));
 });

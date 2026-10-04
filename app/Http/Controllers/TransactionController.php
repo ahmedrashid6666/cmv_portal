@@ -23,6 +23,7 @@ class TransactionController extends Controller
                 $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$s}%")
                     ->orWhere('boe_no', 'like', "%{$s}%")
                     ->orWhere('vehicle_number', 'like', "%{$s}%")
+                    ->orWhere('remarks', 'like', "%{$s}%")
                     ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$s}%")));
             })
             ->when($request->filled('from'), fn ($q) => $q->whereDate('transaction_date', '>=', $request->date('from')))

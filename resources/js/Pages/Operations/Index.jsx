@@ -200,7 +200,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                 <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-2">
                     <label className="block">
                         <span className="mb-1 block text-[11px] font-medium text-slate-500">Search</span>
-                        <input className={input + ' w-48'} placeholder="name / invoice / ref" value={f.search || ''} onChange={(e) => setF({ ...f, search: e.target.value })} />
+                        <input className={input + ' w-48'} placeholder="name / invoice / ref / remark" value={f.search || ''} onChange={(e) => setF({ ...f, search: e.target.value })} />
                     </label>
                     <label className="block">
                         <span className="mb-1 block text-[11px] font-medium text-slate-500">From</span>
@@ -288,7 +288,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                             <span title="Bank payment recorded without a bank selected — edit this row to pick the correct bank." className="text-amber-500">⚠</span>
                                         )}
                                     </td>
-                                    {r.cells.map((cell, i) => <td key={i} className={'whitespace-nowrap py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>{cell}</td>)}
+                                    {r.cells.map((cell, i) => <td key={i} className={(columns[i] === 'Remark' ? 'min-w-48 max-w-80 whitespace-normal ' : 'whitespace-nowrap ') + 'py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>{cell}</td>)}
                                     <td className="py-2 pr-3">
                                         {r.settle && canWrite ? (
                                             <button onClick={() => openSettle(r.settle)} title="Click to collect / pay / edit paid amount"
@@ -388,7 +388,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 </label>
                             )}
                             <label className="block">
-                                <span className="mb-1 block text-xs font-medium text-slate-600">Note</span>
+                                <span className="mb-1 block text-xs font-medium text-slate-600">Remark</span>
                                 <input className={input + ' w-full'} value={pay.data.note} onChange={(e) => pay.setData('note', e.target.value)} />
                             </label>
                             {pay.errors.bulk && <p className="rounded bg-red-50 p-2 text-xs text-accent-red-dark">{pay.errors.bulk}</p>}
@@ -444,6 +444,11 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                         {rcv.errors.bank_id && <span className="mt-1 block text-xs text-accent-red">{rcv.errors.bank_id}</span>}
                                     </label>
                                 )}
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium text-slate-600">Remark</span>
+                                    <textarea rows="2" className={input + ' w-full'} value={rcv.data.note} onChange={(e) => rcv.setData('note', e.target.value)} />
+                                    {rcv.errors.note && <span className="mt-1 block text-xs text-accent-red">{rcv.errors.note}</span>}
+                                </label>
                                 <button disabled={rcv.processing} className="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">Receive Payment</button>
                             </form>
                         )}

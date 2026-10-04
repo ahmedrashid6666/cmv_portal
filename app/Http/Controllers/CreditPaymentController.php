@@ -29,6 +29,7 @@ class CreditPaymentController extends Controller
             ->where('credit_amount', '>', 0)
             ->with(['customer:id,name', 'reference:id,name', 'creditPayments'])
             ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('invoice_no', 'like', "%{$search}%")
+                ->orWhere('remarks', 'like', "%{$search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))))
             ->latest('transaction_date')
@@ -42,6 +43,7 @@ class CreditPaymentController extends Controller
                     'customer_id' => $t->customer_id,
                     'customer' => $t->customer?->name,
                     'reference' => $t->reference?->name,
+                    'remarks' => $t->remarks,
                     'credit_amount' => (float) $t->credit_amount,
                     'outstanding' => $out,
                 ];
@@ -82,6 +84,7 @@ class CreditPaymentController extends Controller
                 'company' => $customer->name,
                 'reference' => $t->reference?->name,
                 'vehicle' => $t->vehicle_number,
+                'remarks' => $t->remarks,
                 'currency' => $t->currency ?: 'AED',
                 'outstanding' => round((float) $t->creditOutstanding(), 2),
             ])
@@ -133,6 +136,7 @@ class CreditPaymentController extends Controller
                 ->orWhere('boe_no', 'like', "%{$search}%")
                 ->orWhere('vehicle_number', 'like', "%{$search}%")
                 ->orWhere('contact_numbers', 'like', "%{$search}%")
+                ->orWhere('remarks', 'like', "%{$search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('reference', fn ($c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('paymentMethod', fn ($c) => $c->where('name', 'like', "%{$search}%"))))
@@ -151,6 +155,7 @@ class CreditPaymentController extends Controller
             'company' => $t->customer?->name,
             'reference' => $t->reference?->name,
             'vehicle' => $t->vehicle_number,
+            'remarks' => $t->remarks,
             'currency' => $t->currency ?: 'AED',
             'outstanding' => round((float) $t->creditOutstanding(), 2),
         ])->filter(fn ($row) => $row['outstanding'] > 0)->values();

@@ -33,7 +33,7 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
         setData({ ...data, payment_method_id: id, bank_id: method?.type === 'bank' ? data.bank_id : '' });
     };
 
-    const open = (row) => { setPayFor(row); setData({ ...data, transaction_id: row.id, amount: row.outstanding }); };
+    const open = (row) => { setPayFor(row); setData({ ...data, transaction_id: row.id, amount: row.outstanding, note: '' }); };
     const submit = (e) => {
         e.preventDefault();
         post(route('credits.store'), { onSuccess: () => { reset(); setPayFor(null); } });
@@ -71,7 +71,7 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
             <Card className="mb-4">
                 <form onSubmit={runSearch} className="flex flex-wrap items-end gap-2">
                     <label className="block flex-1">
-                        <span className="mb-1 block text-[11px] font-medium text-slate-500">Search by Reference, Customer or Invoice</span>
+                        <span className="mb-1 block text-[11px] font-medium text-slate-500">Search by Reference, Customer, Invoice or Remark</span>
                         <input className={input + ' max-w-md'} placeholder="e.g. JRY or ESQUBE" value={search} onChange={(e) => setSearch(e.target.value)} />
                     </label>
                     <button className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800">Search</button>
@@ -90,6 +90,7 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
                                     <th className="py-2 pr-4">Date</th>
                                     <th className="py-2 pr-4">Invoice</th>
                                     <th className="py-2 pr-4">Customer</th>
+                                    <th className="py-2 pr-4">Remark</th>
                                     <th className="py-2 pr-4">Reference</th>
                                     <th className="py-2 pr-4 text-right">Credit</th>
                                     <th className="py-2 pr-4 text-right">Outstanding</th>
@@ -98,12 +99,13 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
                                 </tr>
                             </thead>
                             <tbody>
-                                {outstanding.length === 0 && <tr><td colSpan="8" className="py-8 text-center text-slate-400">No outstanding credit. 🎉</td></tr>}
+                                {outstanding.length === 0 && <tr><td colSpan={canWrite ? 9 : 8} className="py-8 text-center text-slate-400">No outstanding credit. 🎉</td></tr>}
                                 {outstanding.map((r) => (
                                     <tr key={r.id} className="border-b last:border-0 hover:bg-slate-200">
                                         <td className="py-2 pr-4">{fmtDate(r.date)}</td>
                                         <td className="py-2 pr-4">{r.invoice_no || '—'}</td>
                                         <td className="py-2 pr-4">{r.customer}</td>
+                                        <td className="max-w-56 whitespace-normal py-2 pr-4 text-slate-600">{r.remarks || '—'}</td>
                                         <td className="py-2 pr-4">{r.reference || '—'}</td>
                                         <td className="py-2 pr-4 text-right">{AED(r.credit_amount)}</td>
                                         <td className="py-2 pr-4 text-right font-semibold text-accent-red">{AED(r.outstanding)}</td>
@@ -149,6 +151,11 @@ export default function CreditsIndex({ outstanding, filters = {}, paymentMethods
                                     {errors.bank_id && <span className="mt-1 block text-xs text-accent-red">{errors.bank_id}</span>}
                                 </label>
                             )}
+                            <label className="block">
+                                <span className="mb-1 block text-xs font-medium text-slate-600">Remark</span>
+                                <textarea rows="2" className={input} value={data.note} onChange={(e) => setData('note', e.target.value)} />
+                                {errors.note && <span className="mt-1 block text-xs text-accent-red">{errors.note}</span>}
+                            </label>
                             <button disabled={processing} className="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-700 disabled:opacity-50">Record Payment</button>
                         </form>
                     </Card>

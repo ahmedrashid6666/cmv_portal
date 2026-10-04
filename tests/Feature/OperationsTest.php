@@ -100,12 +100,12 @@ it('splits commissions into Com-1 and Com-2 columns and totals', function () {
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('columns.13', 'Com-1')
-            ->where('columns.14', 'Com-2')
-            ->where('rows.data.0.cells.13', '30') // Com-1
-            ->where('rows.data.0.cells.14', '20') // Com-2
-            ->where('totals.13', '30')
-            ->where('totals.14', '20')
+            ->where('columns.14', 'Com-1')
+            ->where('columns.15', 'Com-2')
+            ->where('rows.data.0.cells.14', '30') // Com-1
+            ->where('rows.data.0.cells.15', '20') // Com-2
+            ->where('totals.14', '30')
+            ->where('totals.15', '20')
             ->etc());
 });
 
@@ -119,10 +119,10 @@ it('folds a third commission into the Com-2 total so it reconciles', function ()
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('rows.data.0.cells.13', '30') // Com-1
-            ->where('rows.data.0.cells.14', '25') // Com-2 = 20 + 5
-            ->where('totals.13', '30')
-            ->where('totals.14', '25')
+            ->where('rows.data.0.cells.14', '30') // Com-1
+            ->where('rows.data.0.cells.15', '25') // Com-2 = 20 + 5
+            ->where('totals.14', '30')
+            ->where('totals.15', '25')
             ->etc());
 });
 
@@ -137,6 +137,23 @@ it('searches transactions by reference, not just customer/invoice', function () 
             && $rows[0]['id'] === $match->id));
 });
 
+it('shows and searches remarks on the transactions and credits tabs', function () {
+    $match = opTx(today()->toDateString());
+    $match->update(['credit_amount' => 50, 'remarks' => 'Original documents pending']);
+    opTx(today()->toDateString());
+
+    foreach (['transactions', 'credits'] as $type) {
+        $props = $this->actingAs($this->admin)
+            ->get(route('operations.index', ['type' => $type, 'search' => 'documents pending']))
+            ->viewData('page')['props'];
+
+        expect($props['rows']['data'])->toHaveCount(1)
+            ->and($props['rows']['data'][0]['id'])->toBe($match->id)
+            ->and($props['columns'][4])->toBe('Remark')
+            ->and($props['rows']['data'][0]['cells'][4])->toBe('Original documents pending');
+    }
+});
+
 it('places commissions by their Com-1/Com-2 label, not by order', function () {
     // Excel had Com-1 empty and Com-2 = 25 → importer stores a single 'Com-2' row.
     $tx = opTx(today()->toDateString());
@@ -144,10 +161,10 @@ it('places commissions by their Com-1/Com-2 label, not by order', function () {
 
     $this->actingAs($this->admin)->get(route('operations.index'))
         ->assertInertia(fn ($p) => $p
-            ->where('rows.data.0.cells.13', '0')   // Com-1 stays empty
-            ->where('rows.data.0.cells.14', '25')  // Com-2 keeps its value
-            ->where('totals.13', '0')
-            ->where('totals.14', '25')
+            ->where('rows.data.0.cells.14', '0')   // Com-1 stays empty
+            ->where('rows.data.0.cells.15', '25')  // Com-2 keeps its value
+            ->where('totals.14', '0')
+            ->where('totals.15', '25')
             ->etc());
 });
 
@@ -163,8 +180,8 @@ it('shows contact numbers on the invoices and credits tabs', function () {
 
     $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
         ->assertInertia(fn ($p) => $p
-            ->where('columns.4', 'Contact')
-            ->where('rows.data.0.cells.4', '050-111, 050-222')
+            ->where('columns.5', 'Contact')
+            ->where('rows.data.0.cells.5', '050-111, 050-222')
             ->etc());
 });
 
@@ -193,8 +210,8 @@ it('sums credit and outstanding across the whole filtered set on the credits tab
 
     $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
         ->assertInertia(fn ($p) => $p
-            ->where('totals.7', Money::display(150))     // 100 + 50
-            ->where('totals.8', Money::display(110))      // (100-40) + 50
+            ->where('totals.8', Money::display(150))     // 100 + 50
+            ->where('totals.9', Money::display(110))      // (100-40) + 50
             ->etc());
 });
 
@@ -305,8 +322,8 @@ it('shows the last payment date as the paid date on the credits tab', function (
     $props = $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
         ->viewData('page')['props'];
 
-    expect($props['columns'][9])->toBe('Paid Date')
-        ->and($props['rows']['data'][0]['cells'][9])->toBe(today()->subDay()->format('d-m-Y'));
+    expect($props['columns'][10])->toBe('Paid Date')
+        ->and($props['rows']['data'][0]['cells'][10])->toBe(today()->subDay()->format('d-m-Y'));
 });
 
 it('leaves the paid date blank on a credit nothing has been received against', function () {
@@ -316,5 +333,5 @@ it('leaves the paid date blank on a credit nothing has been received against', f
     $props = $this->actingAs($this->admin)->get(route('operations.index', ['type' => 'credits']))
         ->viewData('page')['props'];
 
-    expect($props['rows']['data'][0]['cells'][9])->toBe('—');
+    expect($props['rows']['data'][0]['cells'][10])->toBe('—');
 });
