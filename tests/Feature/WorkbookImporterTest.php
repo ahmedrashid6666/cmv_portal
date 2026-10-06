@@ -12,20 +12,20 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  */
 function makeWorkbook(): string
 {
-    $ss = new Spreadsheet();
+    $ss = new Spreadsheet;
     $sheet = $ss->getActiveSheet();
     $sheet->setTitle('01-07-2026');
 
     $sheet->setCellValue('A1', 'DATE : 01-07-2026');
     $headers = ['Sl No.', 'Invoice No', 'Boe No.', 'Customer Name', 'Reference', 'Vehicle No.',
         'Customs Fees (CDR)', 'Other Gov.Fees', 'Profit', 'VAT 0%', 'Total Amount',
-        'Payment Mode', 'Credit Amount', 'Expenses Details', '', '', '', 'Amount', 'Com-1 EX', 'Com-2', 'TOTAL'];
+        'Payment Mode', 'Credit Amount', 'Expenses Details', '', '', '', 'Amount', 'Com-1 EX', 'Com-2', 'TOTAL', 'Remarks'];
     foreach ($headers as $i => $h) {
         $sheet->setCellValue([$i + 1, 2], $h);
     }
 
     // row: customs 245, profit 35, total 280
-    $r1 = [1, '56728', '2030026480926', 'ESQUBE INDUSTRIES LLC', 'JRY', '3512RA', 245, 0, 35, 0, 280, 'Cash', 0, '', '', '', '', '', '', '', 280];
+    $r1 = [1, '56728', '2030026480926', 'ESQUBE INDUSTRIES LLC', 'JRY', '3512RA', 245, 0, 35, 0, 280, 'Cash', 0, '', '', '', '', '', '', '', 280, 'Original documents pending'];
     // row with expense (ZAJEL 27) + commission (25)
     $r2 = [2, '56732', '2010029464726', 'BIG BRANDS PERFUMES', 'ROW-ZNY', '63655DXB', 295, 0, 50, 0, 345, 'Cash', 0, 'ZAJEL PAYMENT', '', '', '', 27, 25, '', 397];
     // bad row: non-numeric customs
@@ -57,6 +57,9 @@ it('parses rows, expense amount, commission and flags a bad numeric', function (
         ->and((float) $big['commission_1'])->toBe(25.0)
         ->and((float) $big['customs_fees'])->toBe(295.0);
 
+    $withRemark = collect($preview['rows'])->firstWhere('invoice_no', '56728');
+    expect($withRemark['remarks'])->toBe('Original documents pending');
+
     // bad numeric customs flagged as an error and coerced to 0
     expect($preview['errors'])->not->toBeEmpty();
     $bad = collect($preview['rows'])->firstWhere('invoice_no', '56999');
@@ -70,7 +73,7 @@ it('parses rows, expense amount, commission and flags a bad numeric', function (
  */
 function makeProfitReport(): string
 {
-    $ss = new Spreadsheet();
+    $ss = new Spreadsheet;
     $sheet = $ss->getActiveSheet();
     $sheet->setTitle('ProfitReport_28072026');
 
@@ -143,7 +146,7 @@ it('flags rows already in the system as duplicates in the preview', function () 
  */
 function makeWorkbookWithContacts(): string
 {
-    $ss = new Spreadsheet();
+    $ss = new Spreadsheet;
     $sheet = $ss->getActiveSheet();
     $sheet->setTitle('01-07-2026');
 
@@ -207,6 +210,8 @@ it('commits rows idempotently', function () {
         ->and((float) $big->grand_total)->toBe(370.0)
         ->and($big->expenses)->toHaveCount(1)
         ->and($big->commissions)->toHaveCount(1);
+
+    expect(Transaction::where('invoice_no', '56728')->value('remarks'))->toBe('Original documents pending');
 
     // re-import creates nothing new
     $again = $importer->commit($importer->parse($path));

@@ -27,12 +27,12 @@
     .label { color: #64748b; font-size: 8px; text-transform: uppercase; }
     .notice { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 4px;
         padding: 4px 10px; font-size: 10px; font-weight: bold; margin-bottom: 6px; }
-    table.items { width: 100%; border-collapse: collapse; margin-top: 2px; }
-    table.items th { background: #1e3a5f; color: #fff; text-align: left; padding: 4px 6px; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
+    table.items { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 2px; }
+    table.items th { background: #1e3a5f; color: #fff; text-align: left; padding: 4px; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
     table.items th.r, table.items td.r { text-align: right; }
-    table.items td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; white-space: nowrap; }
-    table.items td.company, table.items td.remark { white-space: normal; font-size: 9.5px; font-weight: normal; color: #10222f; }
-    table.items td.remark { width: 11%; }
+    table.items td { padding: 3px 4px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; white-space: nowrap; overflow-wrap: break-word; word-wrap: break-word; }
+    table.items td.company, table.items td.remark { white-space: normal; line-height: 1.25; font-size: 9.5px; font-weight: normal; color: #10222f; }
+    table.items td.vehicle { padding-left: 2px; padding-right: 2px; }
     table.items .sub { color: #64748b; font-size: 8px; }
     table.items tr.total td { border-top: 2px solid #1e3a5f; border-bottom: none; font-weight: bold; font-size: 11px; color: #b91c1c; padding-top: 5px; }
     .bank { margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background: #f8fafc; }
@@ -163,6 +163,17 @@
     </div>
 
     <table class="items">
+        @if($showCompany)
+            <colgroup>
+                <col style="width:5%"><col style="width:10%"><col style="width:11%"><col style="width:16%">
+                <col style="width:23%"><col style="width:11%"><col style="width:14%"><col style="width:10%">
+            </colgroup>
+        @else
+            <colgroup>
+                <col style="width:6%"><col style="width:12%"><col style="width:13%"><col style="width:20%">
+                <col style="width:17%"><col style="width:18%"><col style="width:14%">
+            </colgroup>
+        @endif
         <thead>
             <tr>
                 <th>S.No</th>
@@ -184,7 +195,7 @@
                     <td>{{ $inv['boe_no'] ?: '—' }}</td>
                     @if($showCompany)<td class="company">{{ $inv['company'] ?: '—' }}</td>@endif
                     <td class="remark">{{ $inv['remarks'] ?: '—' }}</td>
-                    <td>{{ $inv['vehicle'] ?: '—' }}</td>
+                    <td class="vehicle">{{ $inv['vehicle'] ?: '—' }}</td>
                     <td class="r">{{ number_format($inv['outstanding'], 2) }}</td>
                 </tr>
             @empty

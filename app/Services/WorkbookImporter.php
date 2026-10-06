@@ -45,6 +45,7 @@ class WorkbookImporter
         'contact' => 'contact_raw',
         'mobile' => 'contact_raw',
         'phone' => 'contact_raw',
+        'remark' => 'remarks',
         // Commission columns ("Com-1"/"Com-2" or plain "COMMISION") are matched
         // separately in mapColumns() so both spellings and duplicate headers work.
     ];
@@ -149,7 +150,7 @@ class WorkbookImporter
             }
         }
 
-        $expected = 'Expected headers: Invoice No, Boe No, Customer Name, Reference, Vehicle No, Customs Fees (CDR), Other Gov.Fees, Profit, VAT, Total Amount, Commission, Grand Total, Credit Amount, Payment.';
+        $expected = 'Expected headers: Invoice No, Boe No, Customer Name, Reference, Vehicle No, Remark, Customs Fees (CDR), Other Gov.Fees, Profit, VAT, Total Amount, Commission, Grand Total, Credit Amount, Payment.';
 
         if (empty($sheets)) {
             $found = $firstSheetHeaders
@@ -248,6 +249,7 @@ class WorkbookImporter
                     'vat_rate' => 0,
                     'payment_method_id' => $method->id,
                     'credit_amount' => (float) ($row['credit_amount'] ?? 0),
+                    'remarks' => $row['remarks'] ?? null,
                     'created_by' => $userId,
                     'expenses' => $expenses,
                     'commissions' => $commissions,
@@ -355,6 +357,7 @@ class WorkbookImporter
             'reference' => $this->str($get('reference')) === '-' ? null : $this->str($get('reference')),
             'vehicle' => $this->str($get('vehicle')),
             'contact_numbers' => $this->splitContacts($get('contact_raw')),
+            'remarks' => $this->str($get('remarks')),
             'customs_fees' => $customs,
             'gov_fees' => $get('gov_fees'),
             'profit' => $profit,

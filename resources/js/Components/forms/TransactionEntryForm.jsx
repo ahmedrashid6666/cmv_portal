@@ -137,6 +137,11 @@ export default function TransactionEntryForm({
                     <div className="mt-4">
                         <ContactNumbers value={data.contact_numbers} onChange={(v) => setData('contact_numbers', v)} error={errors.contact_numbers} />
                     </div>
+                    <div className="mt-4">
+                        <Field label="Remark" error={errors.remarks}>
+                            <textarea rows="3" className={input} value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} placeholder="Add any note that should appear with this transaction" />
+                        </Field>
+                    </div>
                 </Card>
 
                 <Card title="Income Details">
@@ -244,9 +249,6 @@ export default function TransactionEntryForm({
                         )}
                         <Field label="Credit Amount" error={errors.credit_amount}>
                             <input type="number" step="0.01" className={input} value={data.credit_amount} onChange={(e) => setData('credit_amount', e.target.value)} />
-                        </Field>
-                        <Field label="Remark" error={errors.remarks}>
-                            <textarea rows="2" className={input} value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} />
                         </Field>
                     </div>
                 </Card>
