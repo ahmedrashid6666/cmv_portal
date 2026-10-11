@@ -262,9 +262,8 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                             <tr className="border-b text-left text-xs uppercase text-slate-500 align-bottom">
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
                                 <th className="py-2 pr-3 leading-tight">Sl No</th>
-                                <th className="py-2 pr-1 leading-tight"></th>
                                 {columns.map((c, i) => (
-                                    <th key={c} className={'py-2 pr-3 leading-tight ' + (isRight(i) ? 'text-right ' : '') + (c === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
+                                    <th key={c} className={(c === 'Remark' ? 'max-w-20 pr-2 ' : 'pr-3 ') + 'py-2 leading-tight ' + (isRight(i) ? 'text-right ' : '') + (c === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
                                         {sortKeys[i] ? (
                                             <button onClick={() => sortBy(sortKeys[i])} className={'inline-flex items-end gap-1 uppercase hover:text-navy-700 ' + (isRight(i) ? 'text-right' : 'text-left') + (c === 'Total Amount' ? ' hover:text-white' : '')}>
                                                 {c} {arrow(sortKeys[i])}
@@ -282,13 +281,19 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                             {rows.data.map((r, ri) => (
                                 <tr key={r.id} className={'border-b last:border-0 hover:bg-slate-200 ' + (selected.includes(r.id) ? 'bg-primary-50' : '')}>
                                     {showChecks && <td className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>}
-                                    <td className="whitespace-nowrap py-2 pr-3 text-slate-400">{(rows.from || 1) + ri}</td>
-                                    <td className="whitespace-nowrap py-2 pr-1">
+                                    <td className="whitespace-nowrap py-2 pr-3 text-slate-400">
+                                        {(rows.from || 1) + ri}
                                         {r.bank_missing && (
-                                            <span title="Bank payment recorded without a bank selected — edit this row to pick the correct bank." className="text-amber-500">⚠</span>
+                                            <span title="Bank payment recorded without a bank selected — edit this row to pick the correct bank." className="ml-1 text-amber-500">⚠</span>
                                         )}
                                     </td>
-                                    {r.cells.map((cell, i) => <td key={i} className={(columns[i] === 'Remark' ? 'w-24 max-w-24 whitespace-normal break-words ' : 'whitespace-nowrap ') + 'py-2 pr-3 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>{cell}</td>)}
+                                    {r.cells.map((cell, i) => (
+                                        <td key={i} className={(columns[i] === 'Remark' ? 'max-w-20 pr-2 ' : 'whitespace-nowrap pr-3 ') + 'py-2 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
+                                            {columns[i] === 'Remark'
+                                                ? <span className="block max-w-20 truncate" title={typeof cell === 'string' ? cell : undefined}>{cell}</span>
+                                                : cell}
+                                        </td>
+                                    ))}
                                     <td className="py-2 pr-3">
                                         {r.settle && canWrite ? (
                                             <button onClick={() => openSettle(r.settle)} title="Click to collect / pay / edit paid amount"
@@ -325,7 +330,6 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 <tr className="border-t-2 border-navy-800 bg-navy-800 font-bold text-white">
                                     {showChecks && <td className="py-3 pr-3"></td>}
                                     <td className="whitespace-nowrap py-3 pr-3">Total</td>
-                                    <td className="py-3 pr-1"></td>
                                     {totals.map((cell, i) => <td key={i} className={'whitespace-nowrap py-3 pr-3 ' + (isRight(i) ? 'text-right tabular-nums' : '')}>{cell}</td>)}
                                     <td className="py-3 pr-3"></td>
                                     {type === 'credits' && <td className="py-3 pr-3"></td>}

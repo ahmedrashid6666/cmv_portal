@@ -96,7 +96,7 @@ export default function ImportIndex({ preview }) {
                                         <th className="whitespace-nowrap py-2 pr-4">Contact</th>
                                         <th className="whitespace-nowrap py-2 pr-4">Reference</th>
                                         <th className="whitespace-nowrap py-2 pr-4">Vehicle No</th>
-                                        <th className="w-28 max-w-40 whitespace-nowrap py-2 pr-4">Remark</th>
+                                        <th className="max-w-20 whitespace-nowrap py-2 pr-2">Remark</th>
                                         <th className="whitespace-nowrap py-2 pr-4 text-right">Customs Fees (CDR)</th>
                                         <th className="whitespace-nowrap py-2 pr-4 text-right">Other Gov.Fees</th>
                                         <th className="whitespace-nowrap py-2 pr-4 text-right">Profit</th>
@@ -123,8 +123,8 @@ export default function ImportIndex({ preview }) {
                                             <td className="whitespace-nowrap py-2 pr-4">{r.contact_numbers?.length ? r.contact_numbers.join(', ') : '—'}</td>
                                             <td className="whitespace-nowrap py-2 pr-4">{r.reference || '—'}</td>
                                             <td className="whitespace-nowrap py-2 pr-4">{r.vehicle || '—'}</td>
-                                            <td className="w-28 max-w-40 py-2 pr-4 text-slate-600">
-                                                <span className="block w-28 truncate" title={r.remarks || undefined}>
+                                            <td className="max-w-20 py-2 pr-2 text-slate-600">
+                                                <span className="block max-w-20 truncate" title={r.remarks || undefined}>
                                                     {r.remarks || '—'}
                                                 </span>
                                             </td>

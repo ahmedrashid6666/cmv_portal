@@ -163,27 +163,26 @@
     </div>
 
     <table class="items">
-        @if($showCompany)
-            <colgroup>
-                <col style="width:4%"><col style="width:10%"><col style="width:9%"><col style="width:17%">
-                <col style="width:24%"><col style="width:8%"><col style="width:18%"><col style="width:10%">
-            </colgroup>
-        @else
-            <colgroup>
-                <col style="width:4%"><col style="width:11%"><col style="width:10%"><col style="width:22%">
-                <col style="width:10%"><col style="width:28%"><col style="width:15%">
-            </colgroup>
-        @endif
         <thead>
             <tr>
-                <th>S.No</th>
-                <th>Date</th>
-                <th>Invoice No</th>
-                <th>Boe No</th>
-                @if($showCompany)<th>Company Name</th>@endif
-                <th>Remark</th>
-                <th>VEH/CONT NO</th>
-                <th class="r">Amount</th>
+                @if($showCompany)
+                    <th style="width:4%">S.No</th>
+                    <th style="width:10%">Date</th>
+                    <th style="width:9%">Invoice No</th>
+                    <th style="width:17%">Boe No</th>
+                    <th style="width:24%">Company Name</th>
+                    <th style="width:8%">Remark</th>
+                    <th style="width:18%">VEH/CONT NO</th>
+                    <th class="r" style="width:10%">Amount</th>
+                @else
+                    <th style="width:4%">S.No</th>
+                    <th style="width:11%">Date</th>
+                    <th style="width:10%">Invoice No</th>
+                    <th style="width:22%">Boe No</th>
+                    <th style="width:10%">Remark</th>
+                    <th style="width:28%">VEH/CONT NO</th>
+                    <th class="r" style="width:15%">Amount</th>
+                @endif
             </tr>
         </thead>
         <tbody>
