@@ -32,7 +32,7 @@
     table.items th.r, table.items td.r { text-align: right; }
     table.items td { padding: 3px 4px; border-bottom: 1px solid #e2e8f0; font-size: 9.5px; white-space: nowrap; overflow-wrap: break-word; word-wrap: break-word; }
     table.items td.company, table.items td.remark { white-space: normal; line-height: 1.25; font-size: 9.5px; font-weight: normal; color: #10222f; }
-    table.items td.vehicle { padding-left: 2px; padding-right: 2px; }
+    table.items td.vehicle { padding-left: 2px; padding-right: 2px; white-space: normal; overflow-wrap: anywhere; word-wrap: break-word; line-height: 1.2; }
     table.items .sub { color: #64748b; font-size: 8px; }
     table.items tr.total td { border-top: 2px solid #1e3a5f; border-bottom: none; font-weight: bold; font-size: 11px; color: #b91c1c; padding-top: 5px; }
     .bank { margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 10px; background: #f8fafc; }
@@ -167,21 +167,21 @@
             <tr>
                 @if($showCompany)
                     <th style="width:4%">S.No</th>
-                    <th style="width:10%">Date</th>
-                    <th style="width:9%">Invoice No</th>
-                    <th style="width:17%">Boe No</th>
-                    <th style="width:24%">Company Name</th>
+                    <th style="width:11%">Date</th>
+                    <th style="width:10%">Invoice No</th>
+                    <th style="width:20%">Boe No</th>
+                    <th style="width:20%">Company Name</th>
                     <th style="width:8%">Remark</th>
-                    <th style="width:18%">VEH/CONT NO</th>
-                    <th class="r" style="width:10%">Amount</th>
+                    <th style="width:14%">VEH/CONT NO</th>
+                    <th class="r" style="width:13%">Amount</th>
                 @else
                     <th style="width:4%">S.No</th>
                     <th style="width:11%">Date</th>
                     <th style="width:10%">Invoice No</th>
-                    <th style="width:22%">Boe No</th>
+                    <th style="width:28%">Boe No</th>
                     <th style="width:10%">Remark</th>
-                    <th style="width:28%">VEH/CONT NO</th>
-                    <th class="r" style="width:15%">Amount</th>
+                    <th style="width:20%">VEH/CONT NO</th>
+                    <th class="r" style="width:17%">Amount</th>
                 @endif
             </tr>
         </thead>

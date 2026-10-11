@@ -23,6 +23,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
     const showChecks = (bulkDeletable || bulkPayable) && canWrite;
     const isBorrowed = type === 'borrowed';
     const isRight = (i) => (align ? !!align[i] : i >= 4);
+    const isPartyColumn = (column) => ['Customer Name', 'Customer', 'Company Name'].includes(column);
 
     const [f, setF] = useState(filters);
     const [selected, setSelected] = useState([]);
@@ -263,7 +264,7 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                 {showChecks && <th className="py-2 pr-3"><input type="checkbox" className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" checked={allChecked} onChange={toggleAll} /></th>}
                                 <th className="py-2 pr-3 leading-tight">Sl No</th>
                                 {columns.map((c, i) => (
-                                    <th key={c} className={(c === 'Remark' ? 'max-w-20 pr-2 ' : 'pr-3 ') + 'py-2 leading-tight ' + (isRight(i) ? 'text-right ' : '') + (c === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
+                                    <th key={c} className={(c === 'Remark' ? 'max-w-20 pr-2 ' : isPartyColumn(c) ? 'w-56 max-w-56 pr-3 ' : 'pr-3 ') + 'py-2 leading-tight ' + (isRight(i) ? 'text-right ' : '') + (c === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
                                         {sortKeys[i] ? (
                                             <button onClick={() => sortBy(sortKeys[i])} className={'inline-flex items-end gap-1 uppercase hover:text-navy-700 ' + (isRight(i) ? 'text-right' : 'text-left') + (c === 'Total Amount' ? ' hover:text-white' : '')}>
                                                 {c} {arrow(sortKeys[i])}
@@ -291,6 +292,8 @@ export default function Operations({ tabs, type, columns, rows, filters, sort, s
                                         <td key={i} className={(columns[i] === 'Remark' ? 'max-w-20 pr-2 ' : 'whitespace-nowrap pr-3 ') + 'py-2 ' + (isRight(i) ? 'text-right tabular-nums ' : '') + (columns[i] === 'Total Amount' ? 'bg-navy-800 text-white font-bold' : '')}>
                                             {columns[i] === 'Remark'
                                                 ? <span className="block max-w-20 truncate" title={typeof cell === 'string' ? cell : undefined}>{cell}</span>
+                                                : isPartyColumn(columns[i])
+                                                    ? <span className="block w-56 whitespace-normal break-words leading-5">{cell}</span>
                                                 : cell}
                                         </td>
                                     ))}
